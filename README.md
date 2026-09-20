@@ -55,7 +55,7 @@ After extracting the ZIP:
 
 ```bash
 cd chinese-american-bridge-club-source
-npm ci
+npm ci --include=dev
 cp .env.example .env
 npm run dev
 ```
@@ -63,6 +63,28 @@ npm run dev
 Open `http://localhost:5000`. Run all commands from the extracted project root.
 The server creates `data/club.sqlite` and a random owner setup code in
 `private/owner-setup.txt`. Those paths are local defaults, not public URLs.
+
+### Updating an earlier downloaded package
+
+The revised package pins `esbuild` to `0.28.2` and uses an npm override so
+Drizzle Kit, Vite, tsx and the build script resolve to the same version. Its
+`package-lock.json` has been regenerated and verified with a clean install.
+The archive also restores the previously omitted `tailwind.config.ts`.
+
+For an existing installation, replace **both `package.json` and
+`package-lock.json` together**, and copy `tailwind.config.ts` from this package
+into the project root. Then run:
+
+```bash
+npm ci --include=dev
+npm run check
+npm run build
+```
+
+Keep your existing `.env`, `data/` and `private/` directories. Do not delete
+your database, setup files or the supplied lockfile. No `--force` or
+`--legacy-peer-deps` option is needed for the verified installation.
+Restart the application after rebuilding when you are ready to use the update.
 
 ### Create the first administrator
 

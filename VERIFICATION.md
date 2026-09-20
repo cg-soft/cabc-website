@@ -29,7 +29,35 @@ endpoint denial, private-file download blocking and mode-600 private files.
 The updated package reruns formatting, type checks, tests and production build.
 All runtime tests use synthetic data, never real member credentials.
 
-## Limits
+## Dependency installation correction
+
+The revised package pins the direct `esbuild` dependency to `0.28.2` and adds
+an `esbuild: "$esbuild"` npm override. A regenerated lockfile resolves all
+esbuild consumers and platform-specific esbuild packages to `0.28.2`.
+The archive now also includes `tailwind.config.ts`, which was accidentally
+omitted from the earlier ZIP.
+
+Verification used an extracted copy of the delivered archive, with these
+corrected files, under Node.js 22.23.2 and npm 10.8.2:
+
+- Clean `npm ci --include=dev --no-audit --no-fund`: passed.
+- `npm ls esbuild --all`: all consumers resolve to `0.28.2`.
+- `npm run check`: passed.
+- `npm test`: all 42 tests passed.
+- `npm run build`: passed with the restored Tailwind configuration.
+- Drizzle Kit migration generation: successfully loaded the configuration and
+  processed all 15 schema tables in a disposable test directory. Generated
+  test migrations are not included in this package, and no club database was
+  changed.
+
+The original archive also installed successfully in this Linux test
+environment. Therefore, the user's exact installation error was not
+reproduced, and multiple esbuild versions alone were not established as its
+cause. The revised package removes that version difference and verifies
+compatibility with the included build and migration tooling. Other operating
+systems and npm versions have not been tested.
+
+## Launch and audit limits
 
 No hosting account or custom domain was provisioned. Operational and security
 requirements in HOSTING.md and SECURITY.md remain launch prerequisites.
