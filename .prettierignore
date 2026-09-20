@@ -1,0 +1,7 @@
+node_modules/
+dist/
+data/
+private/
+package-lock.json
+tests/backend-test-results.json
+client/public/
