@@ -1,6 +1,7 @@
 import { build as esbuild } from "esbuild";
 import { build as viteBuild } from "vite";
-import { rm, readFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
+import { cleanBuildOutput } from "./clean-build";
 
 // server deps to bundle to reduce openat(2) syscalls
 // which helps cold start times
@@ -31,7 +32,7 @@ const allowlist = [
 ];
 
 async function buildAll() {
-  await rm("dist", { recursive: true, force: true });
+  await cleanBuildOutput("dist");
 
   console.log("building client...");
   await viteBuild();

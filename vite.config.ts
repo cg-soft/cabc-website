@@ -15,7 +15,9 @@ export default defineConfig({
   base: "./",
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
-    emptyOutDir: true,
+    // script/build.ts clears generated files while retaining the web host's
+    // .htaccess. Vite must not erase the document root a second time.
+    emptyOutDir: false,
   },
   server: {
     fs: {
