@@ -1,4 +1,4 @@
-import { readdir, rm } from "node:fs/promises";
+import { readdir, rm, lstat } from "node:fs/promises";
 import path from "node:path";
 
 /**
@@ -10,6 +10,8 @@ export async function cleanBuildOutput(outputDirectory: string): Promise<void> {
   async function clear(directory: string, keepPublicDirectory: boolean) {
     let entries;
     try {
+      if ((await lstat(directory)).isSymbolicLink())
+        throw new Error("Refusing to clean a symlinked build output directory.");
       entries = await readdir(directory, { withFileTypes: true });
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === "ENOENT") return;

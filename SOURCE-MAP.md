@@ -20,22 +20,22 @@ DatabaseStorage / Drizzle / SQLite
 
 ## Files to read first
 
-| File                                    | Purpose                                                                                      |
-| --------------------------------------- | -------------------------------------------------------------------------------------------- |
-| `client/src/App.tsx`                    | Public pages, hash-based routing, sign-in forms, member navigation, administration           |
-| `client/src/index.css`                  | Approved typography, palette, page layouts, mobile and dark-mode styling                     |
-| `client/src/components/DanceCards.tsx`  | Dance Cards views, booking/cancellation confirmation, standby and schedule form              |
-| `client/src/components/dance-cards.css` | Dance Cards-specific styles                                                                  |
-| `client/src/lib/queryClient.ts`         | Same-origin API requests, in-memory token, query caching and error handling                  |
-| `shared/schema.ts`                      | Database tables, shared types, strict Zod input validation                                   |
-| `server/index.ts`                       | Express setup, response headers, private-path blocking, error handling, startup              |
-| `server/routes.ts`                      | Public, member and administrator API routes, auth and rate-limit guards                      |
-| `server/storage.ts`                     | Authentication, SQLite startup migrations, membership operations and dance-card transactions |
-| `server/static.ts`                      | Production serving of `dist/public` only                                                     |
-| `server/vite.ts`                        | Development-only Vite integration                                                            |
-| `script/build.ts`                       | Builds frontend and backend                                                                  |
-| `tests/backend-test.ts`                 | Original access, privacy, auth and membership lifecycle tests                                |
-| `tests/dance-test.ts`                   | Dance Cards privacy, reciprocal booking, conflicts and lifecycle tests                       |
+| File                                    | Purpose                                                                            |
+| --------------------------------------- | ---------------------------------------------------------------------------------- |
+| `client/src/App.tsx`                    | Public pages, hash-based routing, sign-in forms, member navigation, administration |
+| `client/src/index.css`                  | Approved typography, palette, page layouts, mobile and dark-mode styling           |
+| `client/src/components/DanceCards.tsx`  | Dance Cards views, booking/cancellation confirmation, standby and schedule form    |
+| `client/src/components/dance-cards.css` | Dance Cards-specific styles                                                        |
+| `client/src/lib/queryClient.ts`         | Same-origin API requests, in-memory token, query caching and error handling        |
+| `shared/schema.ts`                      | Database tables, shared types, strict Zod input validation                         |
+| `server/index.ts`                       | Express setup, response headers, private-path blocking, error handling, startup    |
+| `server/routes.ts`                      | Public, member and administrator API routes, auth and rate-limit guards            |
+| `server/storage.ts`                     | Authentication, owner bootstrap, membership operations and dance-card transactions |
+| `server/static.ts`                      | Production serving of `dist/public` only                                           |
+| `server/vite.ts`                        | Development-only Vite integration                                                  |
+| `script/build.ts`                       | Builds frontend and backend                                                        |
+| `tests/backend-test.ts`                 | Original access, privacy, auth and membership lifecycle tests                      |
+| `tests/dance-test.ts`                   | Dance Cards privacy, reciprocal booking, conflicts and lifecycle tests             |
 
 `client/src/components/ui/` contains reusable UI primitives inherited from the
 application template. Not every primitive is currently used.
@@ -87,20 +87,24 @@ application template. Not every primitive is currently used.
 
 ## Database changes
 
-Startup migrations are in the DatabaseStorage constructor in storage.ts. They
-create missing tables without deleting data. Version three adds date-level
-attendance, groups calendar events by San Francisco date and carries forward
-existing RSVPs and booked/standby commitments. For future changes,
-write explicit versioned migrations, take a consistent backup and test an
-upgrade on a disposable copy.
+Explicit migrations are in `server/migrations/`; the CLI is `server/migrate.ts`.
+`server/database.ts` checks compatibility at startup and never repairs schemas.
+Version three adds date-level attendance, groups calendar events by San Francisco
+date and carries forward existing RSVPs and booked/standby commitments.
 
-`drizzle.config.ts` points to `DB_PATH` or `./data/club.sqlite`. Do not run
-`npm run db:push` on an operating club database as a deployment shortcut.
-The current app's startup migration is the intended initialization path.
+See `docs/DEPLOYMENT.md` for initialization, backups, upgrades and recovery.
+The `db:push` shortcut has been removed. Do not substitute direct Drizzle schema
+pushes for reviewed migrations against the operating club database.
+
+`script/build.ts` supports independent UI and backend builds. `script/release.ts`
+creates checksum-manifested payloads; `script/verify-release.ts` verifies them.
+`runtime/package*.json` define the hosted native runtime dependency tree.
+`shared/release-contract.ts` records manually maintained API/schema requirements.
 
 ## Differences from the preview source
 
-This handoff changes only packaging/portability and formatting:
+Earlier handoff changes covered packaging/portability and formatting; the
+current release additionally separates builds and makes migrations explicit:
 
 - Default database and setup paths resolve from the project directory rather
   than an absolute sandbox path.

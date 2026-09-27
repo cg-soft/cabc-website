@@ -1,0 +1,20 @@
+{
+  "name": "cabc-website-runtime",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Dathorn runtime only; application bundles are built off-server.",
+  "engines": {
+    "node": "22.x"
+  },
+  "scripts": {
+    "start": "NODE_ENV=production node dist/index.cjs",
+    "migrate": "node dist/migrate.cjs",
+    "runtime:check": "node -e \"const D=require('better-sqlite3'); const d=new D(':memory:'); d.exec('CREATE TABLE t (n INTEGER); INSERT INTO t VALUES (1)'); if(d.prepare('SELECT n FROM t').get().n!==1) process.exit(1); d.close(); console.log('SQLite runtime OK')\""
+  },
+  "dependencies": {
+    "better-sqlite3": "11.10.0"
+  },
+  "allowScripts": {
+    "better-sqlite3@11.10.0": true
+  }
+}

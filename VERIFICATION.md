@@ -1,5 +1,13 @@
 # Handoff verification
 
+## Current build separation release
+
+See [docs/SEPARATION-QA.md](docs/SEPARATION-QA.md) for the current verification:
+54 application/migration/build tests and 5 release integration tests passed
+under Node.js 22.23.2. The earlier counts and installation results below are
+historical. Startup migrations have been replaced by explicit migration
+commands; follow [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+
 This archive contains the September 16, 2026 unified Games & Dance Cards
 release. Packaging retains portable private-storage paths, same-origin API
 requests and readable Prettier-formatted source.

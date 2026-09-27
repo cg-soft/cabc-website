@@ -10,6 +10,7 @@ package, not a link to the Perplexity preview.
 ## Start here
 
 - **Run it locally:** Follow the commands below.
+- **Build locally and deploy minimal releases to Dathorn:** Read [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 - **Host it with a custom domain:** Read [HOSTING.md](HOSTING.md).
 - **Understand and change it:** Read [SOURCE-MAP.md](SOURCE-MAP.md).
 - **Check privacy and launch limitations:** Read [SECURITY.md](SECURITY.md).
@@ -37,7 +38,7 @@ active invitation/recovery/setup codes, private backups, Google credentials,
 session tokens, or preview access credentials**. Test code contains clearly
 synthetic credentials for isolated tests only.
 
-It starts with a fresh database. It does not import, synchronize with, or modify
+For a new installation, explicitly initialize a fresh database. It does not import, synchronize with, or modify
 the Google Sheets Dance Cards workbook. The current preview's data remains
 separate from this package.
 
@@ -57,14 +58,24 @@ After extracting the ZIP:
 cd chinese-american-bridge-club-source
 npm ci --include=dev
 cp .env.example .env
+npm run migrate -- --apply --init
 npm run dev
 ```
 
 Open `http://localhost:5000`. Run all commands from the extracted project root.
-The server creates `data/club.sqlite` and a random owner setup code in
-`private/owner-setup.txt`. Those paths are local defaults, not public URLs.
+The migration command creates `data/club.sqlite`. After verifying the schema,
+the server creates a random owner setup code in `private/owner-setup.txt`.
+Those paths are local defaults, not public URLs. Startup never creates or
+upgrades the database schema.
 
 ### Updating an earlier downloaded package
+
+For Dathorn, use the minimal runtime transition and explicit migration
+instructions in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md), not a full-project
+dependency install on the host. The commands below are for a development
+checkout. Stop the application and back up an existing database before
+running `npm run migrate -- --apply --backup-confirmed`; do not use `--init`
+for an existing member database.
 
 The revised package pins `esbuild` to `0.28.2` and uses an npm override so
 Drizzle Kit, Vite, tsx and the build script resolve to the same version. Its
@@ -130,7 +141,7 @@ password in this package.
   create a public URL or upload member names.
 - Calendar listings on the same date are grouped without deleting their
   individual details. The date-level RSVP applies to all of those listings.
-- The version-three startup migration preserves existing events and
+- The explicit version-three migration preserves existing events and
   partnerships and imports their RSVP state into the unified schedule.
   Back up an existing installation before upgrading.
 
@@ -147,7 +158,7 @@ Monday at 11:30 a.m. San Francisco time.
 
 The public settings are not prefilled with that address because its use as the
 game venue, mailing address, or both has not been confirmed. No public email,
-phone number, or custom domain has been selected. Confirm those details before
+phone number has been selected. The intended site is `bridge.cabc.club`; confirm those details before
 launch. The Dance Cards interface uses the Monday 11:30 a.m. schedule.
 
 ## Test and build
@@ -156,13 +167,18 @@ launch. The Dance Cards interface uses the Monday 11:30 a.m. schedule.
 npm run check
 npm test
 npm run build
+npm run migrate -- --status
 npm start
 ```
 
-- `check` runs TypeScript checking on app code.
+- `check` runs TypeScript checking on app and build/release code.
 - `test` uses isolated temporary databases, not the club database. The original
   backend suite uses port 5001, so keep that port free.
-- `build` generates `dist/public/` for the browser and `dist/index.cjs` for Node.
+- `build` generates `dist/public/`, `dist/index.cjs`, and `dist/migrate.cjs`.
+- `build:ui` and `build:server` independently rebuild their outputs.
+- `test:release` tests split builds and the minimal compiled runtime in isolation.
+- `release` packages a UI, server, full application, or runtime-only payload.
+- `migrate` is the explicit initialization/upgrade/status command.
 - `start` runs the production server on port 5000 by default.
 
 Stop `npm run dev` before `npm start` if they would use the same port.

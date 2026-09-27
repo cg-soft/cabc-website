@@ -1,5 +1,16 @@
 # Hosting instructions
 
+## Dathorn: build off-server
+
+Use [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for the approved Dathorn workflow:
+independent frontend/backend builds, minimal native runtime maintenance, and
+explicit database migrations. Do not routinely upload the source or install
+the full development dependency tree on Dathorn.
+
+All hosting approaches now require explicit database initialization or upgrade.
+Server startup only checks schema compatibility. The provider examples below
+are alternatives, not instructions to move the Dathorn deployment.
+
 ## Recommended deployment shape
 
 Run one long-lived Node.js service serving both the website and API, with one
@@ -63,8 +74,11 @@ Let Render supply `PORT`; the application reads it. Do not set `API_ONLY=1`,
 which would disable serving the frontend. Do not place the database beneath
 `dist/`, `client/`, `public/` or `node_modules/`; the app rejects those paths.
 
-The server creates the private directories and initializes the blank database
-at startup. It does not need access to a database during the build.
+The build does not need access to the database. Before starting a fresh service,
+use a trusted maintenance console with the persistent disk mounted to run
+`node dist/migrate.cjs --apply --init`. For an existing database, stop writers,
+take a consistent backup, and run `node dist/migrate.cjs --apply --backup-confirmed`.
+Do not put either mutation command into the normal server start command.
 
 Deploying a Render service with an attached disk can briefly interrupt
 availability because zero-downtime deploys are disabled for those services
@@ -118,7 +132,8 @@ DB_PATH=/var/lib/cabc/data/club.sqlite
 SETUP_PATH=/var/lib/cabc/private/owner-setup.txt
 ```
 
-Start `npm start` using a managed process supervisor. Set its working directory
+Explicitly initialize or upgrade the selected database using the migration
+commands above, then start `npm start` using a managed process supervisor. Set its working directory
 to the project root and configure restart-on-failure. Terminate HTTPS at a
 trusted reverse proxy and firewall the Node port from direct public access.
 Do not enable development mode on the public host.

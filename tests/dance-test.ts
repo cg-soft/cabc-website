@@ -6,11 +6,13 @@ import os from "node:os";
 import path from "node:path";
 import { once } from "node:events";
 import { DatabaseStorage, clubToday } from "../server/storage";
+import { migrateDatabase } from "../server/migrations";
 import { createApplication } from "../server/index";
 if (process.env.NODE_ENV !== "test") throw new Error("Use NODE_ENV=test");
 
 test("dance cards: private reciprocal bookings and lifecycle", async (t) => {
   const dir = mkdtempSync(path.join(os.tmpdir(), "dance-tests-"));
+  migrateDatabase(path.join(dir, "club.sqlite"), { initialize: true });
   let store = new DatabaseStorage(path.join(dir, "club.sqlite"), path.join(dir, "setup.txt"));
   const { httpServer } = await createApplication({ storage: store, apiOnly: true });
   httpServer.listen(0, "127.0.0.1");
@@ -506,6 +508,11 @@ test("dance cards: private reciprocal bookings and lifecycle", async (t) => {
         const eventCount = (store.sqlite.prepare("SELECT COUNT(*) n FROM events").get() as any).n;
         const slots = store.danceHub(a.user.id).slots;
         store.sqlite.exec("DROP TABLE dance_attendance; PRAGMA user_version=2;");
+        assert.throws(
+          () => new DatabaseStorage(path.join(dir, "club.sqlite"), path.join(dir, "setup.txt")),
+          /schema version 2/,
+        );
+        migrateDatabase(path.join(dir, "club.sqlite"));
         const upgraded = new DatabaseStorage(
           path.join(dir, "club.sqlite"),
           path.join(dir, "setup.txt"),

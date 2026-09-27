@@ -5,6 +5,7 @@ import { serveStatic } from "./static";
 import { createServer } from "node:http";
 import path from "node:path";
 import { ApiError, getStorage, type IStorage } from "./storage";
+import { SchemaCompatibilityError } from "./database";
 
 // Only fixed operational text is logged. No bodies, query strings, identifiers,
 // Authorization headers, passwords, invitation codes, or member details.
@@ -129,8 +130,12 @@ if (process.env.NODE_ENV !== "test") {
           setTimeout(() => process.exit(0), 5000).unref();
         });
     })
-    .catch(() => {
-      console.error("[express] Startup failed. Check private storage and server configuration.");
+    .catch((error) => {
+      console.error(
+        error instanceof SchemaCompatibilityError
+          ? `[express] ${error.message}`
+          : "[express] Startup failed. Check private storage and server configuration.",
+      );
       process.exitCode = 1;
     });
 }

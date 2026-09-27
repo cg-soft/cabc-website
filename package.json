@@ -6,12 +6,17 @@
   "scripts": {
     "dev": "NODE_ENV=development tsx server/index.ts",
     "build": "tsx script/build.ts",
+    "build:ui": "tsx script/build.ts ui",
+    "build:server": "tsx script/build.ts server",
+    "migrate": "tsx server/migrate.ts",
+    "release": "tsx script/release.ts",
+    "release:verify": "tsx script/verify-release.ts",
     "start": "NODE_ENV=production node dist/index.cjs",
     "check": "tsc",
-    "test": "NODE_ENV=test tsx --test tests/backend-test.ts tests/dance-test.ts",
+    "test": "NODE_ENV=test tsx --test tests/backend-test.ts tests/dance-test.ts tests/migrations-test.ts tests/build-config-test.ts",
+    "test:release": "NODE_ENV=test tsx --test tests/release-test.ts",
     "format": "prettier --write client server shared script tests *.json *.ts *.js *.md",
-    "format:check": "prettier --check client server shared script tests *.json *.ts *.js *.md",
-    "db:push": "drizzle-kit push"
+    "format:check": "prettier --check client server shared script tests *.json *.ts *.js *.md"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",
