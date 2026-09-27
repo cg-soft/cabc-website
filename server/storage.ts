@@ -1,8 +1,10 @@
-import Database from "better-sqlite3";
+import type Database from "better-sqlite3";
+import { openApplicationDatabase } from "./database";
+import { privatePath } from "./private-path";
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import { eq, and, gt, isNull, asc, desc, count } from "drizzle-orm";
 import { createHash, randomBytes, scrypt, timingSafeEqual } from "node:crypto";
-import { mkdirSync, existsSync, writeFileSync, chmodSync, lstatSync, realpathSync } from "node:fs";
+import { existsSync, writeFileSync, chmodSync } from "node:fs";
 import path from "node:path";
 import * as schema from "@shared/schema";
 import type {
@@ -97,28 +99,6 @@ export const DEFAULT_SETTINGS: Settings = {
   scheduleNote: "Game dates will be announced here.",
 };
 
-function privatePath(filename: string) {
-  const absolute = path.resolve(filename);
-  // Never store secrets in directories that a build or a static server may expose.
-  if (
-    absolute
-      .split(path.sep)
-      .some((part) => ["dist", "public", "client", "node_modules"].includes(part))
-  )
-    throw new Error("Private storage must be outside static and build directories");
-  mkdirSync(path.dirname(absolute), { recursive: true, mode: 0o700 });
-  const canonical = path.join(realpathSync(path.dirname(absolute)), path.basename(absolute));
-  if (
-    canonical
-      .split(path.sep)
-      .some((part) => ["dist", "public", "client", "node_modules"].includes(part))
-  )
-    throw new Error("Private storage must be outside static and build directories");
-  if (existsSync(absolute) && lstatSync(absolute).isSymbolicLink())
-    throw new Error("Private files cannot be symbolic links");
-  return canonical;
-}
-
 type AuthResult = { token: string; user: SafeUser };
 type CodeResult = { code: string; expiresAt: string };
 export interface IStorage {
@@ -166,96 +146,35 @@ export class DatabaseStorage implements IStorage {
     setupPath = process.env.SETUP_PATH || path.resolve("private/owner-setup.txt"),
   ) {
     process.umask(0o077);
-    const filename = privatePath(dbPath);
-    this.setupPath = privatePath(setupPath);
-    this.sqlite = new Database(filename);
-    chmodSync(filename, 0o600);
-    this.sqlite.pragma("journal_mode = WAL");
-    this.sqlite.pragma("foreign_keys = ON");
-    this.sqlite.pragma("busy_timeout = 5000");
-    this.sqlite.pragma("secure_delete = ON");
-    this.db = drizzle(this.sqlite, { schema });
-    // Idempotent initial migration; never drop or replace user data at startup.
-    this.sqlite.exec(`
-      CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, email TEXT NOT NULL UNIQUE, password_hash TEXT NOT NULL, role TEXT NOT NULL DEFAULT 'member' CHECK(role IN ('admin','member')), bio TEXT NOT NULL DEFAULT '', listed INTEGER NOT NULL DEFAULT 0 CHECK(listed IN (0,1)));
-      CREATE TABLE IF NOT EXISTS sessions (token_hash TEXT PRIMARY KEY NOT NULL, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, expires_at INTEGER NOT NULL);
-      CREATE INDEX IF NOT EXISTS sessions_user_idx ON sessions(user_id);
-      CREATE INDEX IF NOT EXISTS sessions_expiry_idx ON sessions(expires_at);
-      CREATE TABLE IF NOT EXISTS invitations (id INTEGER PRIMARY KEY AUTOINCREMENT, email TEXT NOT NULL, code_hash TEXT NOT NULL UNIQUE, expires_at INTEGER NOT NULL, used_at INTEGER);
-      CREATE TABLE IF NOT EXISTS password_resets (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, code_hash TEXT NOT NULL UNIQUE, expires_at INTEGER NOT NULL, used_at INTEGER);
-      CREATE TABLE IF NOT EXISTS bootstrap (id INTEGER PRIMARY KEY CHECK(id=1), code_hash TEXT NOT NULL, used_at INTEGER);
-      CREATE TABLE IF NOT EXISTS settings (id INTEGER PRIMARY KEY CHECK(id=1), club_name TEXT NOT NULL, about TEXT NOT NULL, venue TEXT NOT NULL DEFAULT '', contact_email TEXT NOT NULL DEFAULT '', schedule_note TEXT NOT NULL);
-      CREATE TABLE IF NOT EXISTS events (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, date TEXT NOT NULL, location TEXT NOT NULL DEFAULT '', description TEXT NOT NULL DEFAULT '', visibility TEXT NOT NULL CHECK(visibility IN ('public','members')));
-      CREATE TABLE IF NOT EXISTS rsvps (event_id INTEGER NOT NULL REFERENCES events(id) ON DELETE CASCADE, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, PRIMARY KEY(event_id, user_id));
-      CREATE TABLE IF NOT EXISTS announcements (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, body TEXT NOT NULL, created_at TEXT NOT NULL);
-      CREATE TABLE IF NOT EXISTS documents (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, description TEXT NOT NULL DEFAULT '', filename TEXT NOT NULL, content TEXT NOT NULL, type TEXT NOT NULL DEFAULT 'text/plain' CHECK(type='text/plain'));
-      CREATE TABLE IF NOT EXISTS inquiries (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, email TEXT NOT NULL, message TEXT NOT NULL, created_at TEXT NOT NULL);
-      CREATE TABLE IF NOT EXISTS dance_players (user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE);
-      CREATE TABLE IF NOT EXISTS dance_games (id INTEGER PRIMARY KEY AUTOINCREMENT, date TEXT NOT NULL UNIQUE, title TEXT NOT NULL);
-      CREATE TABLE IF NOT EXISTS dance_slots (
-        game_id INTEGER NOT NULL REFERENCES dance_games(id) ON DELETE CASCADE,
-        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        partner_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-        booking_id TEXT,
-        status TEXT NOT NULL CHECK(status IN ('booked','standby','cancelled')),
-        PRIMARY KEY(game_id,user_id),
-        CHECK((status='booked' AND partner_id IS NOT NULL AND partner_id<>user_id AND booking_id IS NOT NULL) OR (status<>'booked' AND partner_id IS NULL AND booking_id IS NULL))
-      );
-      CREATE INDEX IF NOT EXISTS dance_slots_booking_idx ON dance_slots(booking_id);
-      CREATE TABLE IF NOT EXISTS dance_attendance (
-        game_id INTEGER NOT NULL REFERENCES dance_games(id) ON DELETE CASCADE,
-        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        attending INTEGER NOT NULL CHECK(attending IN (0,1)),
-        PRIMARY KEY(game_id,user_id)
-      );
-    `);
-    // Additive, one-time unification. Preserve every event, RSVP and partnership.
-    if (Number(this.sqlite.pragma("user_version", { simple: true })) < 3) {
+    this.sqlite = openApplicationDatabase(dbPath);
+    try {
+      this.setupPath = privatePath(setupPath);
+      this.db = drizzle(this.sqlite, { schema });
+      this.db
+        .insert(settings)
+        .values({ id: 1, ...DEFAULT_SETTINGS })
+        .onConflictDoNothing()
+        .run();
       this.db.transaction(
-        () => {
-          for (const event of this.db
-            .select()
-            .from(events)
-            .orderBy(asc(events.date), asc(events.id))
-            .all()) {
-            const game = this.ensureDanceDate(clubDate(event.date), event.title);
-            for (const rsvp of this.db
-              .select()
-              .from(rsvps)
-              .where(eq(rsvps.eventId, event.id))
-              .all())
-              this.recordAttendance(rsvp.userId, game.id, true);
+        (tx) => {
+          if (!tx.select().from(bootstrap).where(eq(bootstrap.id, 1)).get()) {
+            const hasUsers = !!tx.select({ id: users.id }).from(users).limit(1).get();
+            const code = randomSecret();
+            tx.insert(bootstrap)
+              .values({ id: 1, codeHash: hashSecret(code), usedAt: hasUsers ? Date.now() : null })
+              .run();
+            if (!hasUsers) writeFileSync(this.setupPath, `${code}\n`, { mode: 0o600, flag: "w" });
           }
-          for (const slot of this.db.select().from(danceSlots).all()) {
-            if (slot.status === "booked" || slot.status === "standby")
-              this.recordAttendance(slot.userId, slot.gameId, true);
-          }
-          this.sqlite.pragma("user_version = 3");
         },
         { behavior: "immediate" },
       );
+      if (existsSync(this.setupPath)) chmodSync(this.setupPath, 0o600);
+      this.sqlite.prepare("DELETE FROM sessions WHERE expires_at <= ?").run(Date.now());
+      this.dummyHash = hashPassword(randomSecret());
+    } catch (error) {
+      this.sqlite.close();
+      throw error;
     }
-    this.db
-      .insert(settings)
-      .values({ id: 1, ...DEFAULT_SETTINGS })
-      .onConflictDoNothing()
-      .run();
-    this.db.transaction(
-      (tx) => {
-        if (!tx.select().from(bootstrap).where(eq(bootstrap.id, 1)).get()) {
-          const hasUsers = !!tx.select({ id: users.id }).from(users).limit(1).get();
-          const code = randomSecret();
-          tx.insert(bootstrap)
-            .values({ id: 1, codeHash: hashSecret(code), usedAt: hasUsers ? Date.now() : null })
-            .run();
-          if (!hasUsers) writeFileSync(this.setupPath, `${code}\n`, { mode: 0o600, flag: "w" });
-        }
-      },
-      { behavior: "immediate" },
-    );
-    if (existsSync(this.setupPath)) chmodSync(this.setupPath, 0o600);
-    this.sqlite.prepare("DELETE FROM sessions WHERE expires_at <= ?").run(Date.now());
-    this.dummyHash = hashPassword(randomSecret());
   }
   close() {
     this.sqlite.close();

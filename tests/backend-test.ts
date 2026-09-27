@@ -7,6 +7,7 @@ import path from "node:path";
 import { once } from "node:events";
 import { DatabaseStorage, hashSecret, SESSION_MS, INVITE_MS, RESET_MS } from "../server/storage";
 import { createApplication } from "../server/index";
+import { migrateDatabase } from "../server/migrations";
 
 if (process.env.NODE_ENV !== "test")
   throw new Error("Run with NODE_ENV=test to prevent starting the live server.");
@@ -19,6 +20,7 @@ const base = "http://127.0.0.1:5001";
 const outcomes: { test: string; passed: boolean }[] = [];
 
 test("invite-only backend security and full member lifecycle (isolated port 5001)", async (t) => {
+  migrateDatabase(dbPath, { initialize: true });
   let store = new DatabaseStorage(dbPath, setupPath);
   let { httpServer } = await createApplication({ storage: store, apiOnly: true });
   httpServer.listen(5001, "127.0.0.1");
