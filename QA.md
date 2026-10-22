@@ -1,5 +1,19 @@
 # New minimal website verification
 
+## Original club favicon restored
+
+Restored `public/favicon.png` unchanged from the previous site's logo-based
+64×64 PNG, SHA-256
+`d87a45eb99da8f14e7a2160a94f53e6d54b805710771b85e2f6097b661f97201`.
+The shared HTML shell links it and the Node static allowlist serves it as
+image/png. GET and HEAD tests pass; all 45 automated tests pass.
+
+Browser checks confirmed successful PNG loading and decoding at 64×64, About,
+invalid and preview logins, calendar names/gap navigation, pair/solo registration,
+cancellation, past-date restrictions, admin name save, duplicate member/date
+errors, mobile layout, logout and reload. No browser exceptions were observed.
+The homepage layout and database schema are unchanged by the favicon change.
+
 ## Game names and upcoming-month navigation
 
 All 44 automated tests pass on Node 22.23.2, including five enclosing tests.

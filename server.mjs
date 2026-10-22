@@ -60,12 +60,12 @@ export function createApp({ db = openDatabase(), preview = false, previewToday }
       if (!route.startsWith("/api/")) {
         if (!["GET", "HEAD"].includes(req.method)) throw new HttpError(405, "Method not allowed.");
         const files = { "/": "index.html", "/index.html": "index.html", "/app.js": "app.js", "/style.css": "style.css", "/config.js": "config.js",
-          "/slides/table.webp": "slides/table.webp", "/slides/room.webp": "slides/room.webp" };
+          "/slides/table.webp": "slides/table.webp", "/slides/room.webp": "slides/room.webp", "/favicon.png": "favicon.png" };
         const file = files[route];
         if (!file) throw new HttpError(404, "Not found.");
         const content = await readFile(path.join(ROOT, "public", file));
-        const mime = file.endsWith(".html") ? "text/html" : file.endsWith(".css") ? "text/css" : file.endsWith(".js") ? "text/javascript" : "image/webp";
-        res.writeHead(200, { "Content-Type": `${mime}; charset=utf-8`, "Cache-Control": "no-cache" });
+        const mime = file.endsWith(".html") ? "text/html" : file.endsWith(".css") ? "text/css" : file.endsWith(".js") ? "text/javascript" : file.endsWith(".png") ? "image/png" : "image/webp";
+        res.writeHead(200, { "Content-Type": mime.startsWith("image/") ? mime : `${mime}; charset=utf-8`, "Cache-Control": "no-cache" });
         res.end(req.method === "HEAD" ? undefined : content);
         return;
       }

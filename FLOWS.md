@@ -51,3 +51,10 @@
 - Expired selected months fall back to a valid month; network errors remain errors, not false empty states.
 - Explicit additive migration retains every account, date, pair and session; repeated migration is safe.
 - Old application and backup versions can still read the migrated database; names survive encrypted recovery.
+
+## Restored club favicon
+- Restore the original 64×64 PNG unchanged, not a newly drawn logo.
+- Every page retains the favicon link because the site uses one HTML shell.
+- GET/HEAD favicon requests return 200 and image/png; private paths remain blocked.
+- Check About/Login/calendar, naming, skipped months, registration/cancellation and admin dialogs for regressions.
+- Confirm the favicon loads in the hosted preview; homepage layout remains unchanged.

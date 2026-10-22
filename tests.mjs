@@ -1,11 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync, existsSync } from "node:fs";
+import { mkdtempSync, rmSync, existsSync, readFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { once } from "node:events";
 import { createApp } from "./server.mjs";
-import { openDatabase, addMember, clubToday } from "./db.mjs";
+import { openDatabase, addMember, clubToday, ROOT } from "./db.mjs";
 
 test("minimal club authentication, calendar and dance cards", async (t) => {
   const directory = mkdtempSync(path.join(os.tmpdir(), "cabc-minimal-test-"));
@@ -40,6 +40,18 @@ test("minimal club authentication, calendar and dance cards", async (t) => {
     };
     const login = async (email) => (await req("/api/login", "POST", { email, password })).result;
     let a, b, c, owner;
+    await t.test("original favicon is linked and served as PNG on GET and HEAD", async () => {
+      const home = await req("/");
+      assert.match(home.result, /rel="icon"[^>]*href="\.\/favicon\.png"/);
+      const response = await fetch(base + "/favicon.png");
+      assert.equal(response.status, 200);
+      assert.equal(response.headers.get("content-type"), "image/png");
+      assert.deepEqual(Buffer.from(await response.arrayBuffer()), readFileSync(path.join(ROOT, "public/favicon.png")));
+      const head = await fetch(base + "/favicon.png", { method: "HEAD" });
+      assert.equal(head.status, 200);
+      assert.equal(head.headers.get("content-type"), "image/png");
+      assert.equal((await head.arrayBuffer()).byteLength, 0);
+    });
     await t.test("production has no preview bypass and private paths are never served", async () => {
       assert.equal((await req("/api/preview", "POST", { role: "admin" })).status, 404);
       assert.equal((await req("/api/config")).result.preview, false);

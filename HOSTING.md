@@ -19,6 +19,7 @@ migrate.mjs
 package.json
 public/
   index.html
+  favicon.png
   config.js
   app.js
   style.css
