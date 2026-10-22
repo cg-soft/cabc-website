@@ -1,5 +1,24 @@
 # New minimal website verification
 
+## Private CSV member import
+
+All 73 automated tests pass on Node 22.23.2, including eight enclosing tests.
+Importer checks cover quoted fields, UTF-8/BOM/CRLF, reordered headers,
+validation limits, duplicate emails, private-file permissions, symlink and
+public-directory rejection, dry-run behavior, existing-account preservation,
+explicit skip-existing behavior, and transactional rollback on insertion failure.
+Missing, administrator-less and fictional preview databases are rejected.
+Imported passwords are salted hashes; credentials are omitted from CLI output.
+Integration tests verify login, password changes, retained registrations and
+persistence after closing and reopening the database.
+
+A separate disposable production-mode fixture was exercised through the actual
+CLI: dry run preserved one administrator and one game; apply added one fictional
+member without changing the game. That imported member signed in through the
+browser and reached the calendar, dance card and Change password control without
+administrator controls. No real CSV, production database or hosting setup was
+changed. There are no runtime, UI or schema changes in this addition.
+
 ## Signed-in password changes
 
 All 56 automated tests pass on Node 22.23.2, including six enclosing tests.

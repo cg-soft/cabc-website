@@ -70,3 +70,15 @@
 - Old password and old sessions stop working; the new password signs in with the same role and registrations.
 - One member cannot change another member's password; failure leaves all accounts intact.
 - Closing/cancelling clears fields; keyboard focus, phone layout and the public two-button homepage remain intact.
+
+## Private CSV member import
+- Require an initialized private database with an administrator; never initialize or reset it implicitly.
+- Read UTF-8 CSV with exactly name, email and initial-password headers, supporting normal CSV quoting.
+- Keep real CSVs outside the application and public roots, with owner-only permissions.
+- Default to dry run; require --apply for insertion and --skip-existing to skip existing addresses unchanged.
+- Validate every row before writing; reject duplicate CSV emails, invalid values and unsafe files.
+- Store salted password hashes and member roles only; never print rows or passwords.
+- Recheck collisions inside a write transaction and roll back the entire import on insertion failure.
+- Preserve existing accounts, roles, passwords, games, partnerships and sessions.
+- Confirm imported accounts can log in, change passwords and survive database reopening.
+- Keep actual import, credential delivery and removal of plaintext CSVs as explicit operator steps.

@@ -16,6 +16,10 @@ For existing installations upgrading to named games, follow
 `node migrate.mjs game-names` migration against the existing private database
 before starting the new server; do not rerun initialization.
 
+To load members from a private CSV containing `name,email,initial-password`,
+follow [IMPORT-MEMBERS.md](IMPORT-MEMBERS.md). The importer defaults to a dry run,
+adds member accounts only, and never overwrites existing credentials.
+
 ## Scope
 
 - A photographic slideshow homepage with exactly two buttons: About and Login.
@@ -58,6 +62,8 @@ db.mjs              Private storage and password helpers
 schema.sql          Explicit initial database schema
 migrate.mjs         Explicit additive migrations for the minimal site
 manage.mjs          Initialize, create fictional preview, reset a password
+import-members.mjs  Validate/import private CSVs without replacing existing accounts
+import-members-tests.mjs CSV validation, rollback, credential and persistence checks
 tests.mjs           Isolated API and persistence tests
 hosting-tests.mjs   Production launcher and simulated Passenger-loader checks
 calendar-tests.mjs  Game names, migration safety and upcoming-month navigation

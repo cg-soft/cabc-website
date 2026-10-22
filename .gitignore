@@ -10,3 +10,5 @@ backups/
 backup-key*
 .cabc-work-*/
 .backup.lock/
+*.csv
+!examples/members-template.csv
