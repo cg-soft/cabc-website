@@ -50,6 +50,8 @@ export function openDatabase(filename = process.env.DB_PATH || path.join(ROOT, "
       catch (error) { db.exec("ROLLBACK"); throw error; }
     } else if (version !== SCHEMA) throw new Error("Incompatible database schema. Startup never migrates databases.");
     for (const table of ["members", "sessions", "games", "entries", "metadata"]) db.prepare(`SELECT * FROM ${table} LIMIT 0`).all();
+    if (!db.prepare("PRAGMA table_info(games)").all().some(column => column.name === "name"))
+      throw new Error("Game-name migration required. Run node migrate.mjs game-names with the same DB_PATH. Startup never migrates databases.");
     chmodSync(file, 0o600);
     db.exec("PRAGMA journal_mode=WAL;");
     return db;

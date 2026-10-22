@@ -15,6 +15,7 @@ server.mjs
 db.mjs
 manage.mjs
 schema.sql
+migrate.mjs
 package.json
 public/
   index.html
@@ -135,7 +136,7 @@ running them. For a nonstandard SSH port, add `-e 'ssh -p YOUR_PORT'`.
 From the extracted source folder, preview the initial runtime upload:
 
 ```bash
-rsync -avzn app.cjs server.mjs db.mjs manage.mjs schema.sql package.json public \
+rsync -avzn app.cjs server.mjs db.mjs manage.mjs migrate.mjs schema.sql package.json public \
   cabc@YOUR_SSH_HOST:/home/cabc/src/cabc-minimal/
 ```
 
@@ -163,15 +164,15 @@ development or preview database.
 
 ### Explicit schema policy
 
-This release uses schema version 1. Initialization is explicit, and normal
-startup only validates the schema; it does not run migrations. There is no
-migration runner or upgrade from the old site in this package.
+Initialization is explicit, and normal startup only validates the schema; it
+does not run migrations. Baseline schema version 1 is retained for compatibility.
+The optional game-name column has an explicit additive migration and metadata
+record; see [UPGRADE-GAME-NAMES.md](UPGRADE-GAME-NAMES.md).
 
-Do not rerun initialization as a schema-update procedure. A future schema change
-must ship a separate, versioned migration with backup, validation and rollback
-instructions. Back up first, stop writers, run the migration explicitly, verify
-the expected schema/data, then start the matching server release. The calendar
-layout update in this package needs no schema change.
+Do not rerun initialization as a schema-update procedure. Back up first, stop
+writers, run `node migrate.mjs game-names` with the correct DB_PATH, verify
+unchanged row counts, then start the matching server release. There is still
+no migration from the superseded React website's database.
 
 ## Backups, recovery and rollback
 

@@ -28,7 +28,7 @@ test("encrypted backups and recovery", async t => {
       assert.equal(db.prepare("SELECT count(*) AS n FROM members").get().n, 2);
     });
     await t.test("online backup includes committed WAL records, excludes uncommitted writes", async () => {
-      db.prepare("INSERT INTO games(id,date,time) VALUES(1,'2098-11-01','11:30')").run();
+      db.prepare("INSERT INTO games(id,date,time,name) VALUES(1,'2098-11-01','11:30','Named backup game')").run();
       db.exec("INSERT INTO entries VALUES(1,1,2); INSERT INTO entries VALUES(1,2,1);");
       assert.ok(existsSync(config.database + "-wal"));
       db.exec("BEGIN IMMEDIATE; INSERT INTO games(id,date,time) VALUES(2,'2098-11-02','11:30')");
@@ -46,6 +46,7 @@ test("encrypted backups and recovery", async t => {
       try {
         assert.equal(restored.prepare("SELECT count(*) AS n FROM members").get().n, 2);
         assert.equal(restored.prepare("SELECT count(*) AS n FROM games").get().n, 1);
+        assert.equal(restored.prepare("SELECT name FROM games WHERE id=1").get().name, "Named backup game");
         assert.equal(restored.prepare("SELECT count(*) AS n FROM entries").get().n, 2);
         assert.equal(restored.prepare("SELECT partner_id FROM entries WHERE member_id=1").get().partner_id, 2);
       } finally { restored.close(); }

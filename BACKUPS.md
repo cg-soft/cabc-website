@@ -124,7 +124,10 @@ Regenerate the cron command after any DB_PATH or Node-runtime change.
   copies. Monitor failure output and backup freshness. Retention only manages
   timestamped `cabc-*.sqlite.enc` files; do not rename unrelated files to match.
 - **Schema:** This format validates CABC schema version 1. Future schema changes
-  must update and test backup validation explicitly.
+  must update and test backup validation explicitly. The optional game-name
+  column retains baseline version 1 and is included in backups and restores.
+  A pre-name backup needs `node migrate.mjs game-names` before the new server
+  can use the recovered database.
 
 ## Completion checklist
 

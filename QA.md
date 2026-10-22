@@ -1,5 +1,28 @@
 # New minimal website verification
 
+## Game names and upcoming-month navigation
+
+All 44 automated tests pass on Node 22.23.2, including five enclosing tests.
+The explicit migration preserves all existing member, game, partnership and
+session records and can be repeated safely. On the fictional preview database,
+counts stayed at 8 members, 9 games, 35 entries and 1 session before/after the
+migration. A prior-release database reader successfully opened the upgraded
+database. Backup recovery now explicitly verifies the saved game name.
+
+Local browser checks verified optional names on creation; edit/clear names;
+names in desktop cells, mobile rows and dance cards; 80-character wrapping;
+literal display of HTML-looking names; unchanged pairs after renaming; initial
+selection of December when October has no future games; December-to-March gap
+navigation; endpoint-disabled controls; Upcoming; a global empty schedule;
+and error/retry without a false empty state.
+
+Rechecked real member creation and login, duplicate member/date errors, invalid
+login, paired/solo registration, cancellation, past-game read-only controls,
+logout/reload, About, the two-button home and slideshow movement. No browser
+exceptions or horizontal overflow at 375, 768, 900 or 1440px. Reviewed screenshots
+of desktop, mobile, long-name and global-empty states. Existing Dathorn data and
+hosting settings were not modified; production migration is an operator step.
+
 ## Weekly encrypted backups
 
 Added a separate maintenance utility, not a website feature or schema change.

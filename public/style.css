@@ -95,6 +95,17 @@ input,select{display:block;width:100%;min-width:0;border:1px solid #bcc5ba;borde
 .day.selected::after{content:"";position:absolute;inset:3px;border:1px solid #ffffff50;border-radius:3px;pointer-events:none}
 .today-number{border:1px solid currentColor;border-radius:50%;font-weight:600}
 .game-time{font-size:var(--text-sm);font-weight:500;white-space:nowrap}
+.game-name{font-size:var(--text-xs);font-weight:600;line-height:1.35;overflow-wrap:anywhere;width:100%}
+.calendar-grid{grid-auto-rows:minmax(88px,auto)}
+.calendar-grid .day{height:auto;min-height:88px}
+.month-controls button:disabled{cursor:not-allowed;opacity:1;color:var(--muted);background:#f1f2ed}
+.month-controls button:disabled:hover{background:#f1f2ed}
+.no-games{border:1px solid var(--line);background:var(--white);border-radius:6px;padding:var(--space-12) var(--space-6);text-align:center}
+.no-games h2{margin-bottom:var(--space-4)}
+.no-games p+p{margin-top:var(--space-2)}
+.dance-card h2,.agenda-copy>strong{overflow-wrap:anywhere}
+.dance-date-header .game-date-label{margin-bottom:var(--space-1)}
+.edit-name{font-size:var(--text-xs);min-height:32px}
 .game-meta{font-size:var(--text-xs);display:flex;gap:var(--space-1);align-items:center;white-space:nowrap}
 .registration-dot{width:5px;height:5px;min-width:5px;border-radius:50%;background:currentColor}
 .calendar-note{display:flex;align-items:center;gap:var(--space-2);font-size:var(--text-xs);color:var(--muted);padding:var(--space-4) var(--space-6);flex-wrap:wrap}
@@ -186,7 +197,8 @@ dialog .small-note{margin-bottom:var(--space-5)}
   .calendar-page{padding:var(--space-6) var(--space-4) var(--space-12)}
   .calendar-heading{align-items:flex-start;flex-direction:column;gap:var(--space-5);margin-bottom:var(--space-6)}
   .admin-actions{width:100%;justify-content:flex-end}
-  .month-nav{padding:var(--space-3);gap:0}
+  .month-nav{padding:var(--space-3);gap:var(--space-2);flex-wrap:wrap}
+  .month-controls{margin-left:auto}
   .month-nav h2{font-size:1.4rem}
   .month-nav .compact{font-size:var(--text-xs);padding:var(--space-2)}
   .icon-button{width:32px}

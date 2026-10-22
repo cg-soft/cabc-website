@@ -11,12 +11,19 @@ Weekly encrypted backups are available through `backup.mjs`; follow
 [BACKUPS.md](BACKUPS.md) to activate Sunday 03:00 cron runs on Dathorn, retaining
 12 successful copies. The code does not install or activate a scheduler itself.
 
+For existing installations upgrading to named games, follow
+[UPGRADE-GAME-NAMES.md](UPGRADE-GAME-NAMES.md). Run the explicit
+`node migrate.mjs game-names` migration against the existing private database
+before starting the new server; do not rerun initialization.
+
 ## Scope
 
 - A photographic slideshow homepage with exactly two buttons: About and Login.
 - An intentional About placeholder.
 - A real member/admin login.
 - One monthly calendar with playing dates and dance-card partnership registration.
+- Optional game names on the calendar and dance cards, editable by administrators.
+- Opens at the first month with a game today or later; month navigation skips gaps.
 - A mobile playing-date list and a separate, clearly labeled dance-card panel.
 - Members can register alone, choose an available partner, see all pairs for a date,
   and cancel their own registration.
@@ -49,9 +56,13 @@ app.cjs             Production hosting entry point (direct or Passenger-loaded)
 server.mjs          HTTP, authentication and calendar/registration endpoints
 db.mjs              Private storage and password helpers
 schema.sql          Explicit initial database schema
+migrate.mjs         Explicit additive migrations for the minimal site
 manage.mjs          Initialize, create fictional preview, reset a password
 tests.mjs           Isolated API and persistence tests
 hosting-tests.mjs   Production launcher and simulated Passenger-loader checks
+calendar-tests.mjs  Game names, migration safety and upcoming-month navigation
+backup.mjs          Encrypted SQLite backups and verified recovery copies
+backup-tests.mjs    Backup encryption, retention, recovery and cron checks
 data/               Private SQLite database; excluded from version control
 ```
 

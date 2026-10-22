@@ -1,7 +1,9 @@
 # CABC Minimal Website: Hosting Source
 
-Prepared October 20, 2026. This is the separate minimal website, including the
-revised desktop calendar, mobile playing-date list and dance-card panel.
+Updated October 22, 2026. This is the separate minimal website, including named
+games, upcoming-month navigation, mobile playing-date lists and dance cards.
+Existing installations must follow `UPGRADE-GAME-NAMES.md` before starting
+this version against their existing database.
 
 ## Start here
 
@@ -12,7 +14,8 @@ revised desktop calendar, mobile playing-date list and dance-card panel.
 
 No build or npm dependency installation is needed. The ZIP contains readable
 source, public assets, tests, documentation and a generated `SHA256SUMS` manifest.
-Tests run with `npm test` or `node --test tests.mjs hosting-tests.mjs`.
+Tests run with `npm test`, covering the application, hosting, backups, calendar
+selection and migration safety.
 
 ## Verification
 
@@ -35,10 +38,11 @@ The hashes detect accidental file changes; they are not a digital signature.
 
 No production data, preview database, passwords, environment files, dependency
 folder or Git history is included. No migration from the old website is included.
-The database schema remains version 1; ordinary startup never runs migrations.
+The database retains baseline version 1 plus an optional game-name column.
+The new column has an explicit additive migration; ordinary startup never
+runs migrations.
 
-The repository now contains this minimal implementation with deliberately reset
-history, as authorized by the owner. The live Dathorn site, DNS and published
-preview have not been changed by this repository replacement.
-Confirm the target server's runtime and routing,
-configure HTTPS and backups, and test the installation before inviting members.
+The repository contains the minimal implementation with fresh-start history,
+as authorized by the owner. Repository and preview updates do not deploy to
+Dathorn, alter DNS, or run production migrations. Follow the upgrade guide and
+verify the target installation before inviting members.

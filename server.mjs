@@ -34,6 +34,11 @@ export function createApp({ db = openDatabase(), preview = false, previewToday }
     return user;
   }
   function admin(user) { if (user.role !== "admin") throw new HttpError(403, "Administrator access required."); }
+  function gameName(value = "") {
+    if (typeof value !== "string" || value.trim().length > 80)
+      throw new HttpError(400, "Game name must be text of at most 80 characters.");
+    return value.trim();
+  }
   function game(id) {
     const row = db.prepare("SELECT * FROM games WHERE id=?").get(id);
     if (!row) throw new HttpError(404, "Playing date not found.");
@@ -100,14 +105,26 @@ export function createApp({ db = openDatabase(), preview = false, previewToday }
         return reply(200, { ok: true });
       }
       if (route === "/api/calendar" && req.method === "GET") {
-        const month = url.searchParams.get("month");
-        if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month || "")) throw new HttpError(400, "Choose a valid month.");
-        const games = db.prepare("SELECT * FROM games WHERE date LIKE ? ORDER BY date").all(`${month}-%`);
-        const entries = db.prepare("SELECT e.game_id,e.member_id,e.partner_id,m.name FROM entries e JOIN members m ON m.id=e.member_id JOIN games g ON g.id=e.game_id WHERE g.date LIKE ? ORDER BY m.name")
-          .all(`${month}-%`);
+        const requested = url.searchParams.get("month");
+        if (requested !== null && !/^\d{4}-(0[1-9]|1[0-2])$/.test(requested)) throw new HttpError(400, "Choose a valid month.");
+        const currentDate = today();
+        const months = db.prepare("SELECT DISTINCT substr(date,1,7) AS month FROM games WHERE date>=? ORDER BY month")
+          .all(currentDate).map(row => row.month);
+        const month = months.includes(requested) ? requested : (months[0] || null);
+        const games = month ? db.prepare("SELECT * FROM games WHERE date LIKE ? ORDER BY date").all(`${month}-%`) : [];
+        const entries = month ? db.prepare("SELECT e.game_id,e.member_id,e.partner_id,m.name FROM entries e JOIN members m ON m.id=e.member_id JOIN games g ON g.id=e.game_id WHERE g.date LIKE ? ORDER BY m.name")
+          .all(`${month}-%`) : [];
         // Only names and IDs needed for partnership selection, never member emails.
         const members = db.prepare("SELECT id,name FROM members ORDER BY name").all();
-        return reply(200, { games, entries, members, user, today: today() });
+        return reply(200, { month, months, games, entries, members, user, today: currentDate });
+      }
+      const nameRoute = /^\/api\/games\/(\d+)\/name$/.exec(route);
+      if (nameRoute && req.method === "POST") {
+        admin(user);
+        const row = game(Number(nameRoute[1]));
+        const name = gameName(body.name);
+        db.prepare("UPDATE games SET name=? WHERE id=?").run(name, row.id);
+        return reply(200, { id: row.id, name });
       }
       const entryRoute = /^\/api\/games\/(\d+)\/entry$/.exec(route);
       if (entryRoute && req.method === "POST") {
@@ -141,14 +158,15 @@ export function createApp({ db = openDatabase(), preview = false, previewToday }
       }
       if (route === "/api/games" && req.method === "POST") {
         admin(user);
+        const name = gameName(body.name);
         const date = String(body.date || ""), time = String(body.time || "");
         const parsed = new Date(`${date}T12:00:00Z`);
         if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(parsed.valueOf()) || parsed.toISOString().slice(0, 10) !== date ||
             date < today() || !/^([01]\d|2[0-3]):[0-5]\d$/.test(time))
           throw new HttpError(400, "Choose a current or future date and a valid time.");
         if (db.prepare("SELECT id FROM games WHERE date=?").get(date)) throw new HttpError(409, "This playing date already exists.");
-        const result = db.prepare("INSERT INTO games(date,time) VALUES(?,?)").run(date, time);
-        return reply(201, { id: Number(result.lastInsertRowid), date });
+        const result = db.prepare("INSERT INTO games(date,time,name) VALUES(?,?,?)").run(date, time, name);
+        return reply(201, { id: Number(result.lastInsertRowid), date, name });
       }
       if (route === "/api/members" && req.method === "POST") {
         admin(user);
