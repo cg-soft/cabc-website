@@ -28,3 +28,13 @@
 - Real production-mode login and empty-calendar API work through app.cjs.
 - Test Passenger's startup contract with a simulation; label actual host integration unverified.
 - Extract the ZIP and rerun API and startup tests from its contents.
+
+## Weekly backup checks
+- Keep application/UI behavior and schema unchanged.
+- Back up committed WAL data while the application database is open.
+- Authenticate and verify encrypted copies before publication and retention.
+- Retain 12 successful copies; preserve existing copies on snapshot failures.
+- Refuse duplicate jobs, public destinations, wrong keys and unsafe restore targets.
+- Restore only to a new private filename and verify members, dates and pairings.
+- Generate Sunday 03:00 cron with explicit paths and the actual Node binary.
+- Activation and a real scheduled run remain host-side steps, not completed by a GitHub push.

@@ -7,6 +7,10 @@ It covers Dathorn-style settings, fresh administrator setup, minimal uploads,
 UI-only updates, explicit schema handling and backups. No database or private
 credentials are included, and no live hosting changes have been made.
 
+Weekly encrypted backups are available through `backup.mjs`; follow
+[BACKUPS.md](BACKUPS.md) to activate Sunday 03:00 cron runs on Dathorn, retaining
+12 successful copies. The code does not install or activate a scheduler itself.
+
 ## Scope
 
 - A photographic slideshow homepage with exactly two buttons: About and Login.

@@ -6,7 +6,10 @@
   "engines": { "node": ">=22.13.0" },
   "scripts": {
     "start": "node app.cjs",
-    "test": "node --test tests.mjs hosting-tests.mjs",
+    "test": "node --test tests.mjs hosting-tests.mjs backup-tests.mjs",
+    "backup:setup": "node backup.mjs setup",
+    "backup": "node backup.mjs run",
+    "backup:cron": "node backup.mjs cron",
     "init": "node manage.mjs init",
     "preview:seed": "node manage.mjs preview"
   }

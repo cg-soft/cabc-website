@@ -184,7 +184,9 @@ Arrange a consistent SQLite backup using a database-aware backup tool, or stop
 all application writers before a filesystem backup. Account for `-wal` and
 `-shm` sidecars; copying only the main file while writes are active can omit
 committed data. Encrypt backups, keep a separate-host copy, and test restoration
-into a private test environment. This package does not configure backups for you.
+into a private test environment. See [BACKUPS.md](BACKUPS.md) for the encrypted
+weekly backup utility and activation steps for this installation. The cron
+entry must still be enabled on Dathorn.
 
 A source-only rollback is safe only if it supports the current database schema.
 Never blindly restore an older database over current member registrations.

@@ -1,5 +1,21 @@
 # New minimal website verification
 
+## Weekly encrypted backups
+
+Added a separate maintenance utility, not a website feature or schema change.
+The complete automated suite passes on Node 22.23.2: 32 tests including three
+enclosing tests. Backup checks cover setup idempotency, private permissions,
+committed WAL data while a writer remains open, exclusion of uncommitted writes,
+authenticated encryption, tamper/wrong-key detection, restored member/date/pair
+records, no-overwrite restore, lock refusal, retention of 12 copies, preservation
+of unrelated files, failure cleanup, missing-key/database safeguards, safe
+paths, standalone CLI commands, and execution of the generated cron command
+with a minimal environment from a different working directory.
+
+The existing application/UI and database schema files remain unchanged.
+Real Dathorn installation, offline key custody, monitoring and the first
+scheduled run must be completed by the hosting-account operator.
+
 The initial implementation and hosting handoff left the original application,
 repository and production database unchanged. At the owner's subsequent request,
 this implementation replaces the GitHub repository with a fresh root commit.

@@ -5,3 +5,8 @@ preview/
 *.log
 qa/
 .env
+backups/
+*.sqlite.enc
+backup-key*
+.cabc-work-*/
+.backup.lock/
