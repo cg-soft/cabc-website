@@ -1,7 +1,10 @@
 (() => {
   const app = document.querySelector("#app"), dialog = document.querySelector("#dialog");
-  const state = { token: null, user: null, config: null, month: null, selected: null, calendar: null, generation: 0 };
+  const state = { token: null, user: null, config: null, month: null, selected: null, calendar: null, generation: 0, loginNotice: null };
   dialog.addEventListener("close", () => { if (!dialog.open) dialog.replaceChildren(); });
+  dialog.addEventListener("cancel", event => {
+    if (dialog.dataset.passwordPending === "true") event.preventDefault();
+  });
   let slideTimer, toastTimer, slide = 0, paused = false;
   const esc = (value) => String(value ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const dateLabel = (value, options = { month: "long", day: "numeric" }) => new Intl.DateTimeFormat("en-US", { ...options, timeZone: "UTC" }).format(new Date(`${value}T12:00:00Z`));
@@ -76,11 +79,13 @@
     app.innerHTML = header(button("Home", "home", "quiet")) + `
       <main class="login-layout"><div class="login-photo" role="img" aria-label="Illustrative green felt card table"></div>
       <section class="login-panel"><p class="eyebrow">Members & administrators</p><h1>Welcome back.</h1><p class="muted">Sign in to find your next game and partner.</p>
+      ${state.loginNotice ? `<p class="login-notice" role="status">${esc(state.loginNotice)}</p>` : ""}
       <form id="login-form"><label>Email<input name="email" type="email" autocomplete="username" required maxlength="180"></label>
       <label>Password<input name="password" type="password" autocomplete="current-password" required maxlength="128"></label>
       <p class="form-error" role="alert"></p><button class="primary wide" type="submit">Login</button></form>
       <p class="small-note">Need an account or a password reset? Contact your club administrator.</p>
       <div id="preview-access"></div></section></main>`;
+    state.loginNotice = null;
     showPreview();
   }
   async function showPreview() {
@@ -94,7 +99,7 @@
   function calendarShell() {
     return header(`<span class="identity">${esc(state.user.name)}</span>${button("Home", "home", "quiet")}${button("Log out", "logout", "quiet")}`) +
       `<main class="calendar-page"><div class="calendar-heading"><div><p class="eyebrow">Members’ calendar</p><h1>Playing dates</h1></div>
-      ${state.user.role === "admin" ? `<div class="admin-actions">${button("Add member", "add-member", "quiet")}${button("+ Add date", "add-date", "primary")}</div>` : ""}</div>
+      <div class="admin-actions">${button("Change password", "change-password", "quiet")}${state.user.role === "admin" ? `${button("Add member", "add-member", "quiet")}${button("+ Add date", "add-date", "primary")}` : ""}</div></div>
       ${state.config?.preview ? '<p class="preview-line">Private preview · fictional members and sample dates</p>' : ""}
       <div id="calendar-content" aria-busy="true"><div class="loading-surface">Loading the calendar…</div></div></main>`;
   }
@@ -224,6 +229,19 @@
         finally { state.token = null; state.user = null; state.calendar = null; location.hash = "#login"; }
         return;
       }
+      if (action === "change-password") {
+        if (!state.user) return;
+        openDialog("Change password", `<form id="password-form">
+          <p class="small-note" id="password-help">Use 12 to 128 characters. After changing your password, you’ll be signed out on all devices, including this one.</p>
+          <label>Current password<input name="currentPassword" type="password" autocomplete="current-password" required maxlength="128"></label>
+          <label>New password<input name="newPassword" type="password" autocomplete="new-password" required minlength="12" maxlength="128" aria-describedby="password-help"></label>
+          <label>Confirm new password<input name="confirmPassword" type="password" autocomplete="new-password" required minlength="12" maxlength="128"></label>
+          <p class="form-error" role="alert"></p>
+          <button type="submit" class="primary wide">Update password</button>
+          ${button("Cancel", "close-dialog", "quiet wide")}
+        </form>`);
+        dialog.querySelector('[name="currentPassword"]').focus();
+      }
       if (["previous", "next", "today", "retry"].includes(action)) {
         if (action === "today") { state.month = null; state.selected = null; }
         if (action === "previous" || action === "next") {
@@ -250,11 +268,30 @@
   });
   document.addEventListener("submit", async (event) => {
     event.preventDefault(); const form = event.target, submit = form.querySelector('[type="submit"]');
+    if (!submit || submit.disabled) return;
     const fields = Object.fromEntries(new FormData(form)); const error = form.querySelector(".form-error");
     if (error) error.textContent = "";
     submit.disabled = true;
     try {
       if (form.id === "login-form") { await enter(await api("/login", "POST", fields)); return; }
+      if (form.id === "password-form") {
+        if (fields.newPassword !== fields.confirmPassword) throw new Error("The new passwords do not match.");
+        if (fields.newPassword === fields.currentPassword) throw new Error("Choose a new password different from your current password.");
+        dialog.dataset.passwordPending = "true";
+        dialog.querySelectorAll('[data-action="close-dialog"]').forEach(button => { button.disabled = true; });
+        submit.textContent = "Updating…";
+        await api("/password", "POST", fields);
+        form.reset();
+        dialog.close();
+        state.token = null; state.user = null; state.calendar = null;
+        state.month = null; state.selected = null; state.generation++;
+        clearTimeout(toastTimer);
+        document.querySelector("#toast").classList.remove("visible");
+        document.querySelector("#toast").textContent = "";
+        state.loginNotice = "Password changed. Please sign in with your new password.";
+        location.hash = "#login";
+        return;
+      }
       if (form.id === "register-form") {
         if (!fields.partner && state.calendar.entries.some(e => e.game_id === Number(form.dataset.game) && e.member_id === state.user.id))
           throw new Error("Choose a partner, or leave your existing registration as it is.");
@@ -266,7 +303,14 @@
       if (form.id === "name-form") { await api(`/games/${form.dataset.game}/name`, "POST", fields); dialog.close(); await loadCalendar(); toast("Game name saved."); }
       if (form.id === "member-form") { await api("/members", "POST", fields); dialog.close(); await loadCalendar(); toast("Member created. Share their credentials privately."); }
     } catch (err) { if (error?.isConnected) error.textContent = err.message; else toast(err.message); }
-    finally { if (submit.isConnected) submit.disabled = false; }
+    finally {
+      if (form.id === "password-form") {
+        delete dialog.dataset.passwordPending;
+        dialog.querySelectorAll('[data-action="close-dialog"]').forEach(button => { button.disabled = false; });
+        if (submit.isConnected) submit.textContent = "Update password";
+      }
+      if (submit.isConnected) submit.disabled = false;
+    }
   });
   window.addEventListener("hashchange", route);
   route();

@@ -61,6 +61,7 @@ manage.mjs          Initialize, create fictional preview, reset a password
 tests.mjs           Isolated API and persistence tests
 hosting-tests.mjs   Production launcher and simulated Passenger-loader checks
 calendar-tests.mjs  Game names, migration safety and upcoming-month navigation
+password-tests.mjs  Self-service password changes and session-revocation checks
 backup.mjs          Encrypted SQLite backups and verified recovery copies
 backup-tests.mjs    Backup encryption, retention, recovery and cron checks
 data/               Private SQLite database; excluded from version control
@@ -136,7 +137,23 @@ The browser keeps its token only in memory, so reloading closes the browser
 session and requires signing in again. This avoids cookie/storage requirements
 in the private preview and is an intentional minimal implementation tradeoff.
 
-To reset a member or administrator password:
+Signed-in members and administrators can select **Change password** beside the
+calendar controls. The form requires the current password, a different new
+password of 12–128 characters, and matching confirmation. A successful change
+stores a salted hash and revokes all sessions for that account, including the
+current one, in a single transaction. The member returns to Login with a
+confirmation and signs in using the new password; registrations are unchanged.
+Wrong current passwords do not immediately sign the user out. Password-change
+attempts are limited to five per account per 15 minutes; successful changes
+clear that counter. This limiter is process-local, separate from login limits.
+
+To deploy just this feature on an already-current installation, upload
+`server.mjs`, `public/app.js` and `public/style.css`, then restart the Node app.
+No additional database migration or dependency installation is required.
+Fresh clones and older deployments must still follow any earlier game-name
+migration requirements in `UPGRADE-GAME-NAMES.md`.
+
+For a forgotten password, an operator can still reset a member or administrator:
 
 ```bash
 node manage.mjs reset-password

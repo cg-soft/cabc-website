@@ -197,6 +197,11 @@ sidecars, then follow the restore tool's consistent restore procedure.
 
 For a forgotten account password, use the same `DB_PATH` as the live service:
 
+Members who know their current password can instead use **Change password**
+beside the signed-in calendar controls. A successful change signs out all their
+sessions, including the current one, and leaves registrations unchanged.
+Forgotten passwords still require administrator assistance using this command:
+
 ```bash
 node manage.mjs reset-password
 ```
@@ -229,7 +234,9 @@ Node error output is captured; the application writes startup failures to stderr
 
 Passwords are hashed, but the database is not encrypted at rest. Login throttling
 is process-local and based on connection IP; a shared proxy can make users share
-the same limit. MFA, self-service password reset, member removal, email delivery,
+the same limit. Signed-in password changes have a separate per-account,
+process-local limit of five attempts per 15 minutes. MFA, self-service forgotten-
+password recovery, member removal, email delivery,
 and audit logging are not included. Browser refresh requires signing in again.
 These limitations and the host-specific runtime/routing checks should be
 reviewed before inviting members.

@@ -1,5 +1,23 @@
 # New minimal website verification
 
+## Signed-in password changes
+
+All 56 automated tests pass on Node 22.23.2, including six enclosing tests.
+The new endpoint checks authentication and current credentials, validates both
+new-password fields, limits attempts per account, and atomically updates the
+hash and revokes all own sessions. Tests cover anonymous/expired sessions,
+wrong current password without forced logout, input boundaries, mismatches,
+reuse, targeting another account, both roles, session revocation, preservation
+of partnerships, rollback on a forced database error, throttle expiry,
+competing requests and persistence after reopening.
+
+Browser tests use a disposable fictional member, not real club credentials.
+Checked desktop/mobile form layout, masking, autocomplete, focus, mismatch and
+wrong-password errors, cleared fields after cancellation, disabled cancellation
+while saving, persistent success confirmation, old-password rejection, new
+login, a second browser session being revoked, and retained partnerships.
+No database schema change is required. The homepage still has two buttons.
+
 ## Original club favicon restored
 
 Restored `public/favicon.png` unchanged from the previous site's logo-based

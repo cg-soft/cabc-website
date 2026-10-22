@@ -11,6 +11,19 @@ export function createApp({ db = openDatabase(), preview = false, previewToday }
   const today = () => preview && previewToday ? previewToday : clubToday();
   const dummy = passwordHash(randomBytes(32).toString("hex"));
   const attempts = new Map();
+  const passwordAttempts = new Map();
+  function passwordLimit(memberId) {
+    const now = Date.now();
+    if (passwordAttempts.size > 1000)
+      for (const [id, value] of passwordAttempts) if (value.until <= now) passwordAttempts.delete(id);
+    let value = passwordAttempts.get(memberId);
+    if (!value || value.until <= now) {
+      value = { count: 0, until: now + 15 * 60000 };
+      passwordAttempts.set(memberId, value);
+    }
+    if (++value.count > 5)
+      throw new HttpError(429, "Too many password-change attempts. Please wait 15 minutes.");
+  }
   function limit(req) {
     const key = req.socket.remoteAddress;
     const now = Date.now();
@@ -100,6 +113,34 @@ export function createApp({ db = openDatabase(), preview = false, previewToday }
         return reply(200, session(db.prepare("SELECT * FROM members WHERE email=?").get(email)));
       }
       const user = auth(req);
+      if (route === "/api/password" && req.method === "POST") {
+        const { currentPassword, newPassword, confirmPassword } = body;
+        if (typeof currentPassword !== "string" || currentPassword.length < 1 || currentPassword.length > 128)
+          throw new HttpError(400, "Enter your current password.");
+        if (typeof newPassword !== "string" || newPassword.length < 12 || newPassword.length > 128)
+          throw new HttpError(400, "Use a new password of 12 to 128 characters.");
+        if (typeof confirmPassword !== "string" || confirmPassword !== newPassword)
+          throw new HttpError(400, "The new passwords do not match.");
+        if (newPassword === currentPassword)
+          throw new HttpError(400, "Choose a new password different from your current password.");
+        passwordLimit(user.id);
+        const member = db.prepare("SELECT password FROM members WHERE id=?").get(user.id);
+        if (!member || !passwordMatches(currentPassword, member.password))
+          throw new HttpError(400, "Your current password is incorrect.");
+        const replacement = passwordHash(newPassword);
+        transaction(db, () => {
+          // Recheck the session and old hash under the write lock: another process
+          // may have reset the password while this request was being verified.
+          auth(req);
+          const changed = db.prepare("UPDATE members SET password=? WHERE id=? AND password=?")
+            .run(replacement, user.id, member.password);
+          if (changed.changes !== 1)
+            throw new HttpError(409, "Your account changed. Please sign in again before retrying.");
+          db.prepare("DELETE FROM sessions WHERE member_id=?").run(user.id);
+        });
+        passwordAttempts.delete(user.id);
+        return reply(200, { ok: true });
+      }
       if (route === "/api/logout" && req.method === "POST") {
         db.prepare("DELETE FROM sessions WHERE hash=?").run(hashToken(req.headers.authorization.slice(7)));
         return reply(200, { ok: true });

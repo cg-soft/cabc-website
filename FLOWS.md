@@ -58,3 +58,15 @@
 - GET/HEAD favicon requests return 200 and image/png; private paths remain blocked.
 - Check About/Login/calendar, naming, skipped months, registration/cancellation and admin dialogs for regressions.
 - Confirm the favicon loads in the hosted preview; homepage layout remains unchanged.
+
+## Signed-in password changes
+- Members and admins open Change password beside calendar controls, including an empty calendar.
+- Password inputs use current/new-password autocomplete and remain masked.
+- Enforce current password, 12–128 character replacement, matching confirmation and a different replacement.
+- Wrong current password shows an inline error without signing the member out.
+- Failed attempts are throttled per member, not shared across all members behind a proxy.
+- Successful changes atomically save a salted hash and invalidate every session for that member.
+- Success clears the form and returns to Login with a persistent confirmation.
+- Old password and old sessions stop working; the new password signs in with the same role and registrations.
+- One member cannot change another member's password; failure leaves all accounts intact.
+- Closing/cancelling clears fields; keyboard focus, phone layout and the public two-button homepage remain intact.

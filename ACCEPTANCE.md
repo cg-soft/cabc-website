@@ -11,6 +11,7 @@ unchanged until a separate deployment is authorized.
 - Members: calendar opens at the earliest month with an upcoming game, skips empty/past-only months, shows optional game names, selects a date, lists all pairs, registers with an available partner or solo, and cancels with confirmation.
 - Registration: never double-book either person; pairing registers both; cancelling removes the initiating member and leaves the other looking for a partner.
 - Admin: same calendar; add a named or unnamed playing date, edit an upcoming game's name without changing partnerships, and create a member using small dialogs. No separate dashboard.
+- Account: members and admins can change their own password with current-password verification and matching 12–128 character replacement; all own sessions are revoked on success, while registrations remain intact.
 - Security: private API rejects anonymous users, admin routes reject members, past-date writes and duplicate bookings reject, password hashes and session tokens are not exposed in calendar data.
 - Persistence: SQLite data survives restart; no production records or old accounts are imported.
 - Scope: plain browser files, Node built-ins only, no npm dependencies or build pipeline. Explicit database initialization.

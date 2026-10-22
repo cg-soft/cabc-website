@@ -32,6 +32,10 @@ h3{font-size:var(--text-sm);font-weight:600}
 .brand{font:1.55rem/1.05 var(--font-display);display:block;flex-shrink:0}
 nav{display:flex;align-items:center;gap:var(--space-3)}
 .identity{font-size:var(--text-sm);margin-right:var(--space-4);color:var(--muted)}
+.login-notice{margin-top:var(--space-5);padding:var(--space-4);background:var(--tint);border:1px solid var(--line);border-radius:5px;color:var(--green);font-size:var(--text-sm)}
+.admin-actions{flex-wrap:wrap;justify-content:flex-end}
+#password-form .small-note{margin-bottom:var(--space-5)}
+#password-form button+button{margin-top:var(--space-2)}
 .home-scene{height:100svh;min-height:420px;position:relative;background:#203c2d}
 .slideshow{position:absolute;inset:0;overflow:hidden}
 .slideshow::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(11,26,17,.52),transparent 37%,transparent 77%,rgba(11,26,17,.36));pointer-events:none}
