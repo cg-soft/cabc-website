@@ -209,6 +209,24 @@ node manage.mjs reset-password
 Enter the account email, save the generated replacement password, and deliver it
 privately. The command revokes that account's existing sessions.
 
+### Promote an existing member
+
+Upload the updated `manage.mjs` into the application directory. In Dathorn's
+terminal, activate the application's Node environment, then run:
+
+```bash
+cd /home/cabc/src/cabc-minimal
+export DB_PATH=/home/cabc/private/cabc-minimal/club.sqlite
+node manage.mjs promote
+```
+
+Enter the member's email when prompted. The command grants administrator access
+to that existing account only. It preserves passwords, registrations and
+sessions, safely reports an account that is already an administrator, and rejects
+an unknown email without creating an account. The member should log out and
+log back in to see the administrator controls. No restart, build, dependency
+installation or schema migration is needed for this update.
+
 ## Launch checklist and troubleshooting
 
 - Enable HTTPS and verify the certificate and HTTP-to-HTTPS redirect.

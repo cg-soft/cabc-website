@@ -1,5 +1,21 @@
 # New minimal website verification
 
+## Operator promotion
+
+All 83 automated tests pass on Node 22.23.2. The new management tests invoke
+the actual CLI in subprocesses, simulating TTY capability for email prompts.
+They verify missing-database refusal, noninteractive refusal, normalized email
+lookup, unknown/blank/injection-shaped input rejection, role-only promotion,
+unchanged already-admin success, and preservation of existing account fields,
+password hashes, games, registrations and sessions.
+
+After reopening the fixture database, the promoted member logs in with the
+original password and can create a game through the administrator API.
+Regression tests also verify initialization, password resets and usage output.
+Only disposable fictional databases were changed. No production account was
+promoted. Deployment requires only the updated manage.mjs on an otherwise
+current installation; there is no UI, runtime-server or schema change.
+
 ## Private CSV member import
 
 All 73 automated tests pass on Node 22.23.2, including eight enclosing tests.

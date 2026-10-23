@@ -5,12 +5,13 @@ import { openDatabase, addMember, transaction, passwordHash, clubToday } from ".
 
 process.umask(0o077);
 const command = process.argv[2];
-if (!["init", "preview", "reset-password"].includes(command)) {
-  console.error("Usage: node manage.mjs init | preview | reset-password");
+if (!["init", "preview", "reset-password", "promote"].includes(command)) {
+  console.error("Usage: node manage.mjs init | preview | reset-password | promote");
   process.exit(1);
 }
-const db = openDatabase(undefined, command !== "reset-password");
+let db;
 try {
+  db = openDatabase(undefined, ["init", "preview"].includes(command));
   if (command === "preview") {
     if (db.prepare("SELECT count(*) AS n FROM members").get().n) throw new Error("Preview seeding requires an empty database. No records were changed.");
     transaction(db, () => {
@@ -37,25 +38,36 @@ try {
     });
     console.log("Fictional preview data created. Preview access requires PREVIEW_MODE=1 and must never be used for real member data.");
   } else {
-    if (!stdin.isTTY) throw new Error("Use an interactive terminal to create or reset credentials.");
+    if (!stdin.isTTY) throw new Error("Use an interactive terminal to manage accounts.");
     const readline = createInterface({ input: stdin, output: stdout });
     try {
       const email = (await readline.question("Email: ")).trim().toLowerCase();
-      const name = command === "init" ? (await readline.question("Name: ")).trim() : "";
-      const password = randomBytes(18).toString("base64url");
-      if (command === "init") {
-        if (db.prepare("SELECT count(*) AS n FROM members").get().n) throw new Error("An administrator already exists. Initialization will not replace accounts.");
-        addMember(db, { name, email, password }, "admin");
-      } else {
-        const member = db.prepare("SELECT id FROM members WHERE email=?").get(email);
-        if (!member) throw new Error("Account not found.");
-        transaction(db, () => {
-          db.prepare("UPDATE members SET password=? WHERE id=?").run(passwordHash(password), member.id);
-          db.prepare("DELETE FROM sessions WHERE member_id=?").run(member.id);
+      if (command === "promote") {
+        const message = transaction(db, () => {
+          const member = db.prepare("SELECT id,name,email,role FROM members WHERE email=?").get(email);
+          if (!member) throw new Error("Account not found. No accounts were changed.");
+          if (member.role === "admin") return `${member.name} (${member.email}) is already an administrator. No changes made.`;
+          db.prepare("UPDATE members SET role='admin' WHERE id=?").run(member.id);
+          return `Administrator access granted to ${member.name} (${member.email}). Ask them to log out and log back in.`;
         });
+        console.log(message);
+      } else {
+        const name = command === "init" ? (await readline.question("Name: ")).trim() : "";
+        const password = randomBytes(18).toString("base64url");
+        if (command === "init") {
+          if (db.prepare("SELECT count(*) AS n FROM members").get().n) throw new Error("An administrator already exists. Initialization will not replace accounts.");
+          addMember(db, { name, email, password }, "admin");
+        } else {
+          const member = db.prepare("SELECT id FROM members WHERE email=?").get(email);
+          if (!member) throw new Error("Account not found.");
+          transaction(db, () => {
+            db.prepare("UPDATE members SET password=? WHERE id=?").run(passwordHash(password), member.id);
+            db.prepare("DELETE FROM sessions WHERE member_id=?").run(member.id);
+          });
+        }
+        console.log(`Generated password (store securely; it will not be shown again): ${password}`);
       }
-      console.log(`Generated password (store securely; it will not be shown again): ${password}`);
     } finally { readline.close(); }
   }
 } catch (error) { console.error(error.message); process.exitCode = 1; }
-finally { db.close(); }
+finally { db?.close(); }

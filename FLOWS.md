@@ -1,5 +1,13 @@
 # Main flows and calendar layout checks
 
+## Operator promotion
+- Run `node manage.mjs promote` in an interactive terminal with the live `DB_PATH`.
+- Enter an existing member's email; whitespace and case are normalized.
+- Change only that member's role to admin, preserving password, sessions and registrations.
+- Report an already-admin account without changes; reject an unknown email.
+- Never initialize a missing database or migrate an existing one.
+- Member logs out and back in to refresh the administrator controls.
+
 ## Existing flows to preserve
 - Home: exactly About and Login buttons; slideshow advances and respects reduced motion.
 - About: About placeholder, Home and Login return correctly.

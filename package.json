@@ -6,7 +6,7 @@
   "engines": { "node": ">=22.13.0" },
   "scripts": {
     "start": "node app.cjs",
-    "test": "node --test tests.mjs hosting-tests.mjs backup-tests.mjs calendar-tests.mjs password-tests.mjs import-members-tests.mjs",
+    "test": "node --test tests.mjs hosting-tests.mjs backup-tests.mjs calendar-tests.mjs password-tests.mjs import-members-tests.mjs manage-tests.mjs",
     "members:import": "node import-members.mjs",
     "migrate:game-names": "node migrate.mjs game-names",
     "backup:setup": "node backup.mjs setup",

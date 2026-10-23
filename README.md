@@ -61,7 +61,8 @@ server.mjs          HTTP, authentication and calendar/registration endpoints
 db.mjs              Private storage and password helpers
 schema.sql          Explicit initial database schema
 migrate.mjs         Explicit additive migrations for the minimal site
-manage.mjs          Initialize, create fictional preview, reset a password
+manage.mjs          Initialize, create fictional preview, reset a password, promote a member
+manage-tests.mjs    Operator promotion, preservation and management regression tests
 import-members.mjs  Validate/import private CSVs without replacing existing accounts
 import-members-tests.mjs CSV validation, rollback, credential and persistence checks
 tests.mjs           Isolated API and persistence tests
@@ -167,6 +168,23 @@ node manage.mjs reset-password
 
 The operator enters the account email. A new password is generated and existing
 sessions for that account are revoked. The command does not send the password.
+
+To grant an existing member administrator access, use an interactive terminal
+with the live application's `DB_PATH`:
+
+```bash
+node manage.mjs promote
+```
+
+Enter the member's email at the prompt. Only their role changes; their password,
+registrations and sessions remain intact. An unknown email is an error and does
+not create an account. An existing administrator is reported without changes.
+Ask the member to log out and log back in to show the administrator controls.
+This is an operator command, not a member-facing API. It requires an existing
+database and does not initialize or migrate one.
+
+To deploy this command on an otherwise current installation, upload only
+`manage.mjs`. No application restart, build or new dependency is required.
 
 Login throttling is process-local and per connection IP; proxy users may share
 an IP. This is suitable for review but should be checked with the hosting setup
