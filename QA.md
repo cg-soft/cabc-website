@@ -1,5 +1,19 @@
 # New minimal website verification
 
+## Export link domain correction
+
+All 97 automated tests pass on Node 22.23.2. Export URL properties now use
+https://cabc.club/#calendar, while the exact legacy
+`cabc-game-{id}-{date}@bridge.cabc.club` event identifiers are preserved.
+A regression test pins a complete historical UID and the new URL; the
+authenticated export integration test checks both as well.
+
+A direct comparison against the previous committed serializer, using identical
+games and timestamps, confirms the output is byte-for-byte identical except
+for the URL properties. No UI, registration, schema or dependency behavior
+changed. Install the correction by replacing only icalendar.mjs and restarting
+the Node application. Production hosting was not modified by this commit.
+
 ## Registered-game calendar export
 
 All 96 automated tests pass on Node 22.23.2. New export tests cover current-day

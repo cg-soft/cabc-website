@@ -47,6 +47,12 @@ test("iCalendar formatting", async t => {
     assert.match(second, /SUMMARY:Chinese American Bridge Club/);
     assert.throws(() => registeredGamesCalendar([{ ...fixture, time: "11:30\nBEGIN:VEVENT" }]));
   });
+  await t.test("apex-domain link preserves the exact legacy event identity", () => {
+    const text = registeredGamesCalendar([fixture], now);
+    assert.ok(text.includes("\r\nURL:https://cabc.club/#calendar\r\n"));
+    assert.ok(text.includes("\r\nUID:cabc-game-1-2026-03-08@bridge.cabc.club\r\n"));
+    assert.doesNotMatch(text, /\r\nURL:https:\/\/bridge\.cabc\.club/);
+  });
 });
 
 test("authenticated registered-games export", async t => {
@@ -104,7 +110,8 @@ test("authenticated registered-games export", async t => {
       assert.doesNotMatch(body, /Past registered game|Other members only/);
       assert.doesNotMatch(body, /Alice Private|Bob Private|Owner Private|example\.test|Export-fixture/);
       assert.ok(!body.includes(token));
-      assert.match(body, /URL:https:\/\/bridge\.cabc\.club\/#calendar/);
+      assert.match(body, /URL:https:\/\/cabc\.club\/#calendar/);
+      assert.match(body, /UID:cabc-game-2-2026-03-07@bridge\.cabc\.club\r\n/);
       assert.match(body, /SUMMARY:Chinese American Bridge Club/);
       assert.deepEqual(snapshot(), before);
     });

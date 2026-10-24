@@ -37,12 +37,13 @@ export function registeredGamesCalendar(games, now = new Date()) {
       throw new Error("Invalid game data for calendar export.");
     lines.push(
       "BEGIN:VEVENT",
+      // Preserve legacy UIDs across domain moves so existing events keep their identity.
       `UID:cabc-game-${game.id}-${game.date}@bridge.cabc.club`,
       `DTSTAMP:${stamp}`,
       `DTSTART;TZID=America/Los_Angeles:${game.date.replace(/-/g, "")}T${game.time.replace(":", "")}00`,
       `SUMMARY:${text(game.name || "Chinese American Bridge Club")}`,
       `DESCRIPTION:${text("Duplicate bridge at Chinese American Bridge Club.\nA snapshot of your registration. Check the club website for changes.")}`,
-      "URL:https://bridge.cabc.club/#calendar",
+      "URL:https://cabc.club/#calendar",
       "CLASS:PRIVATE", "END:VEVENT"
     );
   }

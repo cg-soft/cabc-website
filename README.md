@@ -35,6 +35,12 @@ tokens are included. No duration is invented because games store start times
 only. Stable event IDs identify the same games in repeated exports, but duplicate
 handling depends on the calendar application.
 
+Event website links now point to `https://cabc.club/#calendar`. Event IDs
+intentionally retain their original `@bridge.cabc.club` suffix: this is a stable
+identifier, not a navigation link. To install only this domain-link correction
+on a site that already has export, upload `icalendar.mjs` and restart the app.
+Existing downloaded/imported files are not edited by this change.
+
 The file is a snapshot: later changes and cancellations are not automatically
 synchronized. Apple documents importing .ics attachments from Mail in its
 [iPhone calendar instructions](https://support.apple.com/guide/iphone/set-up-mail-contacts-and-calendar-accounts-ipha0d932e96/ios).

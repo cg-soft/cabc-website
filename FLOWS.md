@@ -9,6 +9,7 @@
 - No registrations produces a clear message and no empty download.
 - Handle expired sessions and failed downloads without exposing credentials or changing registrations.
 - Confirm stable event IDs, escaped/folded Unicode text and unchanged database records.
+- Exported website links use https://cabc.club/#calendar; preserve the legacy @bridge.cabc.club UID suffix exactly.
 - Recheck the public two-button homepage, About, login, date navigation, registration/cancellation, admin dialogs and password form.
 
 ## Operator promotion

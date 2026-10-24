@@ -37,6 +37,12 @@ No database, accounts, credentials, or preview deployment folder is included.
 
 ### Existing installation: registered-game export update
 
+If export is already installed and you only need the move to `cabc.club`, upload
+the updated `icalendar.mjs` to `/home/cabc/src/cabc-minimal/icalendar.mjs`, then
+restart the Node application. Event website links change to the new domain;
+existing event UIDs remain unchanged, including the old domain in the identifier.
+No other file, dependency or database changes are needed for that correction.
+
 For an otherwise current installation, upload these files:
 
 ```text
