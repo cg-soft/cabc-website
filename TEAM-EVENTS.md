@@ -1,5 +1,9 @@
 # Team events: usage and Dathorn upgrade
 
+If installing the latest source rather than the original team-events release,
+also follow [Deactivate members](DEACTIVATE-MEMBERS.md) and run the subsequent
+`member-status` migration before starting the current server.
+
 Team events combine two registered pairs into one team of four. Either member
 of either pair can form the team immediately; there are no invitations or
 acceptance steps. Ordinary pair events continue to work as before.

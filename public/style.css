@@ -28,6 +28,13 @@ h3{font-size:var(--text-sm);font-weight:600}
 .text-button{padding:var(--space-2) 0;border:0;border-radius:0;min-height:40px;text-align:left;text-decoration:underline;text-underline-offset:4px}
 .text-button:hover{background:transparent;color:var(--green)}
 .danger{color:var(--error)}
+.danger-primary{background:var(--error);border-color:var(--error);color:var(--white)}
+.danger-primary:hover{background:#7b2823;color:var(--white)}
+.deactivate-summary{padding:var(--space-4);margin-bottom:var(--space-5);border:1px solid var(--line);background:var(--tint);border-radius:5px;overflow-wrap:anywhere}
+.deactivate-summary p+p{font-size:var(--text-sm);color:var(--muted)}
+.deactivate-effects{font-size:var(--text-sm);padding-left:var(--space-5);margin:var(--space-5) 0}
+.deactivate-effects li+li{margin-top:var(--space-2)}
+#deactivate-confirm-form button+button,#deactivate-select-form button+button{margin-top:var(--space-2)}
 .wide{width:100%}
 .small-note{font-size:var(--text-sm);color:var(--muted);line-height:1.55}
 .floating-club-logo{position:fixed;top:15px;left:var(--header-gutter);width:var(--logo-width);height:auto;z-index:9;pointer-events:none;user-select:none;filter:drop-shadow(0 2px 3px #0002)}

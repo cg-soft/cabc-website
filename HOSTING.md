@@ -17,6 +17,7 @@ db.mjs
 manage.mjs
 schema.sql
 team-schema.sql
+member-status-schema.sql
 migrate.mjs
 package.json
 public/
@@ -35,6 +36,17 @@ Do not run `npm ci`; this dependency-free package intentionally has no lockfile.
 No database, accounts, credentials, or preview deployment folder is included.
 
 ## Confirm the host runtime first
+
+### Current release: member deactivation
+
+The current server requires the explicit `member-status` migration.
+Follow [Deactivate members: usage and Dathorn upgrade](DEACTIVATE-MEMBERS.md):
+back up and stop writers, upload the eight listed files, run
+`node migrate.mjs member-status` with the live DB_PATH, then restart and refresh.
+Existing members stay active and all row counts are preserved by migration.
+No build or dependency installation is needed. Do not initialize or replace
+the database. This procedure supersedes the older logo/team/export-only
+instructions below when installing the current release.
 
 ### Existing installation: transparent floating logo
 
@@ -197,7 +209,7 @@ running them. For a nonstandard SSH port, add `-e 'ssh -p YOUR_PORT'`.
 From the extracted source folder, preview the initial runtime upload:
 
 ```bash
-rsync -avzn app.cjs server.mjs icalendar.mjs db.mjs manage.mjs migrate.mjs schema.sql team-schema.sql package.json public \
+rsync -avzn app.cjs server.mjs icalendar.mjs db.mjs manage.mjs migrate.mjs schema.sql team-schema.sql member-status-schema.sql package.json public \
   cabc@YOUR_SSH_HOST:/home/cabc/src/cabc-minimal/
 ```
 

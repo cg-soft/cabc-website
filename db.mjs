@@ -53,6 +53,7 @@ export function openDatabase(filename = process.env.DB_PATH || path.join(ROOT, "
         if (version === 0) {
           db.exec("ALTER TABLE games ADD COLUMN event_type TEXT NOT NULL DEFAULT 'pairs' CHECK(event_type IN ('pairs','teams'))");
           db.exec(readFileSync(path.join(ROOT, "team-schema.sql"), "utf8"));
+          installMemberStatus(db);
         }
         db.exec("COMMIT");
       }
@@ -70,6 +71,37 @@ export function transaction(db, fn) {
   db.exec("BEGIN IMMEDIATE");
   try { const value = fn(); db.exec("COMMIT"); return value; }
   catch (error) { db.exec("ROLLBACK"); throw error; }
+}
+export function installMemberStatus(db) {
+  // Caller must hold a write transaction; used only for explicit migration/init.
+  const columns = db.prepare("PRAGMA table_info(members)").all();
+  const definitions = {
+    active: "INTEGER NOT NULL DEFAULT 1 CHECK(active IN (0,1))",
+    deactivated_at: "TEXT",
+    deactivated_by: "INTEGER REFERENCES members(id)"
+  };
+  let applied = false;
+  for (const [name, definition] of Object.entries(definitions)) {
+    const existing = columns.find(column => column.name === name);
+    if (!existing) {
+      db.exec(`ALTER TABLE members ADD COLUMN ${name} ${definition}`);
+      applied = true;
+    } else if (existing.type.toUpperCase() !== definition.split(" ")[0] || (name === "active" && !existing.notnull)) {
+      throw new Error(`Existing members.${name} requires manual review.`);
+    }
+  }
+  if (db.prepare("SELECT id FROM members WHERE active NOT IN (0,1) OR active IS NULL LIMIT 1").get())
+    throw new Error("Invalid member status requires manual review.");
+  db.exec(readFileSync(path.join(ROOT, "member-status-schema.sql"), "utf8"));
+  return applied;
+}
+export function requireMemberStatus(db) {
+  const columns = db.prepare("PRAGMA table_info(members)").all();
+  const names = ["inactive_session_insert", "inactive_session_update", "inactive_entry_insert", "inactive_entry_update",
+    "revoke_inactive_sessions", "protect_last_active_admin_update", "protect_last_active_admin_delete"];
+  if (!["active", "deactivated_at", "deactivated_by"].every(name => columns.some(c => c.name === name)) ||
+      names.some(name => !db.prepare("SELECT name FROM sqlite_master WHERE type='trigger' AND name=?").get(name)))
+    throw new Error("Member-status migration required. Run node migrate.mjs member-status with the same DB_PATH. Startup never migrates databases.");
 }
 export function validateMember(body) {
   const name = String(body.name || "").trim();

@@ -7,6 +7,10 @@ as part of adding this command.**
 
 ## Prepare a private CSV
 
+Inactive accounts retain their email addresses. The importer will reject an
+existing email, or skip it unchanged with `--skip-existing`; it never reactivates
+an inactive member or resets their password.
+
 Use a UTF-8 CSV with exactly these three headers:
 
 ```csv

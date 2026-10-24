@@ -3,7 +3,7 @@
   const state = { token: null, user: null, config: null, month: null, selected: null, calendar: null, generation: 0, loginNotice: null };
   dialog.addEventListener("close", () => { if (!dialog.open) dialog.replaceChildren(); });
   dialog.addEventListener("cancel", event => {
-    if (dialog.dataset.passwordPending === "true") event.preventDefault();
+    if (dialog.dataset.passwordPending === "true" || dialog.dataset.memberPending === "true") event.preventDefault();
   });
   let slideTimer, toastTimer, slide = 0, paused = false;
   const esc = (value) => String(value ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -99,7 +99,7 @@
   function calendarShell() {
     return header(`<span class="identity">${esc(state.user.name)}</span>${button("Home", "home", "quiet")}${button("Log out", "logout", "quiet")}`) +
       `<main class="calendar-page"><div class="calendar-heading"><div><p class="eyebrow">Members’ calendar</p><h1>Playing dates</h1></div>
-      <div class="admin-actions">${button("Export my games", "export-games", "quiet")}${button("Change password", "change-password", "quiet")}${state.user.role === "admin" ? `${button("Add member", "add-member", "quiet")}${button("+ Add date", "add-date", "primary")}` : ""}</div></div>
+      <div class="admin-actions">${button("Export my games", "export-games", "quiet")}${button("Change password", "change-password", "quiet")}${state.user.role === "admin" ? `${button("Add member", "add-member", "quiet")}${button("Deactivate member", "deactivate-member", "quiet")}${button("+ Add date", "add-date", "primary")}` : ""}</div></div>
       ${state.config?.preview ? '<p class="preview-line">Private preview · fictional members and sample dates</p>' : ""}
       <div id="calendar-content" aria-busy="true"><div class="loading-surface">Loading the calendar…</div></div></main>`;
   }
@@ -187,7 +187,7 @@
     const pairs = list.filter(e => e.partner_id && e.member_id < e.partner_id);
     const singles = list.filter(e => !e.partner_id);
     const name = id => members.find(m => m.id === id)?.name || "Member";
-    const available = members.filter(m => m.id !== state.user.id && !list.find(e => e.member_id === m.id)?.partner_id);
+    const available = members.filter(m => m.active !== 0 && m.id !== state.user.id && !list.find(e => e.member_id === m.id)?.partner_id);
     const closed = game.date < today;
     let registration = "";
     if (closed) registration = '<p class="closed-note">Registration for this date is closed.</p>';
@@ -219,6 +219,33 @@
       <div class="pair-heading"><h3>Pairs seeking teammates</h3><span>${waiting.length}</span></div>
       ${waiting.length ? `<ol class="pairs">${waiting.map(pair => `<li><span>${esc(name(pair.member_id))}</span><span>${esc(name(pair.partner_id))}</span></li>`).join("")}</ol>` : '<p class="empty-copy">No pairs waiting for teammates.</p>'}`;
   }
+  async function chooseDeactivation() {
+    const userId = state.user?.id;
+    const result = await api("/members/manage");
+    if (state.user?.id !== userId) return;
+    const admins = result.members.filter(member => member.active && member.role === "admin").length;
+    openDialog("Deactivate a member", `<p>Select an account to review before making any changes. This does not delete past game records.</p>
+      <form id="deactivate-select-form"><label>Member<select name="memberId" aria-label="Member to deactivate" required><option value="">Choose a member</option>${result.members.map(member => {
+        const last = member.active && member.role === "admin" && admins === 1;
+        const suffix = !member.active ? " (inactive)" : last ? " (last active administrator)" : member.role === "admin" ? " (administrator)" : "";
+        return `<option value="${member.id}" ${!member.active || last ? "disabled" : ""}>${esc(member.name)} · ${esc(member.email)}${esc(suffix)}${member.id === userId ? " (you)" : ""}</option>`;
+      }).join("")}</select></label><p class="small-note">Inactive accounts and the last active administrator cannot be selected.</p><p class="form-error" role="alert"></p><button type="submit" class="primary wide">Review deactivation</button>${button("Cancel", "close-dialog", "quiet wide")}</form>`);
+    dialog.querySelector('[name="memberId"]').focus();
+  }
+  async function reviewDeactivation(id) {
+    const userId = state.user?.id;
+    const plan = await api(`/members/${id}/deactivate`);
+    if (state.user?.id !== userId) return;
+    const self = plan.member.id === userId;
+    openDialog("Confirm deactivation", `<div class="deactivate-summary"><p><strong>${esc(plan.member.name)}</strong></p><p>${esc(plan.member.email)}</p></div>
+      ${plan.member.active ? `<p>This will block sign-in, sign the member out on every device and remove them from available-partner lists.</p>
+      <ul class="deactivate-effects"><li>Cancel <strong>${plan.registrationCount}</strong> registration${plan.registrationCount === 1 ? "" : "s"} for today or later (${esc(plan.today)}, Pacific time).</li><li>Dissolve <strong>${plan.teamCount}</strong> affected team${plan.teamCount === 1 ? "" : "s"}.</li><li>Keep former partners registered as singles and unaffected pairs together.</li><li>Preserve the account and all registrations before today.</li></ul>
+      ${self ? '<p class="form-error">You are deactivating your own account. You will be signed out and cannot sign in again.</p>' : ""}` : '<p>This account is already inactive. No further changes will be made.</p>'}
+      ${!plan.canDeactivate && plan.member.active ? '<p class="form-error">The last active administrator cannot be deactivated.</p>' : ""}
+      <form id="deactivate-confirm-form" data-member="${plan.member.id}" data-revision="${plan.revision}"><p class="form-error" role="alert"></p><button type="submit" class="danger-primary wide" ${!plan.canDeactivate ? "disabled" : ""}>Deactivate member</button>${button("Cancel", "close-dialog", "quiet wide")}</form>`);
+    // Default keyboard focus to the non-destructive choice, never confirmation.
+    dialog.querySelector('#deactivate-confirm-form [data-action="close-dialog"]').focus();
+  }
   function openDialog(title, content) {
     dialog.innerHTML = `<div class="dialog-heading"><h2 id="dialog-title">${title}</h2>${button("×", "close-dialog", "close-button")}</div>${content}`;
     dialog.querySelector(".close-button").setAttribute("aria-label", "Close dialog");
@@ -244,7 +271,10 @@
     const action = control.dataset.action;
     try {
       if (["home", "about", "login"].includes(action)) { location.hash = `#${action}`; return; }
-      if (action === "close-dialog") { dialog.close(); return; }
+      if (action === "close-dialog") {
+        if (dialog.dataset.passwordPending === "true" || dialog.dataset.memberPending === "true") return;
+        dialog.close(); return;
+      }
       if (action.startsWith("preview-")) {
         control.disabled = true; await enter(await api("/preview", "POST", { role: action === "preview-admin" ? "admin" : "member" })); return;
       }
@@ -298,6 +328,7 @@
         openDialog("Edit game name", `<form id="name-form" data-game="${game.id}"><label>Game name (optional)<input name="name" value="${esc(game.name)}" maxlength="80" autocomplete="off"></label><p class="small-note">Changing the name keeps this date and all partnerships intact. Leave it blank to remove the name.</p><p class="form-error" role="alert"></p><button type="submit" class="primary wide">Save name</button></form>`);
       }
       if (action === "add-member") openDialog("Add a member", `<form id="member-form"><label>Full name<input name="name" required minlength="2" maxlength="80" autocomplete="off"></label><label>Email<input name="email" type="email" required maxlength="180" autocomplete="off"></label><label>Initial password<input name="password" type="password" required minlength="12" maxlength="128" autocomplete="new-password"></label><p class="small-note">Use at least 12 characters. Share the credentials privately with the member.</p><p class="form-error" role="alert"></p><button type="submit" class="primary wide">Create member</button></form>`);
+      if (action === "deactivate-member") { control.disabled = true; await chooseDeactivation(); }
       if (action === "cancel") {
         const game = state.calendar.games.find(g => g.date === state.selected);
         const own = state.calendar.entries.find(e => e.game_id === game.id && e.member_id === state.user.id);
@@ -358,15 +389,46 @@
       if (form.id === "date-form") { const result = await api("/games", "POST", fields); dialog.close(); state.month = result.date.slice(0, 7); state.selected = result.date; await loadCalendar(); toast("Playing date added."); }
       if (form.id === "name-form") { await api(`/games/${form.dataset.game}/name`, "POST", fields); dialog.close(); await loadCalendar(); toast("Game name saved."); }
       if (form.id === "member-form") { await api("/members", "POST", fields); dialog.close(); await loadCalendar(); toast("Member created. Share their credentials privately."); }
+      if (form.id === "deactivate-select-form") await reviewDeactivation(Number(fields.memberId));
+      if (form.id === "deactivate-confirm-form") {
+        dialog.dataset.memberPending = "true";
+        dialog.querySelectorAll('[data-action="close-dialog"]').forEach(button => { button.disabled = true; });
+        submit.textContent = "Deactivating…";
+        const result = await api(`/members/${form.dataset.member}/deactivate`, "POST", { confirm: true, revision: form.dataset.revision });
+        dialog.close();
+        if (result.self) {
+          state.token = null; state.user = null; state.calendar = null;
+          state.loginNotice = "Your account has been deactivated. Contact another club administrator if you need assistance.";
+          location.hash = "#login";
+        } else {
+          await loadCalendar();
+          toast(result.alreadyInactive ? "This member was already inactive." : "Member deactivated. Past game records have been preserved.");
+        }
+      }
     } catch (err) {
       if (form.id === "team-form" || form.id === "leave-team-form") {
         // Refresh stale availability after a conflict instead of leaving invalid options.
         if (dialog.open) dialog.close();
         if (state.user) await loadCalendar();
         toast(err.message);
+      } else if (form.id === "deactivate-confirm-form" && state.user) {
+        try { await reviewDeactivation(Number(form.dataset.member)); }
+        catch (refreshError) {
+          if (dialog.open) dialog.close();
+          toast(refreshError.message);
+          return;
+        }
+        const currentError = dialog.querySelector("#deactivate-confirm-form .form-error");
+        if (currentError) currentError.textContent = err.message;
+        else toast(err.message);
       } else if (error?.isConnected) error.textContent = err.message; else toast(err.message);
     }
     finally {
+      if (form.id === "deactivate-confirm-form") {
+        delete dialog.dataset.memberPending;
+        dialog.querySelectorAll('[data-action="close-dialog"]').forEach(button => { button.disabled = false; });
+        if (submit.isConnected) submit.textContent = "Deactivate member";
+      }
       if (form.id === "password-form") {
         delete dialog.dataset.passwordPending;
         dialog.querySelectorAll('[data-action="close-dialog"]').forEach(button => { button.disabled = false; });

@@ -1,5 +1,49 @@
 # New minimal website verification
 
+## Administrator member deactivation
+
+All 144 automated tests pass on Node 22.23.2 and Node 24.20.0. The explicit,
+additive member-status migration preserves all original account fields, game
+records, entries, sessions and teams; members default to active. Missing and
+unsupported databases are refused, incompatible schema additions roll back,
+and repeated migration retains inactive status and audit fields. Startup
+requires the migration but never runs it automatically.
+
+API tests verify admin-only list/review/action access, explicit confirmation,
+binding the review to the correct member and current impact, stale-registration
+refusal, transactional rollback, today/future cancellation, past-team and
+partnership preservation, former-partner handling, all-session revocation,
+generic inactive-login rejection, preview-login blocking and unavailable-partner
+rejection. Inactive accounts cannot regain access through password reset,
+promotion, CSV import or older session/registration SQL. The last active admin
+is protected at both API and database levels; competing deactivations leave
+one administrator active. Self-deactivation signs out only when another active
+administrator remains. Backup/reopen retains statuses and historical teams.
+
+Browser QA used fictional copies only. Reviewed target identity and impact,
+cancelled without changes, then added a registration from a second session:
+the stale confirmation was refused and refreshed from two to three affected
+registrations. Confirming the refreshed review deactivated only that test
+account, removed its three future/current registrations and one future team,
+retained the other pair and past team, removed it from partner options, and
+blocked the existing session and subsequent password login.
+
+Inactive and last-admin options were verified disabled. A second fictional
+administrator completed the self-deactivation flow and saw the sign-out notice.
+A simulated 503 restored the review and usable cancellation controls. Desktop
+and mobile review screenshots were inspected; 320, 375, 768 and 1440px admin
+layouts had no horizontal overflow and retained the floating logo.
+
+Regression browser checks covered the home/About/login routes, member/admin
+separation, pair and team registration/cancellation, date navigation, calendar
+export, rename/save and the administrator/password dialogs. No JavaScript page
+errors were recorded. The confirmation defaults keyboard focus to Cancel;
+the final request disables dismissal while processing.
+
+Production hosting and accounts have not been modified. DEACTIVATE-MEMBERS.md
+documents the eight-file upload, backup, explicit migration, restart, audit
+fields, rollback limitations and lack of permanent deletion/reactivation UI.
+
 ## Transparent floating club logo
 
 All 120 automated tests pass on Node 22.23.2. The transparent PNG from the

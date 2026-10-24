@@ -20,6 +20,20 @@ To load members from a private CSV containing `name,email,initial-password`,
 follow [IMPORT-MEMBERS.md](IMPORT-MEMBERS.md). The importer defaults to a dry run,
 adds member accounts only, and never overwrites existing credentials.
 
+## Deactivate members
+
+Administrators can choose Deactivate member, select an account, review the
+affected registrations/teams and explicitly confirm. Deactivation revokes
+sessions, blocks login and partner selection, and cancels registrations for
+today or later. Past records and names remain intact. The last active
+administrator is protected; password resets, promotion and imports do not
+reactivate inactive accounts.
+
+Current installations upgrading to this release must first follow
+[Deactivate members: usage and Dathorn upgrade](DEACTIVATE-MEMBERS.md), including
+the explicit member-status migration. The older feature-specific upload
+instructions below describe earlier releases, not a substitute for that upgrade.
+
 ## Club logo
 
 The shared page shell also displays the approved transparent club logo, fixed
@@ -135,6 +149,8 @@ export-tests.mjs    Export privacy, formatting, registration and session tests
 db.mjs              Private storage and password helpers
 schema.sql          Baseline database schema (new initialization also installs team schema)
 team-schema.sql     Additive team membership table, index and protection triggers
+member-status-schema.sql  Inactive-account and last-active-admin protection triggers
+deactivation-tests.mjs    Migration, review, access, history, concurrency and backup checks
 team-tests.mjs      Migration, formation, ownership, race, dissolution and backup checks
 migrate.mjs         Explicit additive migrations for the minimal site
 manage.mjs          Initialize, create fictional preview, reset a password, promote a member

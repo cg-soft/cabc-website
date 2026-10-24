@@ -44,8 +44,9 @@ try {
       const email = (await readline.question("Email: ")).trim().toLowerCase();
       if (command === "promote") {
         const message = transaction(db, () => {
-          const member = db.prepare("SELECT id,name,email,role FROM members WHERE email=?").get(email);
+          const member = db.prepare("SELECT * FROM members WHERE email=?").get(email);
           if (!member) throw new Error("Account not found. No accounts were changed.");
+          if (member.active === 0) throw new Error("Account is inactive. Promotion will not reactivate it.");
           if (member.role === "admin") return `${member.name} (${member.email}) is already an administrator. No changes made.`;
           db.prepare("UPDATE members SET role='admin' WHERE id=?").run(member.id);
           return `Administrator access granted to ${member.name} (${member.email}). Ask them to log out and log back in.`;
@@ -58,9 +59,11 @@ try {
           if (db.prepare("SELECT count(*) AS n FROM members").get().n) throw new Error("An administrator already exists. Initialization will not replace accounts.");
           addMember(db, { name, email, password }, "admin");
         } else {
-          const member = db.prepare("SELECT id FROM members WHERE email=?").get(email);
+          const member = db.prepare("SELECT * FROM members WHERE email=?").get(email);
           if (!member) throw new Error("Account not found.");
           transaction(db, () => {
+            if (db.prepare("SELECT * FROM members WHERE id=?").get(member.id)?.active === 0)
+              throw new Error("Account is inactive. Password reset will not reactivate it.");
             db.prepare("UPDATE members SET password=? WHERE id=?").run(passwordHash(password), member.id);
             db.prepare("DELETE FROM sessions WHERE member_id=?").run(member.id);
           });

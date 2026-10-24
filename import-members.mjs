@@ -106,7 +106,8 @@ function checkDatabase(db) {
   db.prepare("SELECT id,name,email,password,role FROM members LIMIT 0").all();
   if (db.prepare("SELECT value FROM metadata WHERE key='preview'").get()?.value === "1")
     throw new ImportError("Refusing to import credentials into the public fictional preview database.");
-  if (!db.prepare("SELECT id FROM members WHERE role='admin' LIMIT 1").get())
+  const hasStatus = db.prepare("PRAGMA table_info(members)").all().some(c => c.name === "active");
+  if (!db.prepare(`SELECT id FROM members WHERE role='admin'${hasStatus ? " AND active=1" : ""} LIMIT 1`).get())
     throw new ImportError("Create the initial administrator with node manage.mjs init before importing members.");
 }
 function planRows(db, rows, skipExisting) {

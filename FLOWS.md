@@ -1,5 +1,18 @@
 # Main flows and calendar layout checks
 
+## Deactivate member
+- Admin-only selector shows account names/emails and active/inactive status; members cannot access its API.
+- Review names the target and counts their registrations for today/later and affected teams.
+- Final explicit confirmation is bound to that reviewed account/impact; stale plans require review again.
+- Deactivation revokes all sessions, blocks password and preview login, and excludes the member from available-partner selection.
+- Clear only today/future registrations, leaving former partners registered as singles and unaffected pairs intact.
+- Preserve all account fields and historical registrations/teams; store deactivation timestamp and administrator ID.
+- Do not allow deactivation of the last active administrator. Self-deactivation with another active admin signs out.
+- Repeated deactivation is harmless; reset-password, promote and CSV import do not reactivate accounts.
+- Additive, repeatable member-status migration defaults all existing members to active; normal startup never migrates.
+- Database guards stop older app versions creating sessions/registrations for inactive members.
+- Check mobile, keyboard focus, cancellation, failures, stale reviews, authentication, teams, exports and floating logo.
+
 ## Floating transparent club logo
 - Use the exact transparent PNG from the separate logo project, preserving its colors and alpha channel.
 - Render one persistent noninteractive logo outside the route container, on Home, About, Login and member/admin Calendar.

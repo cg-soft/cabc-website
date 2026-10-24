@@ -4,13 +4,14 @@ import { randomBytes } from "node:crypto";
 import { pathToFileURL } from "node:url";
 import path from "node:path";
 import { registeredGamesCalendar } from "./icalendar.mjs";
-import { ROOT, openDatabase, passwordHash, passwordMatches, hashToken, transaction, addMember, clubToday, HttpError } from "./db.mjs";
+import { ROOT, openDatabase, passwordHash, passwordMatches, hashToken, transaction, addMember, clubToday, HttpError, requireMemberStatus } from "./db.mjs";
 
 export function createApp({ db = openDatabase(), preview = false, previewToday } = {}) {
   if (!db.prepare("PRAGMA table_info(games)").all().some(column => column.name === "event_type") ||
       !db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='team_members'").get() ||
       db.prepare("SELECT count(*) AS n FROM sqlite_master WHERE type='trigger' AND name IN ('dissolve_team_before_entry_delete','dissolve_team_before_partner_change')").get().n !== 2)
     throw new Error("Team-events migration required. Run node migrate.mjs team-events with the same DB_PATH. Startup never migrates databases.");
+  requireMemberStatus(db);
   if (preview && db.prepare("SELECT value FROM metadata WHERE key='preview'").get()?.value !== "1")
     throw new Error("Preview access is restricted to an explicitly seeded preview database.");
   const today = () => preview && previewToday ? previewToday : clubToday();
@@ -38,6 +39,7 @@ export function createApp({ db = openDatabase(), preview = false, previewToday }
     if (++state.count > 30) throw new HttpError(429, "Too many sign-in attempts. Please wait 15 minutes.");
   }
   function session(member) {
+    if (!member || member.active !== 1) throw new HttpError(401, "Email or password is incorrect.");
     db.prepare("DELETE FROM sessions WHERE expires<?").run(Date.now());
     const token = randomBytes(32).toString("hex");
     db.prepare("INSERT INTO sessions VALUES(?,?,?)").run(hashToken(token), member.id, Date.now() + 12 * 3600000);
@@ -46,7 +48,7 @@ export function createApp({ db = openDatabase(), preview = false, previewToday }
   function auth(req) {
     const token = (req.headers.authorization || "").replace(/^Bearer /, "");
     if (!/^[a-f0-9]{64}$/.test(token)) throw new HttpError(401, "Please sign in again.");
-    const user = db.prepare("SELECT m.id,m.name,m.role FROM members m JOIN sessions s ON s.member_id=m.id WHERE s.hash=? AND s.expires>?")
+    const user = db.prepare("SELECT m.id,m.name,m.role FROM members m JOIN sessions s ON s.member_id=m.id WHERE s.hash=? AND s.expires>? AND m.active=1")
       .get(hashToken(token), Date.now());
     if (!user) throw new HttpError(401, "Your session has expired. Please sign in again.");
     return user;
@@ -67,7 +69,21 @@ export function createApp({ db = openDatabase(), preview = false, previewToday }
     const partner = db.prepare("SELECT partner_id FROM entries WHERE game_id=? AND member_id=?").get(gameId, memberId)?.partner_id;
     if (!partner || db.prepare("SELECT partner_id FROM entries WHERE game_id=? AND member_id=?").get(gameId, partner)?.partner_id !== memberId)
       throw new HttpError(409, "Both pairs must be fully registered. Refresh the calendar and try again.");
+    if (db.prepare("SELECT count(*) AS n FROM members WHERE id IN (?,?) AND active=1").get(memberId, partner).n !== 2)
+      throw new HttpError(409, "A member is no longer active. Refresh the calendar and choose another pair.");
     return [memberId, partner];
+  }
+  function deactivationPlan(id) {
+    const member = db.prepare("SELECT id,name,email,role,active FROM members WHERE id=?").get(id);
+    if (!member) throw new HttpError(404, "Member not found.");
+    const date = today();
+    const games = db.prepare("SELECT g.id,g.date,g.name,g.time FROM games g JOIN entries e ON e.game_id=g.id WHERE e.member_id=? AND g.date>=? ORDER BY g.date,g.id").all(id, date);
+    const entries = db.prepare("SELECT e.* FROM entries e JOIN games g ON g.id=e.game_id WHERE g.date>=? AND (e.member_id=? OR e.partner_id=?) ORDER BY e.game_id,e.member_id").all(date, id, id);
+    const teams = db.prepare("SELECT DISTINCT t.* FROM team_members t JOIN team_members a ON a.game_id=t.game_id AND a.team_id=t.team_id JOIN entries e ON e.game_id=a.game_id AND e.member_id=a.member_id JOIN games g ON g.id=e.game_id WHERE g.date>=? AND (e.member_id=? OR e.partner_id=?) ORDER BY t.game_id,t.team_id,t.member_id").all(date, id, id);
+    const canDeactivate = member.active === 1 && !(member.role === "admin" && db.prepare("SELECT count(*) AS n FROM members WHERE role='admin' AND active=1").get().n <= 1);
+    return { member, games, today: date, registrationCount: games.length,
+      teamCount: new Set(teams.map(t => `${t.game_id}:${t.team_id}`)).size, canDeactivate,
+      revision: hashToken(JSON.stringify({ member, date, games, entries, teams })) };
   }
   const server = http.createServer(async (req, res) => {
     const reply = (status, data) => {
@@ -114,16 +130,49 @@ export function createApp({ db = openDatabase(), preview = false, previewToday }
         if (password.length > 128 || email.length > 180) throw new HttpError(400, "Invalid email or password.");
         const member = db.prepare("SELECT * FROM members WHERE email=?").get(email);
         const valid = passwordMatches(password, member?.password || dummy);
-        if (!member || !valid) throw new HttpError(401, "Email or password is incorrect.");
-        return reply(200, session(member));
+        if (!member || !valid || member.active !== 1) throw new HttpError(401, "Email or password is incorrect.");
+        return reply(200, transaction(db, () => {
+          const current = db.prepare("SELECT * FROM members WHERE id=?").get(member.id);
+          if (!current || current.password !== member.password) throw new HttpError(401, "Email or password is incorrect.");
+          return session(current);
+        }));
       }
       if (route === "/api/preview" && req.method === "POST") {
         if (!preview) throw new HttpError(404, "Not found.");
         limit(req);
         const email = body.role === "admin" ? "admin@preview.invalid" : "member@preview.invalid";
-        return reply(200, session(db.prepare("SELECT * FROM members WHERE email=?").get(email)));
+        return reply(200, transaction(db, () => session(db.prepare("SELECT * FROM members WHERE email=?").get(email))));
       }
       const user = auth(req);
+      if (route === "/api/members/manage" && req.method === "GET") {
+        admin(user);
+        return reply(200, { members: db.prepare("SELECT id,name,email,role,active FROM members ORDER BY active DESC,name,email").all() });
+      }
+      const deactivateRoute = /^\/api\/members\/(\d+)\/deactivate$/.exec(route);
+      if (deactivateRoute && ["GET", "POST"].includes(req.method)) {
+        admin(user);
+        const id = Number(deactivateRoute[1]);
+        if (!Number.isSafeInteger(id) || id <= 0) throw new HttpError(400, "Choose a valid member.");
+        if (req.method === "GET") return reply(200, transaction(db, () => { admin(auth(req)); return deactivationPlan(id); }));
+        if (body.confirm !== true || typeof body.revision !== "string" || !/^[a-f0-9]{64}$/.test(body.revision))
+          throw new HttpError(400, "Review the member and confirm deactivation first.");
+        const result = transaction(db, () => {
+          const actor = auth(req); admin(actor);
+          const plan = deactivationPlan(id);
+          if (plan.member.active === 0) return { ok: true, alreadyInactive: true, self: id === actor.id };
+          if (!plan.canDeactivate) throw new HttpError(409, "You cannot deactivate the last active administrator.");
+          if (plan.revision !== body.revision) throw new HttpError(409, "This member or their registrations changed. Review deactivation again.");
+          // Remove future relationships before changing status. Existing team
+          // triggers dissolve affected teams, leaving unaffected pairs intact.
+          db.prepare("UPDATE entries SET partner_id=NULL WHERE partner_id=? AND game_id IN (SELECT id FROM games WHERE date>=?)").run(id, plan.today);
+          db.prepare("DELETE FROM entries WHERE member_id=? AND game_id IN (SELECT id FROM games WHERE date>=?)").run(id, plan.today);
+          db.prepare("UPDATE members SET active=0,deactivated_at=?,deactivated_by=? WHERE id=?")
+            .run(new Date().toISOString(), actor.id, id);
+          db.prepare("DELETE FROM sessions WHERE member_id=?").run(id);
+          return { ok: true, self: id === actor.id, registrationCount: plan.registrationCount, teamCount: plan.teamCount };
+        });
+        return reply(200, result);
+      }
       if (route === "/api/calendar/export.ics" && req.method === "GET") {
         const games = db.prepare("SELECT g.id,g.date,g.time,g.name FROM games g JOIN entries e ON e.game_id=g.id WHERE e.member_id=? AND g.date>=? ORDER BY g.date,g.time,g.id")
           .all(user.id, today());
@@ -180,7 +229,7 @@ export function createApp({ db = openDatabase(), preview = false, previewToday }
         const entries = month ? db.prepare("SELECT e.game_id,e.member_id,e.partner_id,m.name FROM entries e JOIN members m ON m.id=e.member_id JOIN games g ON g.id=e.game_id WHERE g.date LIKE ? ORDER BY m.name")
           .all(`${month}-%`) : [];
         // Only names and IDs needed for partnership selection, never member emails.
-        const members = db.prepare("SELECT id,name FROM members ORDER BY name").all();
+        const members = db.prepare("SELECT id,name,active FROM members ORDER BY name").all();
         const teamRows = month ? db.prepare("SELECT t.game_id,t.team_id,t.member_id FROM team_members t JOIN games g ON g.id=t.game_id WHERE g.date LIKE ? ORDER BY t.team_id,t.member_id").all(`${month}-%`) : [];
         const groups = new Map();
         for (const row of teamRows) {
@@ -224,9 +273,13 @@ export function createApp({ db = openDatabase(), preview = false, previewToday }
       const nameRoute = /^\/api\/games\/(\d+)\/name$/.exec(route);
       if (nameRoute && req.method === "POST") {
         admin(user);
-        const row = game(Number(nameRoute[1]));
         const name = gameName(body.name);
-        db.prepare("UPDATE games SET name=? WHERE id=?").run(name, row.id);
+        const row = transaction(db, () => {
+          admin(auth(req));
+          const current = game(Number(nameRoute[1]));
+          db.prepare("UPDATE games SET name=? WHERE id=?").run(name, current.id);
+          return current;
+        });
         return reply(200, { id: row.id, name });
       }
       const entryRoute = /^\/api\/games\/(\d+)\/entry$/.exec(route);
@@ -236,11 +289,12 @@ export function createApp({ db = openDatabase(), preview = false, previewToday }
         if (partner !== null && (!Number.isSafeInteger(partner) || partner <= 0 || partner === user.id))
           throw new HttpError(400, "Choose a different available member.");
         transaction(db, () => {
+          auth(req);
           game(gameId);
           const current = db.prepare("SELECT * FROM entries WHERE game_id=? AND member_id=?").get(gameId, user.id);
           if (current?.partner_id) throw new HttpError(409, "You already have a partner for this date.");
           if (partner !== null) {
-            if (!db.prepare("SELECT id FROM members WHERE id=?").get(partner)) throw new HttpError(400, "Member not found.");
+            if (!db.prepare("SELECT id FROM members WHERE id=? AND active=1").get(partner)) throw new HttpError(409, "That member is no longer available. Choose another partner.");
             if (db.prepare("SELECT partner_id FROM entries WHERE game_id=? AND member_id=?").get(gameId, partner)?.partner_id)
               throw new HttpError(409, "That member is no longer available. Choose another partner.");
           }
@@ -253,6 +307,7 @@ export function createApp({ db = openDatabase(), preview = false, previewToday }
       if (entryRoute && req.method === "DELETE") {
         const gameId = Number(entryRoute[1]);
         transaction(db, () => {
+          auth(req);
           game(gameId);
           db.prepare("UPDATE entries SET partner_id=NULL WHERE game_id=? AND partner_id=?").run(gameId, user.id);
           db.prepare("DELETE FROM entries WHERE game_id=? AND member_id=?").run(gameId, user.id);
@@ -269,13 +324,16 @@ export function createApp({ db = openDatabase(), preview = false, previewToday }
         if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(parsed.valueOf()) || parsed.toISOString().slice(0, 10) !== date ||
             date < today() || !/^([01]\d|2[0-3]):[0-5]\d$/.test(time))
           throw new HttpError(400, "Choose a current or future date and a valid time.");
-        if (db.prepare("SELECT id FROM games WHERE date=?").get(date)) throw new HttpError(409, "This playing date already exists.");
-        const result = db.prepare("INSERT INTO games(date,time,name,event_type) VALUES(?,?,?,?)").run(date, time, name, eventType);
+        const result = transaction(db, () => {
+          admin(auth(req));
+          if (db.prepare("SELECT id FROM games WHERE date=?").get(date)) throw new HttpError(409, "This playing date already exists.");
+          return db.prepare("INSERT INTO games(date,time,name,event_type) VALUES(?,?,?,?)").run(date, time, name, eventType);
+        });
         return reply(201, { id: Number(result.lastInsertRowid), date, name, eventType });
       }
       if (route === "/api/members" && req.method === "POST") {
         admin(user);
-        return reply(201, { id: addMember(db, body) });
+        return reply(201, { id: transaction(db, () => { admin(auth(req)); return addMember(db, body); }) });
       }
       throw new HttpError(404, "Not found.");
     } catch (error) {

@@ -3,7 +3,7 @@ import { DatabaseSync } from "node:sqlite";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { ROOT, privateFile } from "./db.mjs";
+import { ROOT, privateFile, installMemberStatus } from "./db.mjs";
 
 export function migrateGameNames(filename = process.env.DB_PATH || path.join(ROOT, "data/club.sqlite")) {
   const file = privateFile(filename);
@@ -71,11 +71,39 @@ export function migrateTeamEvents(filename = process.env.DB_PATH || path.join(RO
     throw error;
   } finally { db.close(); }
 }
+export function migrateMemberStatus(filename = process.env.DB_PATH || path.join(ROOT, "data/club.sqlite")) {
+  const file = privateFile(filename);
+  if (!existsSync(file)) throw new Error("Database not found. Check DB_PATH; migration will not initialize a replacement.");
+  const db = new DatabaseSync(file);
+  let pending = false;
+  try {
+    db.exec("PRAGMA foreign_keys=ON; PRAGMA busy_timeout=10000;");
+    if (db.prepare("PRAGMA user_version").get().user_version !== 1)
+      throw new Error("Unsupported database schema. Expected CABC baseline version 1.");
+    db.exec("BEGIN IMMEDIATE"); pending = true;
+    if (!db.prepare("PRAGMA table_info(games)").all().some(c => c.name === "event_type") ||
+        !db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='team_members'").get())
+      throw new Error("Run node migrate.mjs team-events first.");
+    const counts = () => Object.fromEntries(["members", "games", "entries", "sessions", "team_members"].map(
+      table => [table, db.prepare(`SELECT count(*) AS n FROM ${table}`).get().n]));
+    const before = counts();
+    const applied = installMemberStatus(db);
+    db.prepare("INSERT INTO metadata(key,value) VALUES('migration:003-member-status',?) ON CONFLICT(key) DO NOTHING")
+      .run(new Date().toISOString());
+    const after = counts();
+    if (JSON.stringify(before) !== JSON.stringify(after)) throw new Error("Row counts changed; migration rolled back.");
+    db.exec("COMMIT"); pending = false;
+    return { applied, before, after };
+  } catch (error) {
+    if (pending) db.exec("ROLLBACK");
+    throw error;
+  } finally { db.close(); }
+}
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try {
     const command = process.argv[2];
-    if (!["game-names", "team-events"].includes(command)) throw new Error("Usage: node migrate.mjs game-names | team-events");
-    const result = command === "team-events" ? migrateTeamEvents() : migrateGameNames();
+    if (!["game-names", "team-events", "member-status"].includes(command)) throw new Error("Usage: node migrate.mjs game-names | team-events | member-status");
+    const result = command === "member-status" ? migrateMemberStatus() : command === "team-events" ? migrateTeamEvents() : migrateGameNames();
     console.log(result.applied ? `${command} migration applied.` : `${command} schema already present; no duplicate changes.`);
     console.log("Before:", result.before);
     console.log("After: ", result.after);
