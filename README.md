@@ -20,6 +20,23 @@ To load members from a private CSV containing `name,email,initial-password`,
 follow [IMPORT-MEMBERS.md](IMPORT-MEMBERS.md). The importer defaults to a dry run,
 adds member accounts only, and never overwrites existing credentials.
 
+## Team events
+
+Administrators can create either Pairs or Teams dates. In a team event, members
+first register as pairs; either member of either pair can immediately combine
+with one other complete, available pair to form a team of four. No acceptance
+step is required.
+
+The calendar identifies team dates and counts complete teams. The dance card
+lists all teams, pairs seeking teammates, and individuals seeking partners.
+Leaving a team preserves both pair registrations. Cancelling an individual
+registration dissolves the team, leaving the other pair intact.
+
+Existing installations must follow [TEAM-EVENTS.md](TEAM-EVENTS.md), including
+the explicit `node migrate.mjs team-events` migration before starting the new
+server. Existing dates remain Pairs. Startup never applies migrations; no build
+or new dependency is required. Event type is fixed when a date is created.
+
 ## Export registered games
 
 Signed-in members and administrators can select **Export my games** above the
@@ -50,11 +67,15 @@ on a computer, as described in
 The serializer uses the timezone, escaping and line-folding rules in
 [RFC 5545](https://www.rfc-editor.org/rfc/rfc5545).
 
-Upgrade an otherwise current installation by uploading **icalendar.mjs** (new),
+For the original export-only release, upgrade an otherwise current installation by uploading **icalendar.mjs** (new),
 **server.mjs** and **public/app.js**, then restart the Node application and refresh
 the browser. Upload the new module before the server file. No build, dependency
 installation, database initialization or schema migration is needed. See
 [HOSTING.md](HOSTING.md) for the Dathorn paths.
+
+For this newer team-events release, use [TEAM-EVENTS.md](TEAM-EVENTS.md) instead:
+it also requires migration and additional files. The old export-only procedure
+is not sufficient to install the current server over an unmigrated database.
 
 ## Scope
 
@@ -69,6 +90,7 @@ installation, database initialization or schema migration is needed. See
 - Members can register alone, choose an available partner, see all pairs for a date,
   and cancel their own registration.
 - Administrators use the same calendar, with small dialogs to add a date or member.
+- Team events combine two complete pairs immediately, with available-pair selection and safe team dissolution.
 
 No announcements, document library, directory page, analytics, recurring-event
 engine, invitation-email service, payments, or separate admin dashboard.
@@ -98,7 +120,9 @@ server.mjs          HTTP, authentication and calendar/registration endpoints
 icalendar.mjs       Pacific-time iCalendar formatting for registered-game exports
 export-tests.mjs    Export privacy, formatting, registration and session tests
 db.mjs              Private storage and password helpers
-schema.sql          Explicit initial database schema
+schema.sql          Baseline database schema (new initialization also installs team schema)
+team-schema.sql     Additive team membership table, index and protection triggers
+team-tests.mjs      Migration, formation, ownership, race, dissolution and backup checks
 migrate.mjs         Explicit additive migrations for the minimal site
 manage.mjs          Initialize, create fictional preview, reset a password, promote a member
 manage-tests.mjs    Operator promotion, preservation and management regression tests

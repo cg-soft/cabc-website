@@ -7,6 +7,10 @@ import { registeredGamesCalendar } from "./icalendar.mjs";
 import { ROOT, openDatabase, passwordHash, passwordMatches, hashToken, transaction, addMember, clubToday, HttpError } from "./db.mjs";
 
 export function createApp({ db = openDatabase(), preview = false, previewToday } = {}) {
+  if (!db.prepare("PRAGMA table_info(games)").all().some(column => column.name === "event_type") ||
+      !db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='team_members'").get() ||
+      db.prepare("SELECT count(*) AS n FROM sqlite_master WHERE type='trigger' AND name IN ('dissolve_team_before_entry_delete','dissolve_team_before_partner_change')").get().n !== 2)
+    throw new Error("Team-events migration required. Run node migrate.mjs team-events with the same DB_PATH. Startup never migrates databases.");
   if (preview && db.prepare("SELECT value FROM metadata WHERE key='preview'").get()?.value !== "1")
     throw new Error("Preview access is restricted to an explicitly seeded preview database.");
   const today = () => preview && previewToday ? previewToday : clubToday();
@@ -58,6 +62,12 @@ export function createApp({ db = openDatabase(), preview = false, previewToday }
     if (!row) throw new HttpError(404, "Playing date not found.");
     if (row.date < today()) throw new HttpError(409, "Registration for this date is closed.");
     return row;
+  }
+  function completePair(gameId, memberId) {
+    const partner = db.prepare("SELECT partner_id FROM entries WHERE game_id=? AND member_id=?").get(gameId, memberId)?.partner_id;
+    if (!partner || db.prepare("SELECT partner_id FROM entries WHERE game_id=? AND member_id=?").get(gameId, partner)?.partner_id !== memberId)
+      throw new HttpError(409, "Both pairs must be fully registered. Refresh the calendar and try again.");
+    return [memberId, partner];
   }
   const server = http.createServer(async (req, res) => {
     const reply = (status, data) => {
@@ -171,7 +181,45 @@ export function createApp({ db = openDatabase(), preview = false, previewToday }
           .all(`${month}-%`) : [];
         // Only names and IDs needed for partnership selection, never member emails.
         const members = db.prepare("SELECT id,name FROM members ORDER BY name").all();
-        return reply(200, { month, months, games, entries, members, user, today: currentDate });
+        const teamRows = month ? db.prepare("SELECT t.game_id,t.team_id,t.member_id FROM team_members t JOIN games g ON g.id=t.game_id WHERE g.date LIKE ? ORDER BY t.team_id,t.member_id").all(`${month}-%`) : [];
+        const groups = new Map();
+        for (const row of teamRows) {
+          const key = `${row.game_id}:${row.team_id}`;
+          if (!groups.has(key)) groups.set(key, { id: row.team_id, game_id: row.game_id, memberIds: [] });
+          groups.get(key).memberIds.push(row.member_id);
+        }
+        return reply(200, { month, months, games, entries, members, teams: [...groups.values()], user, today: currentDate });
+      }
+      const teamRoute = /^\/api\/games\/(\d+)\/team$/.exec(route);
+      if (teamRoute && ["POST", "DELETE"].includes(req.method)) {
+        const gameId = Number(teamRoute[1]);
+        transaction(db, () => {
+          auth(req);
+          if (game(gameId).event_type !== "teams") throw new HttpError(409, "This date is a pairs event, not a team event.");
+          if (req.method === "DELETE") {
+            if (typeof body.teamId !== "string") throw new HttpError(400, "Choose your current team.");
+            const current = db.prepare("SELECT team_id FROM team_members WHERE game_id=? AND member_id=?").get(gameId, user.id);
+            if (!current || current.team_id !== body.teamId)
+              throw new HttpError(409, "Your team changed. Refresh the calendar and try again.");
+            db.prepare("DELETE FROM team_members WHERE game_id=? AND team_id=?").run(gameId, current.team_id);
+          } else {
+            const { pairMemberId, pairPartnerId, ownPartnerId } = body;
+            if (![pairMemberId, pairPartnerId, ownPartnerId].every(id => Number.isSafeInteger(id) && id > 0))
+              throw new HttpError(400, "Choose an available registered pair.");
+            const own = completePair(gameId, user.id);
+            const other = completePair(gameId, pairMemberId);
+            if (own[1] !== ownPartnerId || other[1] !== pairPartnerId)
+              throw new HttpError(409, "A partnership changed. Refresh the calendar and choose again.");
+            const ids = [...own, ...other];
+            if (new Set(ids).size !== 4) throw new HttpError(400, "Choose a different pair to form a four-person team.");
+            const occupied = db.prepare("SELECT member_id FROM team_members WHERE game_id=? AND member_id IN (?,?,?,?)").all(gameId, ...ids);
+            if (occupied.length) throw new HttpError(409, "One of these pairs is already on a team. Refresh the calendar and choose again.");
+            const teamId = randomBytes(16).toString("hex");
+            const insert = db.prepare("INSERT INTO team_members(game_id,member_id,team_id) VALUES(?,?,?)");
+            for (const id of ids) insert.run(gameId, id, teamId);
+          }
+        });
+        return reply(200, { ok: true });
       }
       const nameRoute = /^\/api\/games\/(\d+)\/name$/.exec(route);
       if (nameRoute && req.method === "POST") {
@@ -214,14 +262,16 @@ export function createApp({ db = openDatabase(), preview = false, previewToday }
       if (route === "/api/games" && req.method === "POST") {
         admin(user);
         const name = gameName(body.name);
+        const eventType = body.eventType === undefined ? "pairs" : body.eventType;
+        if (!["pairs", "teams"].includes(eventType)) throw new HttpError(400, "Choose Pairs or Teams.");
         const date = String(body.date || ""), time = String(body.time || "");
         const parsed = new Date(`${date}T12:00:00Z`);
         if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(parsed.valueOf()) || parsed.toISOString().slice(0, 10) !== date ||
             date < today() || !/^([01]\d|2[0-3]):[0-5]\d$/.test(time))
           throw new HttpError(400, "Choose a current or future date and a valid time.");
         if (db.prepare("SELECT id FROM games WHERE date=?").get(date)) throw new HttpError(409, "This playing date already exists.");
-        const result = db.prepare("INSERT INTO games(date,time,name) VALUES(?,?,?)").run(date, time, name);
-        return reply(201, { id: Number(result.lastInsertRowid), date, name });
+        const result = db.prepare("INSERT INTO games(date,time,name,event_type) VALUES(?,?,?,?)").run(date, time, name, eventType);
+        return reply(201, { id: Number(result.lastInsertRowid), date, name, eventType });
       }
       if (route === "/api/members" && req.method === "POST") {
         admin(user);

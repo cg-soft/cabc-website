@@ -1,5 +1,20 @@
 # Main flows and calendar layout checks
 
+## Team events
+- Admin selects Pairs (default) or Teams when adding a date; existing dates remain Pairs.
+- Calendar desktop/mobile identifies team events and shows completed-team counts.
+- Pair registration is unchanged; singles cannot form teams until paired.
+- Either member of either complete pair can immediately combine with one other available complete pair.
+- Validate both partnerships under a write lock; never let anyone join two teams on the same date.
+- Show all four players in each team, pairs seeking teammates, and singles seeking partners.
+- Either member may leave their own team; both pairs remain registered and available.
+- Cancellation/broken partnership dissolves its entire team; unaffected pair stays paired.
+- Old server cancellation SQL also dissolves teams through additive database triggers.
+- Reject stale selections, other people's teams, pair-event requests, expired sessions and closed dates.
+- Explicit team-events migration preserves baseline rows, is repeatable, and is never run on normal startup.
+- Export still contains one game per personal registration and preserves historical event IDs.
+- Recheck home/About/login, month selection, admin dialogs, passwords, export and pair-event workflows.
+
 ## Export my registered games
 - Members and administrators see Export my games beside calendar controls on desktop and mobile.
 - Download cabc-my-games.ics containing only the signed-in member's registrations for today or later, across all months.

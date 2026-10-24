@@ -64,7 +64,7 @@ test("safe member import", async t => {
     db = openDatabase(database, true);
     const adminId = addMember(db, { name: "Existing Admin", email: "admin@example.test", password: "Existing-admin-password-12345" }, "admin");
     const oldId = addMember(db, { name: "Existing Member", email: "existing@example.test", password: "Existing-member-password-12345" });
-    db.exec("INSERT INTO games VALUES(1,'2098-11-01','11:30','Unchanged game')");
+    db.exec("INSERT INTO games(id,date,time,name) VALUES(1,'2098-11-01','11:30','Unchanged game')");
     db.prepare("INSERT INTO entries VALUES(1,?,?)").run(adminId, oldId);
     db.prepare("INSERT INTO entries VALUES(1,?,?)").run(oldId, adminId);
     const existingToken = "a".repeat(64);

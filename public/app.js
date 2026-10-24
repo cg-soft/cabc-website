@@ -128,6 +128,11 @@
       if (container.isConnected) container.innerHTML = `<div class="loading-surface"><p role="alert">${esc(error.message)}</p>${button("Try again", "retry", "quiet")}</div>`;
     } finally { if (container.isConnected) container.setAttribute("aria-busy", "false"); }
   }
+  function gameCount(game, pairs) {
+    if (game.event_type !== "teams") return `${pairs} ${pairs === 1 ? "pair" : "pairs"}`;
+    const count = (state.calendar.teams || []).filter(team => team.game_id === game.id).length;
+    return `${count} ${count === 1 ? "team" : "teams"}`;
+  }
   function drawCalendar() {
     const { games, entries, today } = state.calendar;
     if (!state.calendar.months.length) {
@@ -146,8 +151,8 @@
       const own = game && entries.find(e => e.game_id === game.id && e.member_id === state.user.id);
       const count = game ? entries.filter(e => e.game_id === game.id && e.partner_id).length / 2 : 0;
       const label = `<span class="day-number ${date === today ? "today-number" : ""}">${day}</span>`;
-      cells.push(game ? `<button class="day playing ${state.selected === date ? "selected" : ""} ${date < today ? "past" : ""}" data-date="${date}" aria-pressed="${state.selected === date}" aria-label="${game.name ? `${esc(game.name)}, ` : ""}${esc(dateLabel(date, { weekday: "long", month: "long", day: "numeric" }))}, ${timeLabel(game.time)}, ${count} pairs${own ? ", registered" : ""}">
-        <span class="day-top">${label}${own ? '<span class="registration-mark" aria-label="Registered">✓</span>' : ""}</span>${game.name ? `<span class="game-name">${esc(game.name)}</span>` : ""}<span class="game-time">${timeLabel(game.time)}</span><span class="game-meta">${count} ${count === 1 ? "pair" : "pairs"}</span></button>` :
+      cells.push(game ? `<button class="day playing ${state.selected === date ? "selected" : ""} ${date < today ? "past" : ""}" data-date="${date}" aria-pressed="${state.selected === date}" aria-label="${game.name ? `${esc(game.name)}, ` : ""}${game.event_type === "teams" ? "Team event, " : ""}${esc(dateLabel(date, { weekday: "long", month: "long", day: "numeric" }))}, ${timeLabel(game.time)}, ${gameCount(game, count)}${own ? ", registered" : ""}">
+        <span class="day-top">${label}${own ? '<span class="registration-mark" aria-label="Registered">✓</span>' : ""}</span>${game.name ? `<span class="game-name">${esc(game.name)}</span>` : ""}${game.event_type === "teams" ? '<span class="event-type">Team event</span>' : ""}<span class="game-time">${timeLabel(game.time)}</span><span class="game-meta">${gameCount(game, count)}</span></button>` :
         `<div class="day">${label}</div>`);
     }
     const agenda = games.map(game => {
@@ -156,9 +161,9 @@
       const partner = state.calendar.members.find(m => m.id === own?.partner_id);
       const status = own ? (partner ? `With ${partner.name}` : "Registered · partner needed") :
         game.date < today ? "Registration closed" : "Choose your partner";
-      return `<button class="agenda-date ${game.date === state.selected ? "selected" : ""} ${game.date < today ? "past" : ""}" data-date="${game.date}" aria-pressed="${game.date === state.selected}" aria-label="${game.name ? `${esc(game.name)}, ` : ""}${esc(dateLabel(game.date, {weekday:"long",month:"long",day:"numeric"}))}, ${timeLabel(game.time)}, ${count} ${count === 1 ? "pair" : "pairs"}, ${esc(status)}">
+      return `<button class="agenda-date ${game.date === state.selected ? "selected" : ""} ${game.date < today ? "past" : ""}" data-date="${game.date}" aria-pressed="${game.date === state.selected}" aria-label="${game.name ? `${esc(game.name)}, ` : ""}${game.event_type === "teams" ? "Team event, " : ""}${esc(dateLabel(game.date, {weekday:"long",month:"long",day:"numeric"}))}, ${timeLabel(game.time)}, ${gameCount(game, count)}, ${esc(status)}">
         <span class="agenda-number"><span>${dateLabel(game.date,{month:"short"})}</span><strong>${Number(game.date.slice(-2))}</strong></span>
-        <span class="agenda-copy"><strong>${esc(game.name || dateLabel(game.date,{weekday:"long"}))}</strong><span>${game.name ? `${dateLabel(game.date,{weekday:"short"})} · ` : ""}${timeLabel(game.time)} <span aria-hidden="true">·</span> ${count} ${count === 1 ? "pair" : "pairs"}</span><span class="agenda-status">${esc(status)}</span></span>
+        <span class="agenda-copy"><strong>${esc(game.name || dateLabel(game.date,{weekday:"long"}))}</strong>${game.event_type === "teams" ? '<span class="event-type">Team event</span>' : ""}<span>${game.name ? `${dateLabel(game.date,{weekday:"short"})} · ` : ""}${timeLabel(game.time)} <span aria-hidden="true">·</span> ${gameCount(game, count)}</span><span class="agenda-status">${esc(status)}</span></span>
         <span class="agenda-indicator" aria-hidden="true">${own ? "✓" : "›"}</span></button>`;
     }).join("");
     document.querySelector("#calendar-content").innerHTML = `<div class="calendar-layout"><section class="calendar" aria-label="Playing dates calendar">
@@ -191,9 +196,28 @@
       <option value="">${own ? "Choose an available member" : "I’m looking for a partner"}</option>${available.map(m => `<option value="${m.id}">${esc(m.name)}</option>`).join("")}
       </select></label><p class="small-note">Choosing a partner registers both of you.</p><p class="form-error" role="alert"></p><button type="submit" class="primary wide">${own ? "Register partnership" : "Register"}</button></form>${own ? button("Cancel my registration", "cancel", "text-button danger") : ""}`;
     return `<div class="dance-date-header"><div class="selected-date-number" aria-hidden="true"><span>${dateLabel(game.date,{month:"short"})}</span><strong>${Number(game.date.slice(-2))}</strong></div><div><p class="eyebrow">Dance card</p><h2>${esc(game.name || dateLabel(game.date, { weekday: "long", month: "long", day: "numeric" }))}</h2>${game.name ? `<p class="muted game-date-label">${dateLabel(game.date, { weekday: "long", month: "long", day: "numeric" })}</p>` : ""}<p class="muted">${timeLabel(game.time)} · Pacific time</p>${state.user.role === "admin" && !closed ? button("Edit name", "edit-name", "text-button edit-name") : ""}</div></div>
-      <div class="registration-area">${registration}</div><div class="pair-heading"><h3>Registered pairs</h3><span>${pairs.length} ${pairs.length === 1 ? "pair" : "pairs"}</span></div>
-      ${pairs.length ? `<ol class="pairs">${pairs.map(e => `<li><span>${esc(e.name)}</span><span>${esc(name(e.partner_id))}</span></li>`).join("")}</ol>` : '<p class="empty-copy">No pairs yet. There’s a place for you.</p>'}
+      ${game.event_type === "teams" ? '<p class="team-intro"><strong>Team event</strong> · Register as a pair, then join another pair to make a team of four.</p>' : ""}
+      <div class="registration-area">${registration}</div>${game.event_type === "teams" ? teamCard(game, own, pairs, name, closed) : `<div class="pair-heading"><h3>Registered pairs</h3><span>${pairs.length} ${pairs.length === 1 ? "pair" : "pairs"}</span></div>
+      ${pairs.length ? `<ol class="pairs">${pairs.map(e => `<li><span>${esc(e.name)}</span><span>${esc(name(e.partner_id))}</span></li>`).join("")}</ol>` : '<p class="empty-copy">No pairs yet. There’s a place for you.</p>'}`}
       ${singles.length ? `<div class="waiting"><h3>Looking for a partner</h3>${singles.map(e => `<p>${esc(e.name)}${e.member_id === state.user.id ? " (you)" : ""}</p>`).join("")}</div>` : ""}`;
+  }
+  function teamCard(game, own, pairs, name, closed) {
+    const teams = (state.calendar.teams || []).filter(team => team.game_id === game.id);
+    const occupied = new Set(teams.flatMap(team => team.memberIds));
+    const mine = teams.find(team => team.memberIds.includes(state.user.id));
+    const waiting = pairs.filter(pair => !occupied.has(pair.member_id));
+    const available = waiting.filter(pair => pair.member_id !== state.user.id && pair.partner_id !== state.user.id);
+    const label = pair => `${name(pair.member_id)} + ${name(pair.partner_id)}`;
+    let controls = "";
+    if (!closed) {
+      if (mine) controls = `<div class="your-registration team-status"><p class="eyebrow">Your team is complete</p><p>Both pairs are registered together.</p>${button("Leave team", "leave-team", "text-button danger")}</div>`;
+      else if (own?.partner_id && available.length) controls = `<form id="team-form" data-game="${game.id}" data-own-partner="${own.partner_id}" class="team-form"><label>Choose another pair<select name="pair" aria-label="Choose another pair" required><option value="">Select an available pair</option>${available.map(pair => `<option value="${pair.member_id}:${pair.partner_id}">${esc(label(pair))}</option>`).join("")}</select></label><p class="small-note">Forms the team immediately for all four players. No acceptance is required.</p><p class="form-error" role="alert"></p><button type="submit" class="primary wide">Form team</button></form>`;
+      else controls = `<p class="team-help">${own?.partner_id ? "Your pair is registered. No other pair is available yet; check back to form your team." : "Register with a partner first. Then either of you can combine with another registered pair."}</p>`;
+    }
+    return `${controls}<div class="pair-heading"><h3>Registered teams</h3><span>${teams.length} ${teams.length === 1 ? "team" : "teams"}</span></div>
+      ${teams.length ? `<ol class="team-list">${teams.map((team, index) => `<li class="team-item ${team.id === mine?.id ? "own-team" : ""}"><div class="team-label">Team ${index + 1}${team.id === mine?.id ? '<span>Your team</span>' : ""}</div>${pairs.filter(pair => team.memberIds.includes(pair.member_id)).map(pair => `<p>${esc(label(pair))}</p>`).join("")}</li>`).join("")}</ol>` : '<p class="empty-copy">No complete teams yet.</p>'}
+      <div class="pair-heading"><h3>Pairs seeking teammates</h3><span>${waiting.length}</span></div>
+      ${waiting.length ? `<ol class="pairs">${waiting.map(pair => `<li><span>${esc(name(pair.member_id))}</span><span>${esc(name(pair.partner_id))}</span></li>`).join("")}</ol>` : '<p class="empty-copy">No pairs waiting for teammates.</p>'}`;
   }
   function openDialog(title, content) {
     dialog.innerHTML = `<div class="dialog-heading"><h2 id="dialog-title">${title}</h2>${button("×", "close-dialog", "close-button")}</div>${content}`;
@@ -268,7 +292,7 @@
         }
         await loadCalendar(); return;
       }
-      if (action === "add-date") openDialog("Add a playing date", `<form id="date-form"><label>Game name (optional)<input name="name" maxlength="80" autocomplete="off" placeholder="For example, Monday Duplicate"></label><label>Date<input name="date" type="date" min="${state.config.today}" value="${state.config.today}" required></label><label>Start time (Pacific)<input name="time" type="time" value="11:30" required></label><p class="form-error" role="alert"></p><button type="submit" class="primary wide">Add date</button></form>`);
+      if (action === "add-date") openDialog("Add a playing date", `<form id="date-form"><label>Game name (optional)<input name="name" maxlength="80" autocomplete="off" placeholder="For example, Monday Duplicate"></label><label>Event type<select name="eventType" aria-label="Event type"><option value="pairs">Pairs</option><option value="teams">Teams (two pairs)</option></select></label><label>Date<input name="date" type="date" min="${state.config.today}" value="${state.config.today}" required></label><label>Start time (Pacific)<input name="time" type="time" value="11:30" required></label><p class="small-note">Event type is fixed when the date is created.</p><p class="form-error" role="alert"></p><button type="submit" class="primary wide">Add date</button></form>`);
       if (action === "edit-name") {
         const game = state.calendar.games.find(g => g.date === state.selected);
         openDialog("Edit game name", `<form id="name-form" data-game="${game.id}"><label>Game name (optional)<input name="name" value="${esc(game.name)}" maxlength="80" autocomplete="off"></label><p class="small-note">Changing the name keeps this date and all partnerships intact. Leave it blank to remove the name.</p><p class="form-error" role="alert"></p><button type="submit" class="primary wide">Save name</button></form>`);
@@ -277,7 +301,14 @@
       if (action === "cancel") {
         const game = state.calendar.games.find(g => g.date === state.selected);
         const own = state.calendar.entries.find(e => e.game_id === game.id && e.member_id === state.user.id);
-        openDialog("Cancel your registration?", `<p>You will be removed from the game on ${dateLabel(game.date)}.${own?.partner_id ? " Your partner will remain registered and be listed as looking for a partner." : ""}</p><form id="cancel-form" data-game="${game.id}"><p class="form-error" role="alert"></p><button type="submit" class="primary wide">Yes, cancel my registration</button></form>`);
+        const teamed = (state.calendar.teams || []).some(team => team.game_id === game.id && team.memberIds.includes(state.user.id));
+        openDialog("Cancel your registration?", `<p>You will be removed from the game on ${dateLabel(game.date)}.${own?.partner_id ? " Your partner will remain registered and be listed as looking for a partner." : ""}${teamed ? " Your team will dissolve. The other pair will stay registered together and become available for another team." : ""}</p><form id="cancel-form" data-game="${game.id}"><p class="form-error" role="alert"></p><button type="submit" class="primary wide">Yes, cancel my registration</button></form>`);
+      }
+      if (action === "leave-team") {
+        const game = state.calendar.games.find(g => g.date === state.selected);
+        const team = state.calendar.teams.find(t => t.game_id === game.id && t.memberIds.includes(state.user.id));
+        if (!team) return;
+        openDialog("Leave your team?", `<p>This dissolves the team. Both pairs will remain registered and become available to form new teams.</p><form id="leave-team-form" data-game="${game.id}" data-team="${esc(team.id)}"><p class="form-error" role="alert"></p><button type="submit" class="primary wide">Yes, leave team</button></form>`);
       }
     } catch (error) { toast(error.message); }
     finally { if (control.isConnected) control.disabled = false; }
@@ -315,10 +346,26 @@
         await loadCalendar(); toast(fields.partner ? "Partnership registered for both players." : "You’re registered and looking for a partner.");
       }
       if (form.id === "cancel-form") { await api(`/games/${form.dataset.game}/entry`, "DELETE", {}); dialog.close(); await loadCalendar(); toast("Your registration has been cancelled."); }
+      if (form.id === "team-form") {
+        const [pairMemberId, pairPartnerId] = fields.pair.split(":").map(Number);
+        await api(`/games/${form.dataset.game}/team`, "POST", { pairMemberId, pairPartnerId, ownPartnerId: Number(form.dataset.ownPartner) });
+        await loadCalendar(); toast("Team formed. All four players are registered together.");
+      }
+      if (form.id === "leave-team-form") {
+        await api(`/games/${form.dataset.game}/team`, "DELETE", { teamId: form.dataset.team });
+        dialog.close(); await loadCalendar(); toast("Team dissolved. Both pairs remain registered.");
+      }
       if (form.id === "date-form") { const result = await api("/games", "POST", fields); dialog.close(); state.month = result.date.slice(0, 7); state.selected = result.date; await loadCalendar(); toast("Playing date added."); }
       if (form.id === "name-form") { await api(`/games/${form.dataset.game}/name`, "POST", fields); dialog.close(); await loadCalendar(); toast("Game name saved."); }
       if (form.id === "member-form") { await api("/members", "POST", fields); dialog.close(); await loadCalendar(); toast("Member created. Share their credentials privately."); }
-    } catch (err) { if (error?.isConnected) error.textContent = err.message; else toast(err.message); }
+    } catch (err) {
+      if (form.id === "team-form" || form.id === "leave-team-form") {
+        // Refresh stale availability after a conflict instead of leaving invalid options.
+        if (dialog.open) dialog.close();
+        if (state.user) await loadCalendar();
+        toast(err.message);
+      } else if (error?.isConnected) error.textContent = err.message; else toast(err.message);
+    }
     finally {
       if (form.id === "password-form") {
         delete dialog.dataset.passwordPending;

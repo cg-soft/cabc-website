@@ -46,7 +46,16 @@ export function openDatabase(filename = process.env.DB_PATH || path.join(ROOT, "
     if (initialize) {
       if (version !== 0 && version !== SCHEMA) throw new Error("Unsupported database version.");
       db.exec("BEGIN IMMEDIATE");
-      try { db.exec(readFileSync(path.join(ROOT, "schema.sql"), "utf8")); db.exec("COMMIT"); }
+      try {
+        db.exec(readFileSync(path.join(ROOT, "schema.sql"), "utf8"));
+        // Only a genuinely new database gets the new feature schema here.
+        // Existing databases always require the explicit migration command.
+        if (version === 0) {
+          db.exec("ALTER TABLE games ADD COLUMN event_type TEXT NOT NULL DEFAULT 'pairs' CHECK(event_type IN ('pairs','teams'))");
+          db.exec(readFileSync(path.join(ROOT, "team-schema.sql"), "utf8"));
+        }
+        db.exec("COMMIT");
+      }
       catch (error) { db.exec("ROLLBACK"); throw error; }
     } else if (version !== SCHEMA) throw new Error("Incompatible database schema. Startup never migrates databases.");
     for (const table of ["members", "sessions", "games", "entries", "metadata"]) db.prepare(`SELECT * FROM ${table} LIMIT 0`).all();

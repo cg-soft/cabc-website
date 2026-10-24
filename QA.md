@@ -1,5 +1,49 @@
 # New minimal website verification
 
+## Immediate team events
+
+All 119 automated tests pass on both Node 22.23.2 and Node 24.20.0. The additive team-events migration
+preserves baseline members, password hashes, sessions, games and pair entries;
+existing dates default to pairs. Missing databases and unsupported schemas are
+refused, partial failures roll back, and repeated migration preserves existing
+teams. New server startup explicitly refuses an unmigrated database. Fresh
+initialization installs the new schema; normal startup does not.
+
+API checks cover admin-only type selection, invalid types, default pair events,
+anonymous/expired access, complete reciprocal partnerships, either partner
+initiating, duplicate membership prevention, stale partner selections, competing
+requests, unauthorized dissolution, whole-transaction rollback, cancellation,
+closed/missing dates, separate dates and months, migration repetition with real
+fixture teams, SQLite backup/reopening and integrity checks. Existing calendar
+export keeps one event per registration and retains its URL and legacy UID.
+Simulated old-release UPDATE/DELETE statements exercise the database triggers
+that dissolve teams when underlying partnerships change.
+
+Browser QA used only fictional preview databases. Checked administrator type
+selection, first-pair/no-other-pairs state, complete available-pair filtering,
+immediate team formation, all four names, either partner leaving, and all pairs
+being preserved. Two browser sessions reproduced a stale selection: the other
+pair formed a team elsewhere, the stale request was rejected, and the selector
+refreshed to remove both occupied pairs. Cancellation showed its consequence
+before submission, dissolved the team, retained the other pair and listed the
+former partner as a single.
+
+Regression browser checks covered the two-button homepage, About, invalid and
+valid login, admin member/date creation and renaming, actual password change
+and re-login, pair registration/cancellation, solo registration, month navigation,
+logout and calendar export. Desktop and 375px screenshots were inspected;
+mobile member/admin views had no horizontal overflow. The team selector and
+event-type selector have explicit accessible names. No JavaScript page errors
+were recorded.
+
+The existing private preview was updated and opened in a fresh browser context.
+The deployed interface formed and dissolved a team through its hosted API,
+showed both registered teams, restricted the dropdown to the remaining eligible
+pair, downloaded the calendar file, and fit the mobile viewport. Demo state was
+left with one complete fictional team and two available pairs. No Dathorn files,
+live accounts or production database were changed; TEAM-EVENTS.md contains the
+explicit six-file upload, backup, migration, restart and rollback instructions.
+
 ## Export link domain correction
 
 All 97 automated tests pass on Node 22.23.2. Export URL properties now use

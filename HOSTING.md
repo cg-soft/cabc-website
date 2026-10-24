@@ -16,6 +16,7 @@ icalendar.mjs
 db.mjs
 manage.mjs
 schema.sql
+team-schema.sql
 migrate.mjs
 package.json
 public/
@@ -34,6 +35,15 @@ Do not run `npm ci`; this dependency-free package intentionally has no lockfile.
 No database, accounts, credentials, or preview deployment folder is included.
 
 ## Confirm the host runtime first
+
+### Existing installation: team-events update
+
+The current release adds team events and **requires an explicit migration**
+on existing databases. Follow [Team events: usage and Dathorn upgrade](TEAM-EVENTS.md):
+stop the app, take a backup, upload the six listed files, run
+`node migrate.mjs team-events` with the live DB_PATH, then restart and refresh.
+Do not initialize or replace the existing database. All old games become Pairs.
+This supersedes the older export-only update instructions below.
 
 ### Existing installation: registered-game export update
 
@@ -167,7 +177,7 @@ running them. For a nonstandard SSH port, add `-e 'ssh -p YOUR_PORT'`.
 From the extracted source folder, preview the initial runtime upload:
 
 ```bash
-rsync -avzn app.cjs server.mjs icalendar.mjs db.mjs manage.mjs migrate.mjs schema.sql package.json public \
+rsync -avzn app.cjs server.mjs icalendar.mjs db.mjs manage.mjs migrate.mjs schema.sql team-schema.sql package.json public \
   cabc@YOUR_SSH_HOST:/home/cabc/src/cabc-minimal/
 ```
 

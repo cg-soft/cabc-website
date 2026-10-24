@@ -6,9 +6,10 @@
   "engines": { "node": ">=22.13.0" },
   "scripts": {
     "start": "node app.cjs",
-    "test": "node --test tests.mjs hosting-tests.mjs backup-tests.mjs calendar-tests.mjs password-tests.mjs import-members-tests.mjs manage-tests.mjs export-tests.mjs",
+    "test": "node --test tests.mjs hosting-tests.mjs backup-tests.mjs calendar-tests.mjs password-tests.mjs import-members-tests.mjs manage-tests.mjs export-tests.mjs team-tests.mjs",
     "members:import": "node import-members.mjs",
     "migrate:game-names": "node migrate.mjs game-names",
+    "migrate:team-events": "node migrate.mjs team-events",
     "backup:setup": "node backup.mjs setup",
     "backup": "node backup.mjs run",
     "backup:cron": "node backup.mjs cron",
