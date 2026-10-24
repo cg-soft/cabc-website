@@ -12,6 +12,7 @@ runtime upload is:
 ```text
 app.cjs
 server.mjs
+icalendar.mjs
 db.mjs
 manage.mjs
 schema.sql
@@ -33,6 +34,29 @@ Do not run `npm ci`; this dependency-free package intentionally has no lockfile.
 No database, accounts, credentials, or preview deployment folder is included.
 
 ## Confirm the host runtime first
+
+### Existing installation: registered-game export update
+
+For an otherwise current installation, upload these files:
+
+```text
+icalendar.mjs  -> /home/cabc/src/cabc-minimal/icalendar.mjs
+server.mjs     -> /home/cabc/src/cabc-minimal/server.mjs
+public/app.js  -> /home/cabc/src/cabc-minimal/public/app.js
+```
+
+Upload the new `icalendar.mjs` before `server.mjs`, then restart the application
+through Dathorn and refresh the browser. No build, new dependency, database
+initialization or migration is needed. Do not replace the private database.
+Keep `DB_PATH=/home/cabc/private/cabc-minimal/club.sqlite` unchanged.
+
+After signing in, choose **Export my games**. The `cabc-my-games.ics` download
+contains only that account's registered games for today or later, across all
+months. An account without upcoming registrations sees a message instead.
+The file is a snapshot, not a subscription. No production hosting changes are
+made by a repository push.
+
+### Runtime verification
 
 Use the Node environment activation command supplied by your hosting control
 panel, then run these commands in its terminal:
@@ -137,7 +161,7 @@ running them. For a nonstandard SSH port, add `-e 'ssh -p YOUR_PORT'`.
 From the extracted source folder, preview the initial runtime upload:
 
 ```bash
-rsync -avzn app.cjs server.mjs db.mjs manage.mjs migrate.mjs schema.sql package.json public \
+rsync -avzn app.cjs server.mjs icalendar.mjs db.mjs manage.mjs migrate.mjs schema.sql package.json public \
   cabc@YOUR_SSH_HOST:/home/cabc/src/cabc-minimal/
 ```
 

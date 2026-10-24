@@ -1,5 +1,16 @@
 # Main flows and calendar layout checks
 
+## Export my registered games
+- Members and administrators see Export my games beside calendar controls on desktop and mobile.
+- Download cabc-my-games.ics containing only the signed-in member's registrations for today or later, across all months.
+- Include paired and unpaired registrations once each; exclude past, cancelled and other members' games.
+- Use game names (with a club-name fallback), Pacific time including daylight-saving rules, and a link to the club site.
+- Do not invent end times, publish subscription links, or export names/emails/passwords of members.
+- No registrations produces a clear message and no empty download.
+- Handle expired sessions and failed downloads without exposing credentials or changing registrations.
+- Confirm stable event IDs, escaped/folded Unicode text and unchanged database records.
+- Recheck the public two-button homepage, About, login, date navigation, registration/cancellation, admin dialogs and password form.
+
 ## Operator promotion
 - Run `node manage.mjs promote` in an interactive terminal with the live `DB_PATH`.
 - Enter an existing member's email; whitespace and case are normalized.

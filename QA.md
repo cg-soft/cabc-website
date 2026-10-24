@@ -1,5 +1,38 @@
 # New minimal website verification
 
+## Registered-game calendar export
+
+All 96 automated tests pass on Node 22.23.2. New export tests cover current-day
+and future registrations across months, paired and unpaired entries, exclusions,
+administrator account scoping, anonymous/expired/logged-out access, ignored
+member-ID query parameters, private download headers, no-games errors,
+cancellations, record preservation, stable UIDs, unnamed games, Unicode folding,
+escaped control characters and newline injection. The serializer is not served
+as a public file. No schema or dependency changes were made.
+
+An independent ICAL.js parser, installed only under /tmp for QA, successfully
+parsed the calendar and round-tripped escaped Unicode text. Pacific 11:30 starts
+on March 7/8 and October 31/November 1, 2026 converted to the expected UTC times
+on either side of both daylight-saving transitions. No live Google account or
+physical iPhone import was performed; client compatibility is based on standard
+iCalendar output and independent parsing, not a claim of end-device testing.
+
+Browser checks on a disposable copy of fictional preview data covered the
+two-button home, About, invalid and valid login, administrator add-member,
+add-date and rename, password dialog and actual password change, solo and paired
+registration, across-month downloads, cancellation, empty exports, navigation
+and logout. Simulated 503 and 401 export responses showed errors/re-enabled the
+button or returned to login respectively. At 375px both member and administrator
+layouts had no horizontal overflow and the download worked. Desktop and mobile
+screenshots were inspected; no JavaScript page errors were recorded.
+
+The existing private preview was updated and opened in a fresh browser context.
+About, sign-in, calendar loading and authenticated .ics download worked through
+the hosted API. The preview validator flagged pre-existing slideshow-counter
+spacing; the homepage was visually reviewed and preserved rather than changed
+outside the requested scope. The subsequent deployment bypassed that cosmetic
+warning. Production Dathorn files and member records remain untouched.
+
 ## Operator promotion
 
 All 83 automated tests pass on Node 22.23.2. The new management tests invoke

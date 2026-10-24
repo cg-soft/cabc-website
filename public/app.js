@@ -16,14 +16,14 @@
     el.textContent = message; el.classList.add("visible");
     toastTimer = setTimeout(() => el.classList.remove("visible"), 5000);
   }
-  async function api(route, method = "GET", body) {
+  async function api(route, method = "GET", body, format = "json") {
     const response = await fetch(`${window.CABC_API || ""}/api${route}`, {
       method, credentials: "same-origin", headers: {
         ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
         ...(state.token ? { Authorization: `Bearer ${state.token}` } : {})
       }, body: body !== undefined ? JSON.stringify(body) : undefined
     });
-    const result = await response.json();
+    const result = response.ok && format === "blob" ? await response.blob() : await response.json();
     if (!response.ok) {
       if (response.status === 401 && route !== "/login") {
         state.token = null; state.user = null; state.calendar = null;
@@ -99,7 +99,7 @@
   function calendarShell() {
     return header(`<span class="identity">${esc(state.user.name)}</span>${button("Home", "home", "quiet")}${button("Log out", "logout", "quiet")}`) +
       `<main class="calendar-page"><div class="calendar-heading"><div><p class="eyebrow">Members’ calendar</p><h1>Playing dates</h1></div>
-      <div class="admin-actions">${button("Change password", "change-password", "quiet")}${state.user.role === "admin" ? `${button("Add member", "add-member", "quiet")}${button("+ Add date", "add-date", "primary")}` : ""}</div></div>
+      <div class="admin-actions">${button("Export my games", "export-games", "quiet")}${button("Change password", "change-password", "quiet")}${state.user.role === "admin" ? `${button("Add member", "add-member", "quiet")}${button("+ Add date", "add-date", "primary")}` : ""}</div></div>
       ${state.config?.preview ? '<p class="preview-line">Private preview · fictional members and sample dates</p>' : ""}
       <div id="calendar-content" aria-busy="true"><div class="loading-surface">Loading the calendar…</div></div></main>`;
   }
@@ -227,6 +227,22 @@
       if (action === "logout") {
         try { await api("/logout", "POST", {}); }
         finally { state.token = null; state.user = null; state.calendar = null; location.hash = "#login"; }
+        return;
+      }
+      if (action === "export-games") {
+        const token = state.token;
+        if (!token) return;
+        control.disabled = true; control.textContent = "Exporting…";
+        try {
+          const file = await api("/calendar/export.ics", "GET", undefined, "blob");
+          if (state.token !== token) return; // Do not download after a logout/account change.
+          const url = URL.createObjectURL(file);
+          const link = document.createElement("a");
+          link.href = url; link.download = "cabc-my-games.ics";
+          document.body.append(link); link.click(); link.remove();
+          setTimeout(() => URL.revokeObjectURL(url), 60000);
+          toast("Calendar file downloaded. Imported games will not update automatically.");
+        } finally { control.textContent = "Export my games"; }
         return;
       }
       if (action === "change-password") {

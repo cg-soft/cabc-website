@@ -20,11 +20,42 @@ To load members from a private CSV containing `name,email,initial-password`,
 follow [IMPORT-MEMBERS.md](IMPORT-MEMBERS.md). The importer defaults to a dry run,
 adds member accounts only, and never overwrites existing credentials.
 
+## Export registered games
+
+Signed-in members and administrators can select **Export my games** above the
+calendar to download `cabc-my-games.ics`. The export includes their own
+registrations for today or later across every month, including games where they
+are still looking for a partner. Past and cancelled registrations are excluded.
+If nothing qualifies, the site displays a message instead of downloading an
+empty calendar.
+
+Events include the game name (or club name when unnamed), Pacific start time,
+and a link to the club website. No member names, emails, passwords or session
+tokens are included. No duration is invented because games store start times
+only. Stable event IDs identify the same games in repeated exports, but duplicate
+handling depends on the calendar application.
+
+The file is a snapshot: later changes and cancellations are not automatically
+synchronized. Apple documents importing .ics attachments from Mail in its
+[iPhone calendar instructions](https://support.apple.com/guide/iphone/set-up-mail-contacts-and-calendar-accounts-ipha0d932e96/ios).
+Google Calendar supports importing .ics files through Settings > Import & export
+on a computer, as described in
+[Google's import instructions](https://support.google.com/calendar/answer/37118?hl=en&co=genie.platform=desktop).
+The serializer uses the timezone, escaping and line-folding rules in
+[RFC 5545](https://www.rfc-editor.org/rfc/rfc5545).
+
+Upgrade an otherwise current installation by uploading **icalendar.mjs** (new),
+**server.mjs** and **public/app.js**, then restart the Node application and refresh
+the browser. Upload the new module before the server file. No build, dependency
+installation, database initialization or schema migration is needed. See
+[HOSTING.md](HOSTING.md) for the Dathorn paths.
+
 ## Scope
 
 - A photographic slideshow homepage with exactly two buttons: About and Login.
 - An intentional About placeholder.
 - A real member/admin login.
+- Export my games: an authenticated .ics download of personal registrations for today and later, across all months.
 - One monthly calendar with playing dates and dance-card partnership registration.
 - Optional game names on the calendar and dance cards, editable by administrators.
 - Opens at the first month with a game today or later; month navigation skips gaps.
@@ -58,6 +89,8 @@ clone rather than pulling or merging the old history into this implementation.
 public/             Only public HTML, CSS, JS and slideshow images
 app.cjs             Production hosting entry point (direct or Passenger-loaded)
 server.mjs          HTTP, authentication and calendar/registration endpoints
+icalendar.mjs       Pacific-time iCalendar formatting for registered-game exports
+export-tests.mjs    Export privacy, formatting, registration and session tests
 db.mjs              Private storage and password helpers
 schema.sql          Explicit initial database schema
 migrate.mjs         Explicit additive migrations for the minimal site

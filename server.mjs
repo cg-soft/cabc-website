@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import { randomBytes } from "node:crypto";
 import { pathToFileURL } from "node:url";
 import path from "node:path";
+import { registeredGamesCalendar } from "./icalendar.mjs";
 import { ROOT, openDatabase, passwordHash, passwordMatches, hashToken, transaction, addMember, clubToday, HttpError } from "./db.mjs";
 
 export function createApp({ db = openDatabase(), preview = false, previewToday } = {}) {
@@ -113,6 +114,19 @@ export function createApp({ db = openDatabase(), preview = false, previewToday }
         return reply(200, session(db.prepare("SELECT * FROM members WHERE email=?").get(email)));
       }
       const user = auth(req);
+      if (route === "/api/calendar/export.ics" && req.method === "GET") {
+        const games = db.prepare("SELECT g.id,g.date,g.time,g.name FROM games g JOIN entries e ON e.game_id=g.id WHERE e.member_id=? AND g.date>=? ORDER BY g.date,g.time,g.id")
+          .all(user.id, today());
+        if (!games.length) throw new HttpError(404, "You have no registered games for today or later to export.");
+        const content = registeredGamesCalendar(games);
+        res.writeHead(200, {
+          "Content-Type": "text/calendar; charset=utf-8",
+          "Content-Disposition": 'attachment; filename="cabc-my-games.ics"',
+          "Cache-Control": "private, no-store"
+        });
+        res.end(content);
+        return;
+      }
       if (route === "/api/password" && req.method === "POST") {
         const { currentPassword, newPassword, confirmPassword } = body;
         if (typeof currentPassword !== "string" || currentPassword.length < 1 || currentPassword.length > 128)
