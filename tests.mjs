@@ -52,6 +52,24 @@ test("minimal club authentication, calendar and dance cards", async (t) => {
       assert.equal(head.headers.get("content-type"), "image/png");
       assert.equal((await head.arrayBuffer()).byteLength, 0);
     });
+    await t.test("transparent club logo is persistent in the shell and publicly served on GET/HEAD", async () => {
+      const home = await req("/");
+      assert.equal((home.result.match(/class="floating-club-logo"/g) || []).length, 1);
+      assert.match(home.result, /<img class="floating-club-logo"[^>]*src="\.\/club-logo\.png"[^>]*alt="Chinese American Bridge Club"/);
+      assert.ok(home.result.indexOf('class="floating-club-logo"') < home.result.indexOf('id="app"'));
+      const image = readFileSync(path.join(ROOT, "public/club-logo.png"));
+      assert.equal(image.subarray(1, 4).toString(), "PNG");
+      assert.equal(image[25], 6, "PNG must retain RGBA transparency");
+      const response = await fetch(base + "/club-logo.png");
+      assert.equal(response.status, 200);
+      assert.equal(response.headers.get("content-type"), "image/png");
+      assert.deepEqual(Buffer.from(await response.arrayBuffer()), image);
+      const head = await fetch(base + "/club-logo.png", { method: "HEAD" });
+      assert.equal(head.status, 200);
+      assert.equal(head.headers.get("content-type"), "image/png");
+      assert.equal((await head.arrayBuffer()).byteLength, 0);
+      assert.equal((await req("/club-logo.png", "POST", {})).status, 405);
+    });
     await t.test("production has no preview bypass and private paths are never served", async () => {
       assert.equal((await req("/api/preview", "POST", { role: "admin" })).status, 404);
       assert.equal((await req("/api/config")).result.preview, false);

@@ -36,6 +36,26 @@ No database, accounts, credentials, or preview deployment folder is included.
 
 ## Confirm the host runtime first
 
+### Existing installation: transparent floating logo
+
+If the team-events release is already installed, upload these four files:
+
+```text
+public/club-logo.png
+public/index.html
+public/style.css
+server.mjs
+```
+
+Restart the Node application so its public-file allowlist includes the new
+logo, then hard-refresh the browser. Keep the public files readable by the
+web server (normally 644). This change requires no new migration, build or
+dependencies and does not change the favicon or account data.
+
+If team events have not yet been installed, also complete the team-events
+migration below before starting the current server. Uploading only the current
+server file over an unmigrated old installation is not sufficient.
+
 ### Existing installation: team-events update
 
 The current release adds team events and **requires an explicit migration**

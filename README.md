@@ -20,6 +20,19 @@ To load members from a private CSV containing `name,email,initial-password`,
 follow [IMPORT-MEMBERS.md](IMPORT-MEMBERS.md). The importer defaults to a dry run,
 adds member accounts only, and never overwrites existing credentials.
 
+## Club logo
+
+The shared page shell also displays the approved transparent club logo, fixed
+at the upper left on every route. Its original PNG colors and alpha channel are
+preserved. Headers reserve space for it while scrolling; mobile uses the logo
+instead of duplicating the text wordmark. The logo adds no navigation button,
+and the existing favicon and two-button slideshow home remain unchanged.
+
+For just the logo update on a current team-events installation, upload
+`public/club-logo.png`, `public/index.html`, `public/style.css` and `server.mjs`,
+then restart and refresh. The server change permits serving the new PNG.
+No new migration, dependencies or build is required for this visual update.
+
 ## Team events
 
 Administrators can create either Pairs or Teams dates. In a team event, members

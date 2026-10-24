@@ -6,8 +6,10 @@
   --text-xs:.75rem; --text-sm:.875rem; --text-base:1rem; --text-lg:1.125rem; --text-xl:clamp(1.75rem,2.8vw,2.25rem);
   --space-1:.25rem; --space-2:.5rem; --space-3:.75rem; --space-4:1rem; --space-5:1.25rem;
   --space-6:1.5rem; --space-8:2rem; --space-10:2.5rem; --space-12:3rem; --space-16:4rem;
+  --header-gutter:clamp(20px,4vw,64px); --logo-width:72px;
 }
 *{box-sizing:border-box}
+html{scroll-padding-top:112px}
 body{margin:0;background:var(--paper);color:var(--ink);font:var(--text-base)/1.55 var(--font-body);-webkit-font-smoothing:antialiased}
 button,input,select{font:inherit}
 button{cursor:pointer;min-height:44px;border:1px solid var(--line);border-radius:5px;padding:var(--space-2) var(--space-5);background:transparent;color:var(--ink);font-size:var(--text-sm);font-weight:500;transition:background .16s,color .16s,border-color .16s}
@@ -28,7 +30,9 @@ h3{font-size:var(--text-sm);font-weight:600}
 .danger{color:var(--error)}
 .wide{width:100%}
 .small-note{font-size:var(--text-sm);color:var(--muted);line-height:1.55}
-.site-header{height:96px;padding:var(--space-6) clamp(var(--space-5),4vw,var(--space-16));display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);gap:var(--space-4)}
+.floating-club-logo{position:fixed;top:15px;left:var(--header-gutter);width:var(--logo-width);height:auto;z-index:9;pointer-events:none;user-select:none;filter:drop-shadow(0 2px 3px #0002)}
+.home .floating-club-logo{top:31px}
+.site-header{position:sticky;top:0;z-index:8;background:var(--paper);height:96px;padding:var(--space-6) var(--header-gutter);padding-left:calc(var(--header-gutter) + var(--logo-width) + 16px);display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);gap:var(--space-4)}
 .brand{font:1.55rem/1.05 var(--font-display);display:block;flex-shrink:0}
 nav{display:flex;align-items:center;gap:var(--space-3)}
 .identity{font-size:var(--text-sm);margin-right:var(--space-4);color:var(--muted)}
@@ -41,7 +45,7 @@ nav{display:flex;align-items:center;gap:var(--space-3)}
 .slideshow::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(11,26,17,.52),transparent 37%,transparent 77%,rgba(11,26,17,.36));pointer-events:none}
 .slide{position:absolute;width:100%;height:100%;object-fit:cover;object-position:center;opacity:0;transition:opacity 1.2s ease-in-out}
 .slide.active{opacity:1}
-.over-photo{position:absolute;inset:0 0 auto;color:white;border:0;z-index:2;height:128px}
+.over-photo{position:absolute;inset:0 0 auto;color:white;border:0;z-index:2;height:128px;background:transparent}
 .over-photo .brand{font-size:1.8rem}
 .photo-outline{color:white;border-color:#ffffffa0;min-width:100px;background:#0c251b30}
 .photo-outline:hover{background:#ffffff24}
@@ -177,6 +181,11 @@ dialog .small-note{margin-bottom:var(--space-5)}
   .identity{display:none}
 }
 @media(max-width:640px){
+  :root{--logo-width:64px}
+  .floating-club-logo{top:19px}
+  .home .floating-club-logo{top:35px}
+  .site-header{justify-content:flex-end}
+  .site-header .brand{display:none}
   .calendar .weekdays,.calendar .calendar-grid{display:none}
   .playing-agenda{display:block;padding:0 var(--space-3)}
   .agenda-date{width:100%;display:flex;align-items:center;text-align:left;gap:var(--space-4);padding:var(--space-3);border:0;border-top:1px solid var(--line);border-radius:0;background:transparent}
@@ -198,7 +207,8 @@ dialog .small-note{margin-bottom:var(--space-5)}
   .dance-card{padding:var(--space-5)}
 }
 @media(max-width:480px){
-  .site-header{height:96px;padding:var(--space-5);gap:var(--space-2)}
+  .site-header{height:96px;padding:var(--space-5);padding-left:calc(var(--header-gutter) + var(--logo-width) + 16px);gap:var(--space-2)}
+  .home .floating-club-logo{top:27px}
   .brand{font-size:1.2rem}
   nav{gap:var(--space-1)}
   nav button{padding:var(--space-2) var(--space-3)}

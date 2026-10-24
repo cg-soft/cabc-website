@@ -84,7 +84,7 @@ export function createApp({ db = openDatabase(), preview = false, previewToday }
       if (!route.startsWith("/api/")) {
         if (!["GET", "HEAD"].includes(req.method)) throw new HttpError(405, "Method not allowed.");
         const files = { "/": "index.html", "/index.html": "index.html", "/app.js": "app.js", "/style.css": "style.css", "/config.js": "config.js",
-          "/slides/table.webp": "slides/table.webp", "/slides/room.webp": "slides/room.webp", "/favicon.png": "favicon.png" };
+          "/slides/table.webp": "slides/table.webp", "/slides/room.webp": "slides/room.webp", "/favicon.png": "favicon.png", "/club-logo.png": "club-logo.png" };
         const file = files[route];
         if (!file) throw new HttpError(404, "Not found.");
         const content = await readFile(path.join(ROOT, "public", file));

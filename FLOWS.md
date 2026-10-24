@@ -1,5 +1,15 @@
 # Main flows and calendar layout checks
 
+## Floating transparent club logo
+- Use the exact transparent PNG from the separate logo project, preserving its colors and alpha channel.
+- Render one persistent noninteractive logo outside the route container, on Home, About, Login and member/admin Calendar.
+- Pin it to the upper left while scrolling; reserve a sticky header lane so content/navigation cannot pass behind it.
+- Keep the home page's only two buttons, About and Login, and preserve the supplied favicon.
+- Use a compact logo on mobile, replacing the duplicate visible wordmark rather than crowding navigation.
+- Check 320px, 375px, tablet and desktop, scrolled calendar, dialog stacking and keyboard focus.
+- Verify public PNG GET/HEAD, no duplicate logos after route changes, and image availability in production and preview.
+- Recheck authentication, pair/team registration, exports, password form and administrator dialogs.
+
 ## Team events
 - Admin selects Pairs (default) or Teams when adding a date; existing dates remain Pairs.
 - Calendar desktop/mobile identifies team events and shows completed-team counts.

@@ -1,5 +1,31 @@
 # New minimal website verification
 
+## Transparent floating club logo
+
+All 120 automated tests pass on Node 22.23.2. The transparent PNG from the
+separate logo project was copied byte-for-byte, not redrawn or recolored:
+548 × 500 RGBA, transparent exterior, opaque red fill and white artwork.
+Both the source and public asset have SHA-256
+`ad4922baa11d5ded779ad28754f38187024ce927eb6156e5f9192955a013e373`.
+The added HTTP test verifies one persistent image before the route container,
+accessible alternative text, PNG GET/HEAD handling, RGBA format, exact served
+bytes and refusal of POST. Existing favicon checks still pass.
+
+Browser checks verified Home, About, Login, member and administrator Calendar,
+scrolling and dialog layering. Viewports 320, 375, 768 and 1440px showed exactly
+one fixed logo, no horizontal overflow and no logo/navigation overlap.
+The homepage retains exactly About and Login buttons. Mobile uses the logo
+instead of a duplicate text wordmark; sticky headers reserve a logo lane and
+scroll padding protects keyboard-focused content.
+
+Regression interactions exercised team formation/dissolution, pair registration
+and cancellation, solo registration, calendar navigation/export, invalid login,
+preview member/admin login, password-error handling, logout and administrator
+date/member/rename dialogs. No JavaScript page errors were recorded. Desktop and
+mobile screenshots were visually reviewed. Production hosting and account data
+were not changed. Only server.mjs plus public/index.html, public/style.css and
+public/club-logo.png are needed on an otherwise current installation.
+
 ## Immediate team events
 
 All 119 automated tests pass on both Node 22.23.2 and Node 24.20.0. The additive team-events migration
