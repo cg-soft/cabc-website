@@ -1,5 +1,50 @@
 # New minimal website verification
 
+## Wildcard placeholder members
+
+All 152 automated tests pass on Node 22.23.2 and Node 24.20.0, including the
+new wildcard suite. Placeholder accounts named exactly `-Unavailable-`,
+`-Standby-` and `-Guest-` cannot sign in, and stale sessions are rejected with
+401. Registering with a placeholder stores one one-directional row, so several
+members overbooked the same placeholder in one game while real members stayed
+exclusive (a taken real partner is refused with 409). Legacy reciprocal
+placeholder-owned rows are excluded from calendar reads and cleaned up on
+registration and cancellation; a cancelled assignment removed only the
+cancelling member's row. Guest pairs complete teams, including two guest pairs
+sharing one team, and only real member IDs are stored on teams; standby and
+unavailable pairs are refused with 409. Placeholder deactivation review counts
+future assignments and affected games, and applying it clears assignments while
+affected members remain registered as singles and past records are preserved.
+Cross-month schedules are returned while viewing an earlier month.
+
+Browser QA used the fictional preview database only. The Show selector listed
+all three placeholders beside All members for both member and administrator
+views. Selecting `-Guest-` replaced the dance card with its schedule (October
+26 with two assignments, October 29 team event, November 12), and the cross-
+month jump button switched the calendar to November 2026 with that game
+selected while keeping the Show selection. Calendar cells and agenda entries
+annotated per-game assignment counts. A member registered with `-Guest-` on
+November 2 (toast and "You're playing with a guest" status), the dance card
+listed the pair and grouped Jordan Chan under Standby and Sam Liu under
+Unavailable, and cancelling removed only that member's assignment with no
+partner sentence in the confirmation. A team was formed between a real pair and
+a guest pair in the Thursday Teams game. The placeholder sign-in form was
+refused with "This placeholder account cannot sign in." The administrator
+deactivation review of `-Guest-` reported removing four future assignments
+across three games and was cancelled without applying.
+
+Visual QA covered 1440px desktop and 375px mobile. A mobile overflow where the
+Show row pushed the month navigation past the card edge was found and fixed by
+letting the controls wrap at up to 480px; re-measurement confirmed the controls
+fit inside the card with no horizontal scrolling. Focused screenshots confirmed
+no clipped cell text, and no JavaScript page errors were recorded (the only
+console entries were the three deliberate 401 responses from the placeholder
+sign-in and expired-session tests).
+
+Production hosting and accounts have not been modified. WILDCARDS.md documents
+the four-file upload, placeholder creation with manage.mjs and the lack of any
+migration.
+
 ## Administrator member deactivation
 
 All 144 automated tests pass on Node 22.23.2 and Node 24.20.0. The explicit,

@@ -4,7 +4,7 @@ import { randomBytes } from "node:crypto";
 import { pathToFileURL } from "node:url";
 import path from "node:path";
 import { registeredGamesCalendar } from "./icalendar.mjs";
-import { ROOT, openDatabase, passwordHash, passwordMatches, hashToken, transaction, addMember, clubToday, HttpError, requireMemberStatus } from "./db.mjs";
+import { ROOT, openDatabase, passwordHash, passwordMatches, hashToken, transaction, addMember, clubToday, HttpError, requireMemberStatus, wildcardType, WILDCARD_TYPES } from "./db.mjs";
 
 export function createApp({ db = openDatabase(), preview = false, previewToday } = {}) {
   if (!db.prepare("PRAGMA table_info(games)").all().some(column => column.name === "event_type") ||
@@ -38,8 +38,16 @@ export function createApp({ db = openDatabase(), preview = false, previewToday }
     if (!state || state.until < now) { state = { count: 0, until: now + 900000 }; attempts.set(key, state); }
     if (++state.count > 30) throw new HttpError(429, "Too many sign-in attempts. Please wait 15 minutes.");
   }
+  const wildcardNames = Object.keys(WILDCARD_TYPES);
+  function wildcardMembers() {
+    return db.prepare(`SELECT id,name FROM members WHERE name IN (${wildcardNames.map(() => "?").join(",")})`).all(...wildcardNames);
+  }
   function session(member) {
     if (!member || member.active !== 1) throw new HttpError(401, "Email or password is incorrect.");
+    if (wildcardType(member.name)) {
+      db.prepare("DELETE FROM sessions WHERE member_id=?").run(member.id);
+      throw new HttpError(401, "This placeholder account cannot sign in.");
+    }
     db.prepare("DELETE FROM sessions WHERE expires<?").run(Date.now());
     const token = randomBytes(32).toString("hex");
     db.prepare("INSERT INTO sessions VALUES(?,?,?)").run(hashToken(token), member.id, Date.now() + 12 * 3600000);
@@ -51,6 +59,7 @@ export function createApp({ db = openDatabase(), preview = false, previewToday }
     const user = db.prepare("SELECT m.id,m.name,m.role FROM members m JOIN sessions s ON s.member_id=m.id WHERE s.hash=? AND s.expires>? AND m.active=1")
       .get(hashToken(token), Date.now());
     if (!user) throw new HttpError(401, "Your session has expired. Please sign in again.");
+    if (wildcardType(user.name)) throw new HttpError(401, "This placeholder account cannot sign in.");
     return user;
   }
   function admin(user) { if (user.role !== "admin") throw new HttpError(403, "Administrator access required."); }
@@ -66,22 +75,40 @@ export function createApp({ db = openDatabase(), preview = false, previewToday }
     return row;
   }
   function completePair(gameId, memberId) {
-    const partner = db.prepare("SELECT partner_id FROM entries WHERE game_id=? AND member_id=?").get(gameId, memberId)?.partner_id;
-    if (!partner || db.prepare("SELECT partner_id FROM entries WHERE game_id=? AND member_id=?").get(gameId, partner)?.partner_id !== memberId)
+    const row = db.prepare("SELECT partner_id FROM entries WHERE game_id=? AND member_id=?").get(gameId, memberId);
+    if (!row?.partner_id) throw new HttpError(409, "Both pairs must be fully registered. Refresh the calendar and try again.");
+    const partner = db.prepare("SELECT name,active FROM members WHERE id=?").get(row.partner_id);
+    const type = partner ? wildcardType(partner.name) : null;
+    if (type) {
+      // A guest placeholder completes a playing pair without a reciprocal row;
+      // standby and unavailable are member states, not complete pairs.
+      if (type !== "guest") throw new HttpError(409, "Unavailable and standby members cannot form teams.");
+      if (partner.active !== 1) throw new HttpError(409, "A member is no longer active. Refresh the calendar and choose another pair.");
+      return [memberId, row.partner_id];
+    }
+    const partnerRow = db.prepare("SELECT partner_id FROM entries WHERE game_id=? AND member_id=?").get(gameId, row.partner_id);
+    if (!partnerRow || partnerRow.partner_id !== memberId)
       throw new HttpError(409, "Both pairs must be fully registered. Refresh the calendar and try again.");
-    if (db.prepare("SELECT count(*) AS n FROM members WHERE id IN (?,?) AND active=1").get(memberId, partner).n !== 2)
+    if (db.prepare("SELECT count(*) AS n FROM members WHERE id IN (?,?) AND active=1").get(memberId, row.partner_id).n !== 2)
       throw new HttpError(409, "A member is no longer active. Refresh the calendar and choose another pair.");
-    return [memberId, partner];
+    return [memberId, row.partner_id];
   }
   function deactivationPlan(id) {
     const member = db.prepare("SELECT id,name,email,role,active FROM members WHERE id=?").get(id);
     if (!member) throw new HttpError(404, "Member not found.");
     const date = today();
-    const games = db.prepare("SELECT g.id,g.date,g.name,g.time FROM games g JOIN entries e ON e.game_id=g.id WHERE e.member_id=? AND g.date>=? ORDER BY g.date,g.id").all(id, date);
+    const games = db.prepare("SELECT DISTINCT g.id,g.date,g.name,g.time FROM games g JOIN entries e ON e.game_id=g.id WHERE (e.member_id=? OR e.partner_id=?) AND g.date>=? ORDER BY g.date,g.id").all(id, id, date);
     const entries = db.prepare("SELECT e.* FROM entries e JOIN games g ON g.id=e.game_id WHERE g.date>=? AND (e.member_id=? OR e.partner_id=?) ORDER BY e.game_id,e.member_id").all(date, id, id);
     const teams = db.prepare("SELECT DISTINCT t.* FROM team_members t JOIN team_members a ON a.game_id=t.game_id AND a.team_id=t.team_id JOIN entries e ON e.game_id=a.game_id AND e.member_id=a.member_id JOIN games g ON g.id=e.game_id WHERE g.date>=? AND (e.member_id=? OR e.partner_id=?) ORDER BY t.game_id,t.team_id,t.member_id").all(date, id, id);
     const canDeactivate = member.active === 1 && !(member.role === "admin" && db.prepare("SELECT count(*) AS n FROM members WHERE role='admin' AND active=1").get().n <= 1);
-    return { member, games, today: date, registrationCount: games.length,
+    const isWildcard = !!wildcardType(member.name);
+    const assignmentCount = isWildcard
+      ? db.prepare("SELECT count(*) AS n FROM entries WHERE partner_id=? AND game_id IN (SELECT id FROM games WHERE date>=?)").get(id, date).n
+      : null;
+    const affectedGames = isWildcard
+      ? db.prepare("SELECT count(DISTINCT game_id) AS n FROM entries WHERE partner_id=? AND game_id IN (SELECT id FROM games WHERE date>=?)").get(id, date).n
+      : null;
+    return { member, games, today: date, registrationCount: games.length, assignmentCount, isWildcard, affectedGames,
       teamCount: new Set(teams.map(t => `${t.game_id}:${t.team_id}`)).size, canDeactivate,
       revision: hashToken(JSON.stringify({ member, date, games, entries, teams })) };
   }
@@ -226,10 +253,20 @@ export function createApp({ db = openDatabase(), preview = false, previewToday }
           .all(currentDate).map(row => row.month);
         const month = months.includes(requested) ? requested : (months[0] || null);
         const games = month ? db.prepare("SELECT * FROM games WHERE date LIKE ? ORDER BY date").all(`${month}-%`) : [];
-        const entries = month ? db.prepare("SELECT e.game_id,e.member_id,e.partner_id,m.name FROM entries e JOIN members m ON m.id=e.member_id JOIN games g ON g.id=e.game_id WHERE g.date LIKE ? ORDER BY m.name")
-          .all(`${month}-%`) : [];
+        const wildcardRows = wildcardMembers();
+        const wildcardIdList = wildcardRows.map(row => row.id);
+        const notWildcardOwned = wildcardIdList.length
+          ? ` AND e.member_id NOT IN (${wildcardIdList.map(() => "?").join(",")})` : "";
+        const entries = month ? db.prepare(`SELECT e.game_id,e.member_id,e.partner_id,m.name FROM entries e JOIN members m ON m.id=e.member_id JOIN games g ON g.id=e.game_id WHERE g.date LIKE ?${notWildcardOwned} ORDER BY m.name`)
+          .all(`${month}-%`, ...wildcardIdList) : [];
         // Only names and IDs needed for partnership selection, never member emails.
         const members = db.prepare("SELECT id,name,active FROM members ORDER BY name").all();
+        // Placeholder schedules cover every upcoming month, not just the displayed one.
+        const wildcards = wildcardRows.map(row => ({
+          id: row.id, name: row.name, type: wildcardType(row.name),
+          schedule: db.prepare(`SELECT g.id AS gameId,g.date,g.time,g.name AS gameName,g.event_type AS eventType,e.member_id AS memberId,m.name AS memberName FROM entries e JOIN games g ON g.id=e.game_id JOIN members m ON m.id=e.member_id WHERE e.partner_id=? AND g.date>=?${notWildcardOwned} ORDER BY g.date,g.time,g.id,m.name`)
+            .all(row.id, currentDate, ...wildcardIdList)
+        }));
         const teamRows = month ? db.prepare("SELECT t.game_id,t.team_id,t.member_id FROM team_members t JOIN games g ON g.id=t.game_id WHERE g.date LIKE ? ORDER BY t.team_id,t.member_id").all(`${month}-%`) : [];
         const groups = new Map();
         for (const row of teamRows) {
@@ -237,7 +274,7 @@ export function createApp({ db = openDatabase(), preview = false, previewToday }
           if (!groups.has(key)) groups.set(key, { id: row.team_id, game_id: row.game_id, memberIds: [] });
           groups.get(key).memberIds.push(row.member_id);
         }
-        return reply(200, { month, months, games, entries, members, teams: [...groups.values()], user, today: currentDate });
+        return reply(200, { month, months, games, entries, members, teams: [...groups.values()], wildcards, user, today: currentDate });
       }
       const teamRoute = /^\/api\/games\/(\d+)\/team$/.exec(route);
       if (teamRoute && ["POST", "DELETE"].includes(req.method)) {
@@ -260,12 +297,16 @@ export function createApp({ db = openDatabase(), preview = false, previewToday }
             if (own[1] !== ownPartnerId || other[1] !== pairPartnerId)
               throw new HttpError(409, "A partnership changed. Refresh the calendar and choose again.");
             const ids = [...own, ...other];
-            if (new Set(ids).size !== 4) throw new HttpError(400, "Choose a different pair to form a four-person team.");
+            const markerIds = new Set(wildcardMembers().map(w => w.id));
+            // Distinct real members are required; two members may each bring a guest
+            // represented by the same placeholder.
+            const realIds = ids.filter(id => !markerIds.has(id));
+            if (new Set(realIds).size !== realIds.length) throw new HttpError(400, "Choose a different pair to form a four-person team.");
             const occupied = db.prepare("SELECT member_id FROM team_members WHERE game_id=? AND member_id IN (?,?,?,?)").all(gameId, ...ids);
             if (occupied.length) throw new HttpError(409, "One of these pairs is already on a team. Refresh the calendar and choose again.");
             const teamId = randomBytes(16).toString("hex");
             const insert = db.prepare("INSERT INTO team_members(game_id,member_id,team_id) VALUES(?,?,?)");
-            for (const id of ids) insert.run(gameId, id, teamId);
+            for (const id of realIds) insert.run(gameId, id, teamId);
           }
         });
         return reply(200, { ok: true });
@@ -293,14 +334,23 @@ export function createApp({ db = openDatabase(), preview = false, previewToday }
           game(gameId);
           const current = db.prepare("SELECT * FROM entries WHERE game_id=? AND member_id=?").get(gameId, user.id);
           if (current?.partner_id) throw new HttpError(409, "You already have a partner for this date.");
+          let partnerIsPlaceholder = false;
           if (partner !== null) {
-            if (!db.prepare("SELECT id FROM members WHERE id=? AND active=1").get(partner)) throw new HttpError(409, "That member is no longer available. Choose another partner.");
-            if (db.prepare("SELECT partner_id FROM entries WHERE game_id=? AND member_id=?").get(gameId, partner)?.partner_id)
+            const partnerMember = db.prepare("SELECT id,name,active FROM members WHERE id=?").get(partner);
+            if (!partnerMember || partnerMember.active !== 1) throw new HttpError(409, "That member is no longer available. Choose another partner.");
+            partnerIsPlaceholder = !!wildcardType(partnerMember.name);
+            if (partnerIsPlaceholder) {
+              // Overbookable placeholder: the assignment is stored once, from the
+              // real member to the placeholder. Remove any legacy reciprocal row
+              // this placeholder owns so the assignment cannot be stored twice.
+              db.prepare("DELETE FROM entries WHERE game_id=? AND member_id=? AND (partner_id IS NULL OR partner_id=?)").run(gameId, partner, user.id);
+            } else if (db.prepare("SELECT partner_id FROM entries WHERE game_id=? AND member_id=?").get(gameId, partner)?.partner_id) {
               throw new HttpError(409, "That member is no longer available. Choose another partner.");
+            }
           }
           const upsert = db.prepare("INSERT INTO entries(game_id,member_id,partner_id) VALUES(?,?,?) ON CONFLICT(game_id,member_id) DO UPDATE SET partner_id=excluded.partner_id");
           upsert.run(gameId, user.id, partner);
-          if (partner !== null) upsert.run(gameId, partner, user.id);
+          if (partner !== null && !partnerIsPlaceholder) upsert.run(gameId, partner, user.id);
         });
         return reply(200, { ok: true });
       }
@@ -309,6 +359,11 @@ export function createApp({ db = openDatabase(), preview = false, previewToday }
         transaction(db, () => {
           auth(req);
           game(gameId);
+          // Remove legacy reciprocal rows owned by placeholders that point back at
+          // this member, so a cancelled assignment disappears completely.
+          const markerIds = wildcardMembers().map(w => w.id);
+          if (markerIds.length)
+            db.prepare(`DELETE FROM entries WHERE game_id=? AND member_id IN (${markerIds.map(() => "?").join(",")}) AND partner_id=?`).run(gameId, ...markerIds, user.id);
           db.prepare("UPDATE entries SET partner_id=NULL WHERE game_id=? AND partner_id=?").run(gameId, user.id);
           db.prepare("DELETE FROM entries WHERE game_id=? AND member_id=?").run(gameId, user.id);
         });

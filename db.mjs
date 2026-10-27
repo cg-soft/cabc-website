@@ -103,6 +103,13 @@ export function requireMemberStatus(db) {
       names.some(name => !db.prepare("SELECT name FROM sqlite_master WHERE type='trigger' AND name=?").get(name)))
     throw new Error("Member-status migration required. Run node migrate.mjs member-status with the same DB_PATH. Startup never migrates databases.");
 }
+export const WILDCARD_TYPES = { "-Unavailable-": "unavailable", "-Standby-": "standby", "-Guest-": "guest" };
+// Only these exact account names receive placeholder behavior; any other member
+// name is an ordinary account. The type decides how assignments are treated:
+// guest completes a playing pair, standby/unavailable are member states.
+export function wildcardType(name) {
+  return WILDCARD_TYPES[String(name ?? "").trim()] || null;
+}
 export function validateMember(body) {
   const name = String(body.name || "").trim();
   const email = String(body.email || "").trim().toLowerCase();

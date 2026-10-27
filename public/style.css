@@ -150,6 +150,21 @@ input,select{display:block;width:100%;min-width:0;border:1px solid #bcc5ba;borde
 .waiting h3{margin-bottom:var(--space-2)}
 .waiting p{margin-bottom:var(--space-1);color:var(--muted)}
 .empty-copy,.closed-note{font-size:var(--text-sm);color:var(--muted)}
+.show-filter{display:flex;align-items:center;gap:var(--space-2);font-size:var(--text-sm);color:var(--muted);margin-right:var(--space-2)}
+.show-filter select{width:auto;min-width:120px;min-height:40px;margin-top:0;padding:var(--space-2) var(--space-3);font-size:var(--text-sm)}
+.wildcard-badge{font-size:var(--text-xs);color:var(--muted);overflow-wrap:anywhere}
+.day.playing .wildcard-badge{white-space:nowrap}
+.wildcard-schedule{list-style:none;counter-reset:jumps;margin:0 0 var(--space-5);padding:0}
+.wildcard-schedule li{counter-increment:jumps;position:relative;border-bottom:1px solid var(--line)}
+.wildcard-schedule li::before{content:counter(jumps,decimal-leading-zero);position:absolute;left:var(--space-2);top:var(--space-3);font-size:var(--text-xs);color:var(--muted)}
+.wildcard-schedule button{width:100%;display:flex;align-items:center;text-align:left;gap:var(--space-4);padding:var(--space-3) var(--space-3) var(--space-3) var(--space-8);border:0;border-radius:0;background:transparent;cursor:pointer}
+.wildcard-schedule button:hover{background:var(--tint)}
+.jump-date{width:64px;min-width:64px;display:flex;flex-direction:column;line-height:1.2}
+.jump-date strong{font:1.25rem/1.1 var(--font-display)}
+.jump-date span{font-size:var(--text-xs);color:var(--muted)}
+.jump-copy{min-width:0;flex:1;display:flex;flex-direction:column;gap:var(--space-1);font-size:var(--text-sm)}
+.jump-copy span{font-size:var(--text-xs);color:var(--muted)}
+.jump-members{overflow-wrap:anywhere}
 .your-registration{padding-top:0}
 .your-registration strong{font-weight:500;font-size:var(--text-lg)}
 .your-registration>p:not(.eyebrow){font-size:var(--text-sm);color:var(--muted);margin-top:var(--space-1)}
@@ -229,9 +244,11 @@ dialog .small-note{margin-bottom:var(--space-5)}
   .calendar-heading{align-items:flex-start;flex-direction:column;gap:var(--space-5);margin-bottom:var(--space-6)}
   .admin-actions{width:100%;justify-content:flex-end}
   .month-nav{padding:var(--space-3);gap:var(--space-2);flex-wrap:wrap}
-  .month-controls{margin-left:auto}
+  .month-controls{margin-left:auto;flex-wrap:wrap;width:100%}
   .month-nav h2{font-size:1.4rem}
   .month-nav .compact{font-size:var(--text-xs);padding:var(--space-2)}
+  .show-filter{width:100%;margin-right:0;justify-content:space-between}
+  .show-filter select{flex:1;min-width:0}
   .icon-button{width:32px}
   .day{height:81px;min-height:81px;padding:var(--space-2) var(--space-1)}
   .game-time{font-size:var(--text-xs);letter-spacing:-.04em}

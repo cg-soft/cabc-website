@@ -37,16 +37,26 @@ No database, accounts, credentials, or preview deployment folder is included.
 
 ## Confirm the host runtime first
 
-### Current release: member deactivation
+### Current release: wildcard placeholder members
 
-The current server requires the explicit `member-status` migration.
-Follow [Deactivate members: usage and Dathorn upgrade](DEACTIVATE-MEMBERS.md):
+Follow [Wildcard placeholder members: usage and Dathorn upgrade](WILDCARDS.md):
+upload `server.mjs`, `db.mjs`, `public/app.js` and `public/style.css`, then
+restart and refresh. No migration, build or dependency installation is needed.
+The member-status migration from the previous release must already be applied.
+If the three placeholder accounts do not exist yet, create them with
+`node manage.mjs add-member` using their exact hyphenated names.
+
+### Previous release: member deactivation
+
+The server of the previous release requires the explicit `member-status`
+migration. Follow
+[Deactivate members: usage and Dathorn upgrade](DEACTIVATE-MEMBERS.md):
 back up and stop writers, upload the eight listed files, run
 `node migrate.mjs member-status` with the live DB_PATH, then restart and refresh.
 Existing members stay active and all row counts are preserved by migration.
 No build or dependency installation is needed. Do not initialize or replace
 the database. This procedure supersedes the older logo/team/export-only
-instructions below when installing the current release.
+instructions below when installing that release.
 
 ### Existing installation: transparent floating logo
 

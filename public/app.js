@@ -1,6 +1,6 @@
 (() => {
   const app = document.querySelector("#app"), dialog = document.querySelector("#dialog");
-  const state = { token: null, user: null, config: null, month: null, selected: null, calendar: null, generation: 0, loginNotice: null };
+  const state = { token: null, user: null, config: null, month: null, selected: null, calendar: null, generation: 0, loginNotice: null, showWildcard: null };
   dialog.addEventListener("close", () => { if (!dialog.open) dialog.replaceChildren(); });
   dialog.addEventListener("cancel", event => {
     if (dialog.dataset.passwordPending === "true" || dialog.dataset.memberPending === "true") event.preventDefault();
@@ -11,6 +11,14 @@
   const timeLabel = (value) => { const [h, m] = value.split(":").map(Number); return `${h % 12 || 12}:${String(m).padStart(2, "0")} ${h < 12 ? "am" : "pm"}`; };
   const brand = '<span class="brand">Chinese American<br>Bridge Club</span>';
   const button = (label, action, cls = "") => `<button type="button" class="${cls}" data-action="${action}">${label}</button>`;
+  const wildcardList = () => state.calendar?.wildcards || [];
+  const wildcardById = id => wildcardList().find(w => w.id === id) || null;
+  const partnerWildcardType = id => wildcardById(id)?.type || null;
+  // A partnership row appears once: real pairs via the lower member id, guest
+  // placeholders via their single one-directional row. Standby and unavailable
+  // are member states, not pairs. Placeholder-owned rows are never listed.
+  const pairRowsFor = list => list.filter(e => e.partner_id && !wildcardById(e.member_id) &&
+    (partnerWildcardType(e.partner_id) === "guest" || (!partnerWildcardType(e.partner_id) && e.member_id < e.partner_id)));
   function toast(message) {
     clearTimeout(toastTimer); const el = document.querySelector("#toast");
     el.textContent = message; el.classList.add("visible");
@@ -105,7 +113,7 @@
   }
   async function renderCalendar() {
     document.title = "Playing dates | Chinese American Bridge Club";
-    state.month = null; state.selected = null;
+    state.month = null; state.selected = null; state.showWildcard = null;
     app.innerHTML = calendarShell();
     await loadCalendar();
   }
@@ -143,31 +151,35 @@
     const start = (new Date(Date.UTC(year, month - 1, 1)).getUTCDay() + 6) % 7;
     const days = new Date(Date.UTC(year, month, 0)).getUTCDate();
     const cells = [];
+    const showWildcard = state.showWildcard ? wildcardById(state.showWildcard) : null;
     for (let i = 0; i < Math.ceil((start + days) / 7) * 7; i++) {
       const day = i - start + 1;
       if (day < 1 || day > days) { cells.push('<div class="day empty" aria-hidden="true"></div>'); continue; }
       const date = `${state.month}-${String(day).padStart(2, "0")}`;
       const game = games.find(g => g.date === date);
       const own = game && entries.find(e => e.game_id === game.id && e.member_id === state.user.id);
-      const count = game ? entries.filter(e => e.game_id === game.id && e.partner_id).length / 2 : 0;
+      const count = game ? pairRowsFor(entries.filter(e => e.game_id === game.id)).length : 0;
+      const assignments = showWildcard && game ? showWildcard.schedule.filter(r => r.gameId === game.id).length : 0;
       const label = `<span class="day-number ${date === today ? "today-number" : ""}">${day}</span>`;
-      cells.push(game ? `<button class="day playing ${state.selected === date ? "selected" : ""} ${date < today ? "past" : ""}" data-date="${date}" aria-pressed="${state.selected === date}" aria-label="${game.name ? `${esc(game.name)}, ` : ""}${game.event_type === "teams" ? "Team event, " : ""}${esc(dateLabel(date, { weekday: "long", month: "long", day: "numeric" }))}, ${timeLabel(game.time)}, ${gameCount(game, count)}${own ? ", registered" : ""}">
-        <span class="day-top">${label}${own ? '<span class="registration-mark" aria-label="Registered">✓</span>' : ""}</span>${game.name ? `<span class="game-name">${esc(game.name)}</span>` : ""}${game.event_type === "teams" ? '<span class="event-type">Team event</span>' : ""}<span class="game-time">${timeLabel(game.time)}</span><span class="game-meta">${gameCount(game, count)}</span></button>` :
+      cells.push(game ? `<button class="day playing ${state.selected === date ? "selected" : ""} ${date < today ? "past" : ""}" data-date="${date}" aria-pressed="${state.selected === date}" aria-label="${game.name ? `${esc(game.name)}, ` : ""}${game.event_type === "teams" ? "Team event, " : ""}${esc(dateLabel(date, { weekday: "long", month: "long", day: "numeric" }))}, ${timeLabel(game.time)}, ${gameCount(game, count)}${assignments ? `, ${assignments} ${showWildcard.name}` : ""}${own ? ", registered" : ""}">
+        <span class="day-top">${label}${own ? '<span class="registration-mark" aria-label="Registered">✓</span>' : ""}</span>${game.name ? `<span class="game-name">${esc(game.name)}</span>` : ""}${game.event_type === "teams" ? '<span class="event-type">Team event</span>' : ""}<span class="game-time">${timeLabel(game.time)}</span><span class="game-meta">${gameCount(game, count)}${assignments ? `<span class="wildcard-badge"> · ${assignments} ${esc(showWildcard.name)}</span>` : ""}</span></button>` :
         `<div class="day">${label}</div>`);
     }
     const agenda = games.map(game => {
       const own = entries.find(e => e.game_id === game.id && e.member_id === state.user.id);
-      const count = entries.filter(e => e.game_id === game.id && e.partner_id).length / 2;
+      const count = pairRowsFor(entries.filter(e => e.game_id === game.id)).length;
       const partner = state.calendar.members.find(m => m.id === own?.partner_id);
-      const status = own ? (partner ? `With ${partner.name}` : "Registered · partner needed") :
+      const ownType = own ? partnerWildcardType(own.partner_id) : null;
+      const status = own ? (ownType ? { guest: "Playing with a guest", standby: "On standby", unavailable: "Unavailable" }[ownType] : partner ? `With ${partner.name}` : "Registered · partner needed") :
         game.date < today ? "Registration closed" : "Choose your partner";
-      return `<button class="agenda-date ${game.date === state.selected ? "selected" : ""} ${game.date < today ? "past" : ""}" data-date="${game.date}" aria-pressed="${game.date === state.selected}" aria-label="${game.name ? `${esc(game.name)}, ` : ""}${game.event_type === "teams" ? "Team event, " : ""}${esc(dateLabel(game.date, {weekday:"long",month:"long",day:"numeric"}))}, ${timeLabel(game.time)}, ${gameCount(game, count)}, ${esc(status)}">
+      const assignments = showWildcard ? showWildcard.schedule.filter(r => r.gameId === game.id).length : 0;
+      return `<button class="agenda-date ${game.date === state.selected ? "selected" : ""} ${game.date < today ? "past" : ""}" data-date="${game.date}" aria-pressed="${game.date === state.selected}" aria-label="${game.name ? `${esc(game.name)}, ` : ""}${game.event_type === "teams" ? "Team event, " : ""}${esc(dateLabel(game.date, {weekday:"long",month:"long",day:"numeric"}))}, ${timeLabel(game.time)}, ${gameCount(game, count)}${assignments ? `, ${assignments} ${showWildcard.name}` : ""}, ${esc(status)}">
         <span class="agenda-number"><span>${dateLabel(game.date,{month:"short"})}</span><strong>${Number(game.date.slice(-2))}</strong></span>
-        <span class="agenda-copy"><strong>${esc(game.name || dateLabel(game.date,{weekday:"long"}))}</strong>${game.event_type === "teams" ? '<span class="event-type">Team event</span>' : ""}<span>${game.name ? `${dateLabel(game.date,{weekday:"short"})} · ` : ""}${timeLabel(game.time)} <span aria-hidden="true">·</span> ${gameCount(game, count)}</span><span class="agenda-status">${esc(status)}</span></span>
+        <span class="agenda-copy"><strong>${esc(game.name || dateLabel(game.date,{weekday:"long"}))}</strong>${game.event_type === "teams" ? '<span class="event-type">Team event</span>' : ""}<span>${game.name ? `${dateLabel(game.date,{weekday:"short"})} · ` : ""}${timeLabel(game.time)} <span aria-hidden="true">·</span> ${gameCount(game, count)}${assignments ? ` <span aria-hidden="true">·</span> ${assignments} × ${esc(showWildcard.name)}` : ""}</span><span class="agenda-status">${esc(status)}</span></span>
         <span class="agenda-indicator" aria-hidden="true">${own ? "✓" : "›"}</span></button>`;
     }).join("");
     document.querySelector("#calendar-content").innerHTML = `<div class="calendar-layout"><section class="calendar" aria-label="Playing dates calendar">
-      <div class="month-nav"><div class="month-title"><h2>${dateLabel(`${state.month}-01`, { month: "long", year: "numeric" })}</h2><p>${games.length} playing ${games.length === 1 ? "date" : "dates"} · Pacific time</p></div><div class="month-controls">${button("‹", "previous", "icon-button")}${button("Upcoming", "today", "quiet compact")}${button("›", "next", "icon-button")}</div></div>
+      <div class="month-nav"><div class="month-title"><h2>${dateLabel(`${state.month}-01`, { month: "long", year: "numeric" })}</h2><p>${games.length} playing ${games.length === 1 ? "date" : "dates"} · Pacific time</p></div><div class="month-controls">${wildcardList().length ? `<label class="show-filter">Show<select data-show="wildcard" aria-label="Show which schedule"><option value="">All members</option>${wildcardList().map(w => `<option value="${w.id}"${state.showWildcard === w.id ? " selected" : ""}>${esc(w.name)}</option>`).join("")}</select></label>` : ""}${button("‹", "previous", "icon-button")}${button("Upcoming", "today", "quiet compact")}${button("›", "next", "icon-button")}</div></div>
       <div class="weekdays" aria-hidden="true">${["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map(d => `<span>${d}</span>`).join("")}</div>
       <div class="calendar-grid">${cells.join("")}</div>
       <div class="playing-agenda">${agenda}</div>
@@ -178,28 +190,58 @@
     app.querySelector('[data-action="previous"]').disabled = state.calendar.months.indexOf(state.month) <= 0;
     app.querySelector('[data-action="next"]').disabled = state.calendar.months.indexOf(state.month) === state.calendar.months.length - 1;
   }
+  function wildcardPanel() {
+    const wildcard = wildcardById(state.showWildcard);
+    if (!wildcard) { state.showWildcard = null; return null; }
+    const grouped = new Map();
+    for (const row of wildcard.schedule) {
+      if (!grouped.has(row.gameId))
+        grouped.set(row.gameId, { gameId: row.gameId, date: row.date, time: row.time, gameName: row.gameName, eventType: row.eventType, members: [] });
+      grouped.get(row.gameId).members.push(row.memberName);
+    }
+    const items = [...grouped.values()];
+    return `<div class="dance-date-header"><div><p class="eyebrow">Placeholder schedule</p><h2>${esc(wildcard.name)}</h2><p class="muted">Upcoming assignments · Pacific time</p></div></div>
+      ${items.length ? `<ol class="wildcard-schedule">${items.map(g => `<li><button type="button" data-action="wildcard-jump" data-jump="${g.date}"><span class="jump-date"><strong>${dateLabel(g.date, { month: "short", day: "numeric" })}</strong><span>${dateLabel(g.date, { weekday: "short" })} · ${timeLabel(g.time)}</span></span><span class="jump-copy"><strong>${esc(g.gameName || dateLabel(g.date, { weekday: "long" }))}</strong><span>${g.eventType === "teams" ? "Team event · " : ""}${g.members.length} assignment${g.members.length === 1 ? "" : "s"}</span><span class="jump-members">${g.members.map(esc).join(", ")}</span></span></button></li>`).join("")}</ol>` : '<p class="empty-copy">No upcoming assignments.</p>'}
+      <p class="small-note">Read-only view. Set Show to All members to return to your dance card.</p>`;
+  }
   function danceCard() {
+    if (state.showWildcard) {
+      const panel = wildcardPanel();
+      if (panel) return panel;
+    }
     const { games, entries, members, today } = state.calendar;
     const game = games.find(g => g.date === state.selected);
     if (!game) return '<p class="muted">Select a playing date to see its dance card.</p>';
     const list = entries.filter(e => e.game_id === game.id);
     const own = list.find(e => e.member_id === state.user.id);
-    const pairs = list.filter(e => e.partner_id && e.member_id < e.partner_id);
-    const singles = list.filter(e => !e.partner_id);
+    const pairs = pairRowsFor(list);
+    const singles = list.filter(e => !e.partner_id && !wildcardById(e.member_id));
+    const unavailableMembers = list.filter(e => partnerWildcardType(e.partner_id) === "unavailable");
+    const standbyMembers = list.filter(e => partnerWildcardType(e.partner_id) === "standby");
     const name = id => members.find(m => m.id === id)?.name || "Member";
-    const available = members.filter(m => m.active !== 0 && m.id !== state.user.id && !list.find(e => e.member_id === m.id)?.partner_id);
+    const available = members.filter(m => m.active !== 0 && m.id !== state.user.id &&
+      (wildcardById(m.id) || !list.find(e => e.member_id === m.id)?.partner_id));
     const closed = game.date < today;
     let registration = "";
     if (closed) registration = '<p class="closed-note">Registration for this date is closed.</p>';
-    else if (own?.partner_id) registration = `<div class="your-registration"><p class="eyebrow">Your partnership</p><strong>${esc(name(own.partner_id))}</strong><p>You’re both registered.</p>${button("Cancel my registration", "cancel", "text-button danger")}</div>`;
-    else registration = `<form id="register-form" data-game="${game.id}"><label>${own ? "You’re registered. Add a partner?" : "Join this game"}<select name="partner" aria-label="Choose a partner">
+    else if (own?.partner_id) {
+      const type = partnerWildcardType(own.partner_id);
+      const cancel = button("Cancel my registration", "cancel", "text-button danger");
+      registration = type === "guest"
+        ? `<div class="your-registration"><p class="eyebrow">Your partnership</p><strong>${esc(name(own.partner_id))}</strong><p>You’re playing with a guest.</p>${cancel}</div>`
+        : type
+          ? `<div class="your-registration"><p class="eyebrow">Your status</p><strong>${esc(name(own.partner_id))}</strong><p>${type === "standby" ? "You’re on standby for this game and can substitute at the last moment." : "You’re marked unavailable for this game and cannot be chosen as a partner."}</p>${cancel}</div>`
+          : `<div class="your-registration"><p class="eyebrow">Your partnership</p><strong>${esc(name(own.partner_id))}</strong><p>You’re both registered.</p>${cancel}</div>`;
+    } else registration = `<form id="register-form" data-game="${game.id}"><label>${own ? "You’re registered. Add a partner?" : "Join this game"}<select name="partner" aria-label="Choose a partner">
       <option value="">${own ? "Choose an available member" : "I’m looking for a partner"}</option>${available.map(m => `<option value="${m.id}">${esc(m.name)}</option>`).join("")}
-      </select></label><p class="small-note">Choosing a partner registers both of you.</p><p class="form-error" role="alert"></p><button type="submit" class="primary wide">${own ? "Register partnership" : "Register"}</button></form>${own ? button("Cancel my registration", "cancel", "text-button danger") : ""}`;
+      </select></label><p class="small-note">Choosing a partner registers both of you.${wildcardList().length ? " Hyphenated names such as -Guest- are shared placeholders." : ""}</p><p class="form-error" role="alert"></p><button type="submit" class="primary wide">${own ? "Register partnership" : "Register"}</button></form>${own ? button("Cancel my registration", "cancel", "text-button danger") : ""}`;
     return `<div class="dance-date-header"><div class="selected-date-number" aria-hidden="true"><span>${dateLabel(game.date,{month:"short"})}</span><strong>${Number(game.date.slice(-2))}</strong></div><div><p class="eyebrow">Dance card</p><h2>${esc(game.name || dateLabel(game.date, { weekday: "long", month: "long", day: "numeric" }))}</h2>${game.name ? `<p class="muted game-date-label">${dateLabel(game.date, { weekday: "long", month: "long", day: "numeric" })}</p>` : ""}<p class="muted">${timeLabel(game.time)} · Pacific time</p>${state.user.role === "admin" && !closed ? button("Edit name", "edit-name", "text-button edit-name") : ""}</div></div>
       ${game.event_type === "teams" ? '<p class="team-intro"><strong>Team event</strong> · Register as a pair, then join another pair to make a team of four.</p>' : ""}
       <div class="registration-area">${registration}</div>${game.event_type === "teams" ? teamCard(game, own, pairs, name, closed) : `<div class="pair-heading"><h3>Registered pairs</h3><span>${pairs.length} ${pairs.length === 1 ? "pair" : "pairs"}</span></div>
       ${pairs.length ? `<ol class="pairs">${pairs.map(e => `<li><span>${esc(e.name)}</span><span>${esc(name(e.partner_id))}</span></li>`).join("")}</ol>` : '<p class="empty-copy">No pairs yet. There’s a place for you.</p>'}`}
-      ${singles.length ? `<div class="waiting"><h3>Looking for a partner</h3>${singles.map(e => `<p>${esc(e.name)}${e.member_id === state.user.id ? " (you)" : ""}</p>`).join("")}</div>` : ""}`;
+      ${singles.length ? `<div class="waiting"><h3>Looking for a partner</h3>${singles.map(e => `<p>${esc(e.name)}${e.member_id === state.user.id ? " (you)" : ""}</p>`).join("")}</div>` : ""}
+      ${standbyMembers.length ? `<div class="waiting"><h3>Standby</h3>${standbyMembers.map(e => `<p>${esc(e.name)}${e.member_id === state.user.id ? " (you)" : ""}</p>`).join("")}</div>` : ""}
+      ${unavailableMembers.length ? `<div class="waiting"><h3>Unavailable</h3>${unavailableMembers.map(e => `<p>${esc(e.name)}${e.member_id === state.user.id ? " (you)" : ""}</p>`).join("")}</div>` : ""}`;
   }
   function teamCard(game, own, pairs, name, closed) {
     const teams = (state.calendar.teams || []).filter(team => team.game_id === game.id);
@@ -208,11 +250,13 @@
     const waiting = pairs.filter(pair => !occupied.has(pair.member_id));
     const available = waiting.filter(pair => pair.member_id !== state.user.id && pair.partner_id !== state.user.id);
     const label = pair => `${name(pair.member_id)} + ${name(pair.partner_id)}`;
+    const ownType = own ? partnerWildcardType(own.partner_id) : null;
+    const complete = !!own?.partner_id && ownType !== "unavailable" && ownType !== "standby";
     let controls = "";
     if (!closed) {
       if (mine) controls = `<div class="your-registration team-status"><p class="eyebrow">Your team is complete</p><p>Both pairs are registered together.</p>${button("Leave team", "leave-team", "text-button danger")}</div>`;
-      else if (own?.partner_id && available.length) controls = `<form id="team-form" data-game="${game.id}" data-own-partner="${own.partner_id}" class="team-form"><label>Choose another pair<select name="pair" aria-label="Choose another pair" required><option value="">Select an available pair</option>${available.map(pair => `<option value="${pair.member_id}:${pair.partner_id}">${esc(label(pair))}</option>`).join("")}</select></label><p class="small-note">Forms the team immediately for all four players. No acceptance is required.</p><p class="form-error" role="alert"></p><button type="submit" class="primary wide">Form team</button></form>`;
-      else controls = `<p class="team-help">${own?.partner_id ? "Your pair is registered. No other pair is available yet; check back to form your team." : "Register with a partner first. Then either of you can combine with another registered pair."}</p>`;
+      else if (complete && available.length) controls = `<form id="team-form" data-game="${game.id}" data-own-partner="${own.partner_id}" class="team-form"><label>Choose another pair<select name="pair" aria-label="Choose another pair" required><option value="">Select an available pair</option>${available.map(pair => `<option value="${pair.member_id}:${pair.partner_id}">${esc(label(pair))}</option>`).join("")}</select></label><p class="small-note">Forms the team immediately for all four players. No acceptance is required.</p><p class="form-error" role="alert"></p><button type="submit" class="primary wide">Form team</button></form>`;
+      else controls = `<p class="team-help">${complete ? "Your pair is registered. No other pair is available yet; check back to form your team." : ownType ? "Unavailable and standby members cannot form teams." : "Register with a partner first. Then either of you can combine with another registered pair."}</p>`;
     }
     return `${controls}<div class="pair-heading"><h3>Registered teams</h3><span>${teams.length} ${teams.length === 1 ? "team" : "teams"}</span></div>
       ${teams.length ? `<ol class="team-list">${teams.map((team, index) => `<li class="team-item ${team.id === mine?.id ? "own-team" : ""}"><div class="team-label">Team ${index + 1}${team.id === mine?.id ? '<span>Your team</span>' : ""}</div>${pairs.filter(pair => team.memberIds.includes(pair.member_id)).map(pair => `<p>${esc(label(pair))}</p>`).join("")}</li>`).join("")}</ol>` : '<p class="empty-copy">No complete teams yet.</p>'}
@@ -238,8 +282,8 @@
     if (state.user?.id !== userId) return;
     const self = plan.member.id === userId;
     openDialog("Confirm deactivation", `<div class="deactivate-summary"><p><strong>${esc(plan.member.name)}</strong></p><p>${esc(plan.member.email)}</p></div>
-      ${plan.member.active ? `<p>This will block sign-in, sign the member out on every device and remove them from available-partner lists.</p>
-      <ul class="deactivate-effects"><li>Cancel <strong>${plan.registrationCount}</strong> registration${plan.registrationCount === 1 ? "" : "s"} for today or later (${esc(plan.today)}, Pacific time).</li><li>Dissolve <strong>${plan.teamCount}</strong> affected team${plan.teamCount === 1 ? "" : "s"}.</li><li>Keep former partners registered as singles and unaffected pairs together.</li><li>Preserve the account and all registrations before today.</li></ul>
+      ${plan.member.active ? `<p>${plan.isWildcard ? "This is a shared placeholder account. Deactivating it removes its future assignments; affected members remain registered as singles." : "This will block sign-in, sign the member out on every device and remove them from available-partner lists."}</p>
+      <ul class="deactivate-effects">${plan.isWildcard ? `<li>Remove <strong>${plan.assignmentCount}</strong> future assignment${plan.assignmentCount === 1 ? "" : "s"} across <strong>${plan.affectedGames}</strong> game${plan.affectedGames === 1 ? "" : "s"}.</li><li>Keep affected members registered as singles.</li><li>Preserve the account and all registrations before today.</li>` : `<li>Cancel <strong>${plan.registrationCount}</strong> registration${plan.registrationCount === 1 ? "" : "s"} for today or later (${esc(plan.today)}, Pacific time).</li><li>Dissolve <strong>${plan.teamCount}</strong> affected team${plan.teamCount === 1 ? "" : "s"}.</li><li>Keep former partners registered as singles and unaffected pairs together.</li><li>Preserve the account and all registrations before today.</li>`}</ul>
       ${self ? '<p class="form-error">You are deactivating your own account. You will be signed out and cannot sign in again.</p>' : ""}` : '<p>This account is already inactive. No further changes will be made.</p>'}
       ${!plan.canDeactivate && plan.member.active ? '<p class="form-error">The last active administrator cannot be deactivated.</p>' : ""}
       <form id="deactivate-confirm-form" data-member="${plan.member.id}" data-revision="${plan.revision}"><p class="form-error" role="alert"></p><button type="submit" class="danger-primary wide" ${!plan.canDeactivate ? "disabled" : ""}>Deactivate member</button>${button("Cancel", "close-dialog", "quiet wide")}</form>`);
@@ -252,9 +296,15 @@
     dialog.showModal();
   }
   async function enter(result) {
-    state.token = result.token; state.user = result.member; state.calendar = null; state.selected = null; state.month = null;
+    state.token = result.token; state.user = result.member; state.calendar = null; state.selected = null; state.month = null; state.showWildcard = null;
     if (location.hash === "#calendar") route(); else location.hash = "#calendar";
   }
+  document.addEventListener("change", event => {
+    const select = event.target.closest('select[data-show="wildcard"]');
+    if (!select) return;
+    state.showWildcard = select.value ? Number(select.value) : null;
+    drawCalendar();
+  });
   document.addEventListener("click", async (event) => {
     const date = event.target.closest("[data-date]");
     if (date) {
@@ -280,7 +330,7 @@
       }
       if (action === "logout") {
         try { await api("/logout", "POST", {}); }
-        finally { state.token = null; state.user = null; state.calendar = null; location.hash = "#login"; }
+        finally { state.token = null; state.user = null; state.calendar = null; state.showWildcard = null; location.hash = "#login"; }
         return;
       }
       if (action === "export-games") {
@@ -329,11 +379,23 @@
       }
       if (action === "add-member") openDialog("Add a member", `<form id="member-form"><label>Full name<input name="name" required minlength="2" maxlength="80" autocomplete="off"></label><label>Email<input name="email" type="email" required maxlength="180" autocomplete="off"></label><label>Initial password<input name="password" type="password" required minlength="12" maxlength="128" autocomplete="new-password"></label><p class="small-note">Use at least 12 characters. Share the credentials privately with the member.</p><p class="form-error" role="alert"></p><button type="submit" class="primary wide">Create member</button></form>`);
       if (action === "deactivate-member") { control.disabled = true; await chooseDeactivation(); }
+      if (action === "wildcard-jump") {
+        const jump = control.dataset.jump;
+        state.month = jump.slice(0, 7); state.selected = jump;
+        await loadCalendar();
+        if (matchMedia("(max-width: 800px)").matches) {
+          const panel = app.querySelector(".dance-card");
+          panel.focus({ preventScroll: true });
+          panel.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth", block: "start" });
+        } else app.querySelector(`.calendar-grid [data-date="${state.selected}"]`).focus({ preventScroll: true });
+        return;
+      }
       if (action === "cancel") {
         const game = state.calendar.games.find(g => g.date === state.selected);
         const own = state.calendar.entries.find(e => e.game_id === game.id && e.member_id === state.user.id);
         const teamed = (state.calendar.teams || []).some(team => team.game_id === game.id && team.memberIds.includes(state.user.id));
-        openDialog("Cancel your registration?", `<p>You will be removed from the game on ${dateLabel(game.date)}.${own?.partner_id ? " Your partner will remain registered and be listed as looking for a partner." : ""}${teamed ? " Your team will dissolve. The other pair will stay registered together and become available for another team." : ""}</p><form id="cancel-form" data-game="${game.id}"><p class="form-error" role="alert"></p><button type="submit" class="primary wide">Yes, cancel my registration</button></form>`);
+        const partnerNote = own?.partner_id && !partnerWildcardType(own.partner_id) ? " Your partner will remain registered and be listed as looking for a partner." : "";
+        openDialog("Cancel your registration?", `<p>You will be removed from the game on ${dateLabel(game.date)}.${partnerNote}${teamed ? " Your team will dissolve. The other pair will stay registered together and become available for another team." : ""}</p><form id="cancel-form" data-game="${game.id}"><p class="form-error" role="alert"></p><button type="submit" class="primary wide">Yes, cancel my registration</button></form>`);
       }
       if (action === "leave-team") {
         const game = state.calendar.games.find(g => g.date === state.selected);
@@ -374,7 +436,11 @@
         if (!fields.partner && state.calendar.entries.some(e => e.game_id === Number(form.dataset.game) && e.member_id === state.user.id))
           throw new Error("Choose a partner, or leave your existing registration as it is.");
         await api(`/games/${form.dataset.game}/entry`, "POST", { partnerId: fields.partner ? Number(fields.partner) : null });
-        await loadCalendar(); toast(fields.partner ? "Partnership registered for both players." : "You’re registered and looking for a partner.");
+        await loadCalendar();
+        if (fields.partner && partnerWildcardType(Number(fields.partner)) === "guest") toast("You’re playing with a guest.");
+        else if (fields.partner && partnerWildcardType(Number(fields.partner)) === "standby") toast("You’re on standby for this game.");
+        else if (fields.partner && partnerWildcardType(Number(fields.partner)) === "unavailable") toast("You’re marked unavailable for this game.");
+        else toast(fields.partner ? "Partnership registered for both players." : "You’re registered and looking for a partner.");
       }
       if (form.id === "cancel-form") { await api(`/games/${form.dataset.game}/entry`, "DELETE", {}); dialog.close(); await loadCalendar(); toast("Your registration has been cancelled."); }
       if (form.id === "team-form") {

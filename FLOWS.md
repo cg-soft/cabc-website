@@ -1,5 +1,17 @@
 # Main flows and calendar layout checks
 
+## Wildcard placeholder members
+- Recognize exactly "-Unavailable-", "-Standby-" and "-Guest-" member names as shared placeholders; other hyphenated names are ordinary members.
+- Placeholder accounts cannot sign in; sessions and preview bypass are refused with 401.
+- A member registers with a placeholder as a one-directional assignment (no reciprocal row), so many members can overbook the same placeholder in one game.
+- "-Guest-" completes a playing pair; "-Standby-" (member substitutes at the last moment) and "-Unavailable-" (member blocked from being chosen as partner) are member states, not pairs.
+- Standby and unavailable members cannot form teams; guests can, and two guest pairs may share one team with only real member IDs stored.
+- Registration and cancellation clean up legacy reciprocal placeholder-owned rows; calendar reads exclude them.
+- A "Show" selector above the calendar lists each placeholder's upcoming assignments across all future months, with jump buttons that select the game's month and date.
+- Calendar cells and agenda annotate per-game assignment counts for the selected placeholder; the dance card shows Standby and Unavailable sections.
+- Placeholder deactivation review counts future assignments and affected games; applying it clears assignments, leaving members as registered singles.
+- Check overbooking, state labels, cancellation, teams, cross-month schedules, placeholder sign-in, deactivation, mobile layout and the Show selector.
+
 ## Smaller mobile logo
 - At widths up to 640px, show the unchanged transparent logo at 48px wide instead of 64px on Home, About, Login and member/admin Calendar.
 - Preserve its aspect ratio and upper-left position, centered in each page's existing header.

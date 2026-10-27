@@ -31,8 +31,21 @@ reactivate inactive accounts.
 
 Current installations upgrading to this release must first follow
 [Deactivate members: usage and Dathorn upgrade](DEACTIVATE-MEMBERS.md), including
-the explicit member-status migration. The older feature-specific upload
-instructions below describe earlier releases, not a substitute for that upgrade.
+the explicit member-status migration, and then
+[Wildcard placeholder members: usage and Dathorn upgrade](WILDCARDS.md) for
+this release's four-file update. The older feature-specific upload
+instructions below describe earlier releases, not a substitute for those upgrades.
+
+## Wildcard placeholder members
+
+The shared placeholder accounts `-Unavailable-`, `-Standby-` and `-Guest-` can be
+overbooked: several members may use the same placeholder in one game.
+`-Guest-` completes a playing pair and can form teams; `-Standby-` and
+`-Unavailable-` are member states that cannot form teams or be chosen as a
+partner. Placeholder accounts cannot sign in. A Show selector above the
+calendar displays each placeholder's upcoming schedule across all months, with
+jump buttons to the assigned games. This release changes `server.mjs`, `db.mjs`,
+`public/app.js` and `public/style.css` only; no migration is required.
 
 ## Club logo
 
