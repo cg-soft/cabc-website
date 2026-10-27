@@ -60,6 +60,19 @@ database, preserving all five original table counts. Dathorn deployment,
 production migration and host/browser acceptance remain manual owner steps.
 The seven-file upgrade is documented in ACTING-FOR-MEMBERS.md.
 
+After redeployment to the same preview asset, a fresh hosted browser context
+loaded Home's two buttons and signed in through the preview API. Acting for
+defaulted to Myself; a new synthetic game was added, Alex Chen was registered
+with a guest through the hosted proxy, the named cancellation succeeded,
+Return to myself reset the selector, and the synthetic game was deleted.
+Hosted desktop and 375px screenshots were inspected, with no horizontal
+overflow or JavaScript page errors. The preview ended with 15 games, 53
+entries, seven team rows, 17 fictional members (one new inactive QA account)
+and 19 retained audit records; foreign-key checks were clean.
+Verification used the deployment's direct hosted URL; its Perplexity wrapper
+requires owner sign-in. Responsive checks used Chromium, not a physical
+iOS/Safari device.
+
 ## Align Show and month navigation
 
 All 177 tests passed on Node 22.23.2 and 24.20.0. A new stylesheet regression
