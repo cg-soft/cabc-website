@@ -1,5 +1,38 @@
 # New minimal website verification
 
+## Add date defaults to the displayed month
+
+All 160 tests passed on Node 22.23.2 and 24.20.0. Eight new browser-script
+regression tests exercise the real Add date click handler with a minimal DOM:
+future month, current month, year boundary, leap day, first day, unloaded/empty
+calendar, stale past month, and reopening after navigation. The minimum stays
+today in all cases; no server or database changes were made.
+
+Before editing, reproduced November 2026 opening the form with October 24.
+After editing, the real browser showed November 1 in November, October 24 in
+October (the preview's fixed today), and November 1 again after closing an
+unsaved edit and reopening. The field remained editable, Teams selectable, and
+11:30 unchanged. Returning with Upcoming restored the current-month default.
+Desktop 1440px and mobile 375px dialogs were visually inspected with no
+horizontal overflow; resizing retained the dialog.
+
+Regression browser checks covered Home's two buttons, About, both preview
+roles, month navigation, the guest schedule selector, Add member/Deactivate
+member/Change password dialogs, team-card display, guest registration and
+cancellation on November 2, and a successful cabc-my-games.ics download.
+The temporary guest registration was cancelled through the UI. No JavaScript
+page errors were observed. Account changes, team creation and game creation
+are covered by the isolated automated suite, not repeated as writes in this
+preview run. Only fictional preview accounts were used.
+
+After redeployment, a fresh browser context loaded the hosted preview, signed
+in as the fictional administrator through the proxied API, and loaded both
+October and November calendars. The dialog showed October 24 in October and
+November 1 in November. Hosted desktop 1440px and mobile 375px screenshots
+were inspected; the dialog fit without horizontal overflow or page errors.
+The Perplexity wrapper itself requires owner sign-in; hosted interaction
+verification used the deployment tool's direct hosted URL.
+
 ## Wildcard placeholder members
 
 All 152 automated tests pass on Node 22.23.2 and Node 24.20.0, including the

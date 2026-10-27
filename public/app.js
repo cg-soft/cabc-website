@@ -11,6 +11,10 @@
   const timeLabel = (value) => { const [h, m] = value.split(":").map(Number); return `${h % 12 || 12}:${String(m).padStart(2, "0")} ${h < 12 ? "am" : "pm"}`; };
   const brand = '<span class="brand">Chinese American<br>Bridge Club</span>';
   const button = (label, action, cls = "") => `<button type="button" class="${cls}" data-action="${action}">${label}</button>`;
+  const defaultGameDate = () => {
+    const firstOfMonth = `${state.month || state.config.today.slice(0, 7)}-01`;
+    return firstOfMonth > state.config.today ? firstOfMonth : state.config.today;
+  };
   const wildcardList = () => state.calendar?.wildcards || [];
   const wildcardById = id => wildcardList().find(w => w.id === id) || null;
   const partnerWildcardType = id => wildcardById(id)?.type || null;
@@ -372,7 +376,7 @@
         }
         await loadCalendar(); return;
       }
-      if (action === "add-date") openDialog("Add a playing date", `<form id="date-form"><label>Game name (optional)<input name="name" maxlength="80" autocomplete="off" placeholder="For example, Monday Duplicate"></label><label>Event type<select name="eventType" aria-label="Event type"><option value="pairs">Pairs</option><option value="teams">Teams (two pairs)</option></select></label><label>Date<input name="date" type="date" min="${state.config.today}" value="${state.config.today}" required></label><label>Start time (Pacific)<input name="time" type="time" value="11:30" required></label><p class="small-note">Event type is fixed when the date is created.</p><p class="form-error" role="alert"></p><button type="submit" class="primary wide">Add date</button></form>`);
+      if (action === "add-date") openDialog("Add a playing date", `<form id="date-form"><label>Game name (optional)<input name="name" maxlength="80" autocomplete="off" placeholder="For example, Monday Duplicate"></label><label>Event type<select name="eventType" aria-label="Event type"><option value="pairs">Pairs</option><option value="teams">Teams (two pairs)</option></select></label><label>Date<input name="date" type="date" min="${state.config.today}" value="${defaultGameDate()}" required></label><label>Start time (Pacific)<input name="time" type="time" value="11:30" required></label><p class="small-note">Event type is fixed when the date is created.</p><p class="form-error" role="alert"></p><button type="submit" class="primary wide">Add date</button></form>`);
       if (action === "edit-name") {
         const game = state.calendar.games.find(g => g.date === state.selected);
         openDialog("Edit game name", `<form id="name-form" data-game="${game.id}"><label>Game name (optional)<input name="name" value="${esc(game.name)}" maxlength="80" autocomplete="off"></label><p class="small-note">Changing the name keeps this date and all partnerships intact. Leave it blank to remove the name.</p><p class="form-error" role="alert"></p><button type="submit" class="primary wide">Save name</button></form>`);

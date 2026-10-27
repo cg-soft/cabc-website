@@ -1,5 +1,13 @@
 # Main flows and calendar layout checks
 
+## Add date follows the displayed month
+- As administrator, navigate to a future month and open + Add date: Date defaults to that month's first day.
+- In the current month, default to today rather than a past first day; retain today's minimum date.
+- Reopen after navigating to another month, including across a year boundary; do not reuse an unsaved value.
+- With no loaded month or no upcoming games, default to today.
+- Keep the date editable, Pairs as the default, Teams available, and 11:30 as the initial start time.
+- Recheck public navigation, both preview roles, calendar navigation, wildcard filter, registration/cancellation, teams, export and admin dialogs at desktop and mobile widths.
+
 ## Wildcard placeholder members
 - Recognize exactly "-Unavailable-", "-Standby-" and "-Guest-" member names as shared placeholders; other hyphenated names are ordinary members.
 - Placeholder accounts cannot sign in; sessions and preview bypass are refused with 401.

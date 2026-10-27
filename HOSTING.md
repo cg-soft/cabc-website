@@ -37,7 +37,16 @@ No database, accounts, credentials, or preview deployment folder is included.
 
 ## Confirm the host runtime first
 
-### Current release: wildcard placeholder members
+### Current release: Add date defaults to the displayed month
+
+If the wildcard release is already installed, upload only `public/app.js` and
+refresh the browser. The Date field now starts on the first day of a future
+displayed month, or today when viewing the current month or an empty calendar.
+The field remains editable and still rejects past dates. No build, dependency
+installation, application restart or database migration is needed for this
+browser-only update. Deployment to Dathorn remains the owner's manual step.
+
+### Previous release: wildcard placeholder members
 
 Follow [Wildcard placeholder members: usage and Dathorn upgrade](WILDCARDS.md):
 upload `server.mjs`, `db.mjs`, `public/app.js` and `public/style.css`, then
