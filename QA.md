@@ -1,5 +1,27 @@
 # New minimal website verification
 
+## Header dropdown alignment
+
+Aligned the dropdown itself, rather than its label/caption group, with Home
+and Log out. Acting for remains above the dropdown; the signed-in caption
+remains below while acting. Browser bounding-box assertions found zero
+top/bottom edge difference for both Myself and acting mode at 320, 375, 480,
+481, 640, 768, 1000 and 1440px. A long fictional administrator name wrapped
+without moving either button out of alignment or causing horizontal overflow.
+Self and acting screenshots at desktop/375px were visually inspected.
+
+All 202 tests passed on Node 22.23.2 and 24.20.0. Browser regression checks
+covered public Home/About/Login, both preview roles and logout, target/reset,
+all wildcard Show modes, month navigation/Upcoming, Add date defaults, guest
+registration, team formation/dissolution, named cancellation, cross-month
+editing, deletion, export and administrator dialogs. Newly created fictional
+QA games were deleted through the UI; original games were not altered.
+No page errors were observed.
+
+This alignment correction changes public/style.css only. Sites that have not
+yet installed the header selector should also upload public/app.js from the
+preceding header-layout release. Neither case requires a new migration.
+
 ## Acting for in the navigation header
 
 The administrator's selector now occupies the former login-name position

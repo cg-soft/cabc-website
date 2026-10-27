@@ -4,7 +4,8 @@
 
 Sign in with your own administrator account and open Playing dates. The new
 Acting for selector replaces your plain login name in the header, beside Home
-and Log out. It is separate from the read-only wildcard Show selector.
+and Log out. The dropdown aligns with those buttons, with Acting for above it.
+It is separate from the read-only wildcard Show selector.
 It defaults to Myself and lists other active real members, including other
 administrators. The numeric member ID distinguishes duplicate names.
 Inactive accounts and shared wildcard placeholders cannot be acting targets.
@@ -34,6 +35,9 @@ named, separate controls. This is not an impersonation login and does not
 give access to someone else's password or personal calendar export.
 
 ## Header-only layout upgrade
+
+If the selector is already in the header and only its alignment needs fixing,
+upload the latest `public/style.css` and fully reload the browser.
 
 If administrator scheduling is already installed and working, upload only
 `public/app.js` and `public/style.css` from this release, then reload the browser

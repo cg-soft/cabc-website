@@ -1,6 +1,7 @@
 # Main flows and calendar layout checks
 
 ## Acting for in the signed-in header
+- Align the dropdown's top and bottom edges with Home and Log out, with Acting for above it; retain alignment both for Myself and when the signed-in-administrator caption wraps across several lines.
 - Replace the administrator's plain login name with one Acting for selector beside Home and Log out, not a duplicate selector above the calendar.
 - Myself names the signed-in administrator; while acting, show the actual administrator in the header and retain the named scheduling notice and Return to myself above the calendar.
 - Ordinary members retain their login name and never receive the selector. Unsupported servers retain the login identity and the upgrade notice, with no acting selector.

@@ -50,6 +50,9 @@ nav{display:flex;align-items:center;gap:var(--space-3)}
 #acting-controls{width:clamp(160px,22vw,280px);min-width:0}
 .acting-identity{display:flex;flex-direction:column;gap:var(--space-1);margin:0;min-width:0;color:var(--muted);font-size:var(--text-xs)}
 .acting-identity select{width:100%;min-width:0;min-height:44px;margin:0;padding:var(--space-2);font-size:var(--text-base);color:var(--ink)}
+.calendar-header nav:has(.acting-identity){align-items:flex-start}
+.calendar-header nav:has(.acting-identity)>button{margin-top:calc(var(--text-xs)*1.55 + var(--space-1))}
+.acting-identity>span:first-child{line-height:1.55;white-space:nowrap}
 .acting-signed-in{overflow-wrap:anywhere}
 .acting-context{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-3) var(--space-5);background:var(--tint);border:1px solid var(--line);border-radius:5px;padding:var(--space-4);margin-bottom:var(--space-6);overflow-wrap:anywhere;font-size:var(--text-sm)}
 .acting-context>div{flex:1 1 280px;min-width:0}
