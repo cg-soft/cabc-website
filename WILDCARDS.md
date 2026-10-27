@@ -60,7 +60,15 @@ Then restart the application. Verify on the live site that the Show selector
 appears once signed in, that a member can register with `-Guest-`, and that
 placeholder accounts cannot sign in. Weekly backups are unchanged.
 
-Rollback: restore the previous four files and restart. Data written by the
-new version (one-directional placeholder assignments) is harmless to the old
-server; delete the placeholder's future assignments with the administrator
-deactivation flow if you need to clear them.
+Rollback: restoring the previous four files and restarting returns the
+application to the previous release, but data written by this version is
+**not automatically compatible with the old client**: one-directional
+placeholder assignments make the old client's pair counts divide partnered
+rows by two, and the old team logic expects reciprocal rows. Before rolling
+back, an administrator should clear placeholder assignments for today and
+later (the deactivation review lists them), which leaves the affected members
+registered as singles the old client renders correctly. Do not roll back with
+future placeholder assignments still in place, and do not attempt production
+cleanup with automated scripts; use the administrator flows described above.
+Placeholder-owned rows, if any were written by the old server, are ignored by
+this release and can be removed by an administrator while it is installed.

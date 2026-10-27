@@ -54,9 +54,10 @@ test("wildcard placeholder members", async t => {
         assert.equal(result.status, 401);
         assert.equal(result.body.error, "This placeholder account cannot sign in.");
       }
-      // A session row created by older code is also rejected by auth().
-      db.prepare("INSERT INTO sessions VALUES(?,?,?)").run(hashToken("stale-wildcard-session"), guest, Date.now() + 3600000);
-      assert.equal((await req("/calendar", "GET", undefined, "stale-wildcard-session")).status, 401);
+      // A session row created by older code is also rejected by auth(); the
+      // token must be valid 64-hex so the placeholder-account check is reached.
+      db.prepare("INSERT INTO sessions VALUES(?,?,?)").run(hashToken("ab".repeat(32)), guest, Date.now() + 3600000);
+      assert.equal((await req("/calendar", "GET", undefined, "ab".repeat(32))).status, 401);
     });
 
     const rows = sql => db.prepare(sql).all().map(r => ({ ...r }));
@@ -133,14 +134,22 @@ test("wildcard placeholder members", async t => {
     await t.test("guest pairs complete teams, including two guests with the same marker", async () => {
       assert.equal((await register(g2, guest, tokens[1])).status, 200);
       assert.equal((await register(g2, guest, tokens[2])).status, 200);
+      // Two members each bring the same -Guest- placeholder: one team stores
+      // only the two real member ids.
+      const guestTeam = await req(`/games/${g2}/team`, "POST", { pairMemberId: ids[2], pairPartnerId: guest, ownPartnerId: guest }, tokens[1]);
+      assert.equal(guestTeam.status, 200);
+      assert.deepEqual(rows(`SELECT member_id FROM team_members WHERE game_id=${g2} ORDER BY member_id`),
+        [{ member_id: ids[1] }, { member_id: ids[2] }]);
+      // Dissolve it, then form a mixed team of one guest pair and one real pair.
+      const dissolved = await req(`/games/${g2}/team`, "DELETE", { teamId: db.prepare("SELECT team_id FROM team_members WHERE game_id=? AND member_id=?").get(g2, ids[1]).team_id }, tokens[1]);
+      assert.equal(dissolved.status, 200);
       // Person 3 and Person 4 form the other real pair; one call registers both.
       assert.equal((await register(g2, ids[4], tokens[3])).status, 200);
-      // The same placeholder appears in two pairs of one team; only real ids are stored.
       const team = await req(`/games/${g2}/team`, "POST", { pairMemberId: ids[3], pairPartnerId: ids[4], ownPartnerId: guest }, tokens[1]);
       assert.equal(team.status, 200);
       const stored = rows(`SELECT member_id FROM team_members WHERE game_id=${g2} ORDER BY member_id`);
       assert.deepEqual(stored, [{ member_id: ids[1] }, { member_id: ids[3] }, { member_id: ids[4] }]);
-      // Two different real members in both pairs are still rejected.
+      // The same real member appearing in both pairs is still rejected.
       assert.equal((await req(`/games/${g2}/team`, "POST", { pairMemberId: ids[1], pairPartnerId: guest, ownPartnerId: guest }, tokens[2])).status, 409);
     });
 

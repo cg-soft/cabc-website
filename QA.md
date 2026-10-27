@@ -24,11 +24,11 @@ views. Selecting `-Guest-` replaced the dance card with its schedule (October
 month jump button switched the calendar to November 2026 with that game
 selected while keeping the Show selection. Calendar cells and agenda entries
 annotated per-game assignment counts. A member registered with `-Guest-` on
-November 2 (toast and "You're playing with a guest" status), the dance card
-listed the pair and grouped Jordan Chan under Standby and Sam Liu under
-Unavailable, and cancelling removed only that member's assignment with no
-partner sentence in the confirmation. A team was formed between a real pair and
-a guest pair in the Thursday Teams game. The placeholder sign-in form was
+November 2 and saw the "You're playing with a guest" status and toast, the
+dance card listed the pair and grouped Jordan Chan under Standby and Sam Liu
+under Unavailable, and cancelling removed only that member's assignment with
+no partner sentence in the confirmation. A team was formed between a real pair
+and a guest pair in the Thursday Teams game. The placeholder sign-in form was
 refused with "This placeholder account cannot sign in." The administrator
 deactivation review of `-Guest-` reported removing four future assignments
 across three games and was cancelled without applying.
@@ -36,10 +36,18 @@ across three games and was cancelled without applying.
 Visual QA covered 1440px desktop and 375px mobile. A mobile overflow where the
 Show row pushed the month navigation past the card edge was found and fixed by
 letting the controls wrap at up to 480px; re-measurement confirmed the controls
-fit inside the card with no horizontal scrolling. Focused screenshots confirmed
-no clipped cell text, and no JavaScript page errors were recorded (the only
-console entries were the three deliberate 401 responses from the placeholder
-sign-in and expired-session tests).
+fit inside the card with no horizontal scrolling. The boundary was checked at
+both 480px and 481px with no overflow or clipping at either width, and focused
+screenshots confirmed no clipped cell text. No JavaScript page errors were
+recorded; the only console entries were deliberate 401 responses from the
+placeholder sign-in test and unauthenticated verification fetches.
+
+The deployed preview was verified against its hosted URL, not just its files:
+the preview configuration now targets the sandbox backend through the deploy
+proxy, preview sign-in works, and the Show selector, `-Guest-` schedule and
+cross-month jump were exercised on the hosted application. The two hosted test
+registrations were cancelled afterwards, restoring the fictional preview
+database to its seeded state.
 
 Production hosting and accounts have not been modified. WILDCARDS.md documents
 the four-file upload, placeholder creation with manage.mjs and the lack of any
