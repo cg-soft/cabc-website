@@ -3,7 +3,7 @@
   const state = { token: null, user: null, config: null, month: null, selected: null, calendar: null, generation: 0, loginNotice: null, showWildcard: null };
   dialog.addEventListener("close", () => { if (!dialog.open) dialog.replaceChildren(); });
   dialog.addEventListener("cancel", event => {
-    if (dialog.dataset.passwordPending === "true" || dialog.dataset.memberPending === "true") event.preventDefault();
+    if (dialog.dataset.passwordPending === "true" || dialog.dataset.memberPending === "true" || dialog.dataset.gamePending === "true") event.preventDefault();
   });
   let slideTimer, toastTimer, slide = 0, paused = false;
   const esc = (value) => String(value ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -239,7 +239,7 @@
     } else registration = `<form id="register-form" data-game="${game.id}"><label>${own ? "You’re registered. Add a partner?" : "Join this game"}<select name="partner" aria-label="Choose a partner">
       <option value="">${own ? "Choose an available member" : "I’m looking for a partner"}</option>${available.map(m => `<option value="${m.id}">${esc(m.name)}</option>`).join("")}
       </select></label><p class="small-note">Choosing a partner registers both of you.${wildcardList().length ? " Hyphenated names such as -Guest- are shared placeholders." : ""}</p><p class="form-error" role="alert"></p><button type="submit" class="primary wide">${own ? "Register partnership" : "Register"}</button></form>${own ? button("Cancel my registration", "cancel", "text-button danger") : ""}`;
-    return `<div class="dance-date-header"><div class="selected-date-number" aria-hidden="true"><span>${dateLabel(game.date,{month:"short"})}</span><strong>${Number(game.date.slice(-2))}</strong></div><div><p class="eyebrow">Dance card</p><h2>${esc(game.name || dateLabel(game.date, { weekday: "long", month: "long", day: "numeric" }))}</h2>${game.name ? `<p class="muted game-date-label">${dateLabel(game.date, { weekday: "long", month: "long", day: "numeric" })}</p>` : ""}<p class="muted">${timeLabel(game.time)} · Pacific time</p>${state.user.role === "admin" && !closed ? button("Edit name", "edit-name", "text-button edit-name") : ""}</div></div>
+    return `<div class="dance-date-header"><div class="selected-date-number" aria-hidden="true"><span>${dateLabel(game.date,{month:"short"})}</span><strong>${Number(game.date.slice(-2))}</strong></div><div><p class="eyebrow">Dance card</p><h2>${esc(game.name || dateLabel(game.date, { weekday: "long", month: "long", day: "numeric" }))}</h2>${game.name ? `<p class="muted game-date-label">${dateLabel(game.date, { weekday: "long", month: "long", day: "numeric" })}</p>` : ""}<p class="muted">${timeLabel(game.time)} · Pacific time</p>${state.user.role === "admin" && !closed ? `<div class="game-admin-actions">${button("Edit game", "edit-game", "text-button")}${button("Delete game", "delete-game", "text-button danger")}</div>` : ""}</div></div>
       ${game.event_type === "teams" ? '<p class="team-intro"><strong>Team event</strong> · Register as a pair, then join another pair to make a team of four.</p>' : ""}
       <div class="registration-area">${registration}</div>${game.event_type === "teams" ? teamCard(game, own, pairs, name, closed) : `<div class="pair-heading"><h3>Registered pairs</h3><span>${pairs.length} ${pairs.length === 1 ? "pair" : "pairs"}</span></div>
       ${pairs.length ? `<ol class="pairs">${pairs.map(e => `<li><span>${esc(e.name)}</span><span>${esc(name(e.partner_id))}</span></li>`).join("")}</ol>` : '<p class="empty-copy">No pairs yet. There’s a place for you.</p>'}`}
@@ -299,6 +299,22 @@
     dialog.querySelector(".close-button").setAttribute("aria-label", "Close dialog");
     dialog.showModal();
   }
+  async function manageGame(mode) {
+    const selected = state.calendar.games.find(game => game.date === state.selected);
+    if (!selected || state.user.role !== "admin") return;
+    const token = state.token, generation = state.generation;
+    const plan = await api(`/games/${selected.id}/manage`);
+    if (state.token !== token || state.generation !== generation || state.selected !== selected.date) return;
+    const game = plan.game;
+    const summary = `<div class="game-summary"><p><strong>${esc(game.name || "Unnamed game")}</strong></p><p>${dateLabel(game.date, { weekday: "long", month: "long", day: "numeric", year: "numeric" })} · ${timeLabel(game.time)} Pacific</p><p>${game.event_type === "teams" ? "Teams" : "Pairs"} · ${plan.registrationCount} registered member${plan.registrationCount === 1 ? "" : "s"} · ${plan.teamCount} team${plan.teamCount === 1 ? "" : "s"}</p></div>`;
+    const attrs = `data-game="${game.id}" data-revision="${esc(plan.revision)}"`;
+    if (mode === "delete-game") {
+      openDialog("Delete this game?", `${summary}<p>This permanently deletes this game and all its registrations and teams. Member accounts and other games will not change. This cannot be undone.</p><p class="small-note">Previously imported calendar files will not update automatically.</p><form id="delete-game-form" ${attrs}><p class="form-error" role="alert"></p><button type="submit" class="danger-primary wide">Delete game</button>${button("Cancel", "close-dialog", "quiet wide")}</form>`);
+      dialog.querySelector('#delete-game-form [data-action="close-dialog"]').focus();
+    } else {
+      openDialog("Edit game", `${summary}<form id="edit-game-form" ${attrs}><label>Game name (optional)<input name="name" value="${esc(game.name)}" maxlength="80" autocomplete="off"></label><label>Date<input name="date" type="date" value="${game.date}" min="${state.calendar.today}" required></label><label>Start time (Pacific)<input name="time" type="time" value="${game.time}" required></label><p class="small-note">Registrations, partnerships and teams stay with this game. Event type is fixed. Let registered players know about schedule changes; imported calendar files will not update automatically.</p><p class="form-error" role="alert"></p><button type="submit" class="primary wide">Save changes</button>${button("Cancel", "close-dialog", "quiet wide")}</form>`);
+    }
+  }
   async function enter(result) {
     state.token = result.token; state.user = result.member; state.calendar = null; state.selected = null; state.month = null; state.showWildcard = null;
     if (location.hash === "#calendar") route(); else location.hash = "#calendar";
@@ -326,7 +342,7 @@
     try {
       if (["home", "about", "login"].includes(action)) { location.hash = `#${action}`; return; }
       if (action === "close-dialog") {
-        if (dialog.dataset.passwordPending === "true" || dialog.dataset.memberPending === "true") return;
+        if (dialog.dataset.passwordPending === "true" || dialog.dataset.memberPending === "true" || dialog.dataset.gamePending === "true") return;
         dialog.close(); return;
       }
       if (action.startsWith("preview-")) {
@@ -377,9 +393,9 @@
         await loadCalendar(); return;
       }
       if (action === "add-date") openDialog("Add a playing date", `<form id="date-form"><label>Game name (optional)<input name="name" maxlength="80" autocomplete="off" placeholder="For example, Monday Duplicate"></label><label>Event type<select name="eventType" aria-label="Event type"><option value="pairs">Pairs</option><option value="teams">Teams (two pairs)</option></select></label><label>Date<input name="date" type="date" min="${state.config.today}" value="${defaultGameDate()}" required></label><label>Start time (Pacific)<input name="time" type="time" value="11:30" required></label><p class="small-note">Event type is fixed when the date is created.</p><p class="form-error" role="alert"></p><button type="submit" class="primary wide">Add date</button></form>`);
-      if (action === "edit-name") {
-        const game = state.calendar.games.find(g => g.date === state.selected);
-        openDialog("Edit game name", `<form id="name-form" data-game="${game.id}"><label>Game name (optional)<input name="name" value="${esc(game.name)}" maxlength="80" autocomplete="off"></label><p class="small-note">Changing the name keeps this date and all partnerships intact. Leave it blank to remove the name.</p><p class="form-error" role="alert"></p><button type="submit" class="primary wide">Save name</button></form>`);
+      if (action === "edit-game" || action === "delete-game") {
+        control.disabled = true;
+        try { await manageGame(action); } finally { if (control.isConnected) control.disabled = false; }
       }
       if (action === "add-member") openDialog("Add a member", `<form id="member-form"><label>Full name<input name="name" required minlength="2" maxlength="80" autocomplete="off"></label><label>Email<input name="email" type="email" required maxlength="180" autocomplete="off"></label><label>Initial password<input name="password" type="password" required minlength="12" maxlength="128" autocomplete="new-password"></label><p class="small-note">Use at least 12 characters. Share the credentials privately with the member.</p><p class="form-error" role="alert"></p><button type="submit" class="primary wide">Create member</button></form>`);
       if (action === "deactivate-member") { control.disabled = true; await chooseDeactivation(); }
@@ -457,7 +473,20 @@
         dialog.close(); await loadCalendar(); toast("Team dissolved. Both pairs remain registered.");
       }
       if (form.id === "date-form") { const result = await api("/games", "POST", fields); dialog.close(); state.month = result.date.slice(0, 7); state.selected = result.date; await loadCalendar(); toast("Playing date added."); }
-      if (form.id === "name-form") { await api(`/games/${form.dataset.game}/name`, "POST", fields); dialog.close(); await loadCalendar(); toast("Game name saved."); }
+      if (form.id === "edit-game-form" || form.id === "delete-game-form") {
+        dialog.dataset.gamePending = "true";
+        dialog.querySelectorAll('[data-action="close-dialog"]').forEach(button => { button.disabled = true; });
+        const deleting = form.id === "delete-game-form";
+        submit.textContent = deleting ? "Deleting…" : "Saving…";
+        const result = await api(`/games/${form.dataset.game}/manage`, deleting ? "DELETE" : "PATCH",
+          { ...fields, revision: form.dataset.revision, ...(deleting ? { confirm: true } : {}) });
+        dialog.close();
+        state.showWildcard = null;
+        if (!deleting) { state.month = result.date.slice(0, 7); state.selected = result.date; }
+        else state.selected = null;
+        await loadCalendar();
+        toast(deleting ? "Game deleted, including its registrations and teams." : "Game saved. Registrations and teams have been preserved.");
+      }
       if (form.id === "member-form") { await api("/members", "POST", fields); dialog.close(); await loadCalendar(); toast("Member created. Share their credentials privately."); }
       if (form.id === "deactivate-select-form") await reviewDeactivation(Number(fields.memberId));
       if (form.id === "deactivate-confirm-form") {
@@ -494,6 +523,11 @@
       } else if (error?.isConnected) error.textContent = err.message; else toast(err.message);
     }
     finally {
+      if (form.id === "edit-game-form" || form.id === "delete-game-form") {
+        delete dialog.dataset.gamePending;
+        dialog.querySelectorAll('[data-action="close-dialog"]').forEach(button => { button.disabled = false; });
+        if (submit.isConnected) submit.textContent = form.id === "delete-game-form" ? "Delete game" : "Save changes";
+      }
       if (form.id === "deactivate-confirm-form") {
         delete dialog.dataset.memberPending;
         dialog.querySelectorAll('[data-action="close-dialog"]').forEach(button => { button.disabled = false; });

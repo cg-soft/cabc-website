@@ -37,7 +37,16 @@ No database, accounts, credentials, or preview deployment folder is included.
 
 ## Confirm the host runtime first
 
-### Current release: Add date defaults to the displayed month
+### Current release: edit and delete games
+
+Follow [Edit and delete games: usage and Dathorn upgrade](GAME-MANAGEMENT.md).
+If the wildcard release is installed, back up the private database, stop the
+application, upload `server.mjs`, `public/app.js` and `public/style.css`, then
+restart and refresh. No migration, build or dependency installation is needed.
+The owner performs this deployment manually; no Dathorn files or database
+have been changed by this work.
+
+### Previous release: Add date defaults to the displayed month
 
 If the wildcard release is already installed, upload only `public/app.js` and
 refresh the browser. The Date field now starts on the first day of a future
@@ -54,6 +63,23 @@ restart and refresh. No migration, build or dependency installation is needed.
 The member-status migration from the previous release must already be applied.
 If the three placeholder accounts do not exist yet, create them with
 `node manage.mjs add-member` using their exact hyphenated names.
+
+### If the earlier date-default or wildcard update is missing
+
+The date-default change is browser-only: refresh the full page after uploading
+`public/app.js`, then test Add date from a future displayed month. In the current
+month, today is the intended default. An already-open tab continues running
+its previously loaded JavaScript until refreshed; try a private window or a
+hard refresh if necessary.
+
+The wildcard release needs all four runtime files listed above and a Node
+application restart. Updating JavaScript/CSS without restarting the older
+Node process can leave the new browser code talking to the older calendar API.
+The Show dropdown only appears when that API returns wildcard accounts.
+If it is still missing after restart and refresh, confirm the three existing
+member names match the exact spellings above and inspect the authenticated
+calendar response for a `wildcards` array. Do not publish the response or
+session token; member-directory data is private.
 
 ### Previous release: member deactivation
 

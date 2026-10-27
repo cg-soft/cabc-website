@@ -1,5 +1,65 @@
 # New minimal website verification
 
+## Edit and delete games
+
+All 176 automated tests passed on Node 22.23.2 and 24.20.0. The new isolated
+management suite covers authorization for GET/PATCH/DELETE, expired sessions,
+review counts, cross-month/year rescheduling with IDs/entries/guest
+assignments/teams preserved, clearing names, invalid dates/times/names,
+duplicate dates, fixed event type, strict confirmation, missing/stale
+revisions, changed registrations/teams/details, concurrent edits, past/missing
+games, transaction rollback, targeted deletion, month fallback and the global
+empty calendar after the last upcoming game. Legacy name-only updates remain
+compatible. No schema or startup migration changes were introduced.
+
+Browser QA used only fictional preview accounts. Created a synthetic Teams
+game on December 10, 2026; two real members each paired with the same guest
+placeholder, then formed one team. Edit prefilled the stored fields, moved
+the game to January 14, 2027, changed its name and start time, selected January
+in the calendar, and retained both guest pairs and their complete team.
+Names containing markup characters rendered as literal text.
+
+Delete review showed two registered members and one team, with Cancel
+initially focused. Cancelling the dialog left the game intact. A member's
+concurrent cancellation changed the review; attempting the stale deletion
+showed the conflict message and removed nothing. Reopening showed one member
+and zero teams. Re-registered that fictional player and re-formed the team;
+the final fresh review again showed two members/one team, and explicit
+deletion removed the game and dependencies and selected October.
+
+An unrelated-data snapshot before deletion and the complete snapshot after
+deletion had identical SHA256 hashes. Final preview row counts returned to
+15 games, 53 entries, 7 team-membership rows, 16 members and 15 sessions;
+foreign_key_check found no errors. These counts describe that local QA run,
+not the production database.
+
+Duplicate-date edits showed an inline error. A deliberately delayed save
+disabled submit/close controls and blocked Escape, then completed when the
+request resumed. Ordinary members had no management controls and past games
+had none for administrators. Desktop 1440px and mobile 375px were inspected:
+no horizontal overflow; long edit dialogs scroll internally, with Save and
+Cancel reachable. Native date/time controls remained editable.
+
+Regression checks included Add date's November 1 default, administrator
+Add member/Deactivate member/Change password dialogs, wildcard schedule and
+cross-month jump, team formation, registration and cancellation. No browser
+JavaScript page exceptions were observed in these checks. Expected HTTP 409
+responses occurred for deliberately conflicting reviews/dates.
+
+Hosted verification used a fresh browser context on the deployment tool's
+direct hosted URL, with the running sandbox backend on port 5005. The first
+attempt exposed the preview still reaching the previous backend process;
+starting the new server version on the existing preview port corrected that.
+The hosted administrator form loaded stored fields. Created a fictional
+February game, edited its name/date/time into March, and explicitly deleted
+it through the hosted proxy. March remained selected because an unrelated
+March 8 game still existed. The success toast confirmed deletion, the
+calendar reloaded real API data, and cabc-my-games.ics downloaded successfully.
+Hosted mobile deletion was visually inspected without horizontal overflow;
+no JavaScript page exceptions were observed. The temporary hosted QA game
+was removed. The Perplexity wrapper requires owner sign-in; interaction QA
+used the deployment tool's direct hosted URL.
+
 ## Add date defaults to the displayed month
 
 All 160 tests passed on Node 22.23.2 and 24.20.0. Eight new browser-script

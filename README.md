@@ -20,6 +20,17 @@ To load members from a private CSV containing `name,email,initial-password`,
 follow [IMPORT-MEMBERS.md](IMPORT-MEMBERS.md). The importer defaults to a dry run,
 adds member accounts only, and never overwrites existing credentials.
 
+## Edit and delete games
+
+Administrators select a current/future playing date, then choose Edit game
+or Delete game on its dance card. Edit changes name, date and Pacific start
+time while retaining every registration, partnership and team; event type
+stays fixed. Delete reviews registered-member/team counts and requires an
+explicit confirmation before removing that game and its registrations/teams.
+Members cannot manage games, and past games remain read-only. Stale reviews
+are rejected. See [GAME-MANAGEMENT.md](GAME-MANAGEMENT.md) for usage, limits,
+calendar-snapshot warnings and the three-file, no-migration Dathorn upgrade.
+
 ## Deactivate members
 
 Administrators can choose Deactivate member, select an account, review the

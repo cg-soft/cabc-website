@@ -1,5 +1,16 @@
 # Main flows and calendar layout checks
 
+## Edit and delete games
+- Administrators see Edit game and Delete game on the selected current/future game's dance card; members and past games have no such controls.
+- Edit opens with the stored name/date/time and fixed event type. Saving preserves game ID, every registration, partnership and team; the calendar follows a moved game to its new month.
+- Validate real current/future dates, 24-hour time, name length and duplicate dates; rejected edits leave all data intact.
+- Delete reviews the exact name/date/time, registered-member and team counts, then requires an explicit Delete game confirmation; Cancel is initially focused.
+- Delete atomically removes only that game and its entries/teams. Other games/accounts/sessions remain intact; deleting a month's last game selects another available month, or the global empty state.
+- Both operations require a fresh reviewed revision; changed game details, registrations or teams cause a conflict without applying anything. Closing and reopening fetches a fresh review.
+- Disable submit, close and Escape during save/delete; cancellation before submission never writes.
+- Preserve existing Add date month defaults, public navigation, both preview roles, wildcard views, pairing, cancellation, team controls, export and other administrator dialogs.
+- Test desktop/mobile dialogs, long names, markup escaping, keyboard focus, errors, stale reviews, cross-month edits, deletion with registrations/teams and deletion of the last upcoming game using fictional QA data only.
+
 ## Add date follows the displayed month
 - As administrator, navigate to a future month and open + Add date: Date defaults to that month's first day.
 - In the current month, default to today rather than a past first day; retain today's minimum date.
@@ -126,7 +137,7 @@
 
 ## Named games and upcoming-month navigation
 - Admin Add date accepts an optional name; blank names preserve the current presentation.
-- Admin Edit name changes a future game's name without changing its date or registrations.
+- Admin Edit game replaces Edit name and changes a current/future game's name, date and time while retaining registrations.
 - Names appear in desktop cells, mobile rows, selected dance card and accessible date labels.
 - Long names wrap without clipping or horizontal overflow; markup is displayed as text.
 - Initial entry opens the earliest month with a game on/after today, even across years or large gaps.

@@ -74,6 +74,26 @@ export function createApp({ db = openDatabase(), preview = false, previewToday }
     if (row.date < today()) throw new HttpError(409, "Registration for this date is closed.");
     return row;
   }
+  function gameDateTime(date, time) {
+    const parsed = typeof date === "string" ? new Date(`${date}T12:00:00Z`) : new Date(NaN);
+    if (typeof date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
+        Number.isNaN(parsed.valueOf()) || parsed.toISOString().slice(0, 10) !== date ||
+        date < today() || typeof time !== "string" || !/^([01]\d|2[0-3]):[0-5]\d$/.test(time))
+      throw new HttpError(400, "Choose a current or future date and a valid time.");
+  }
+  function gamePlan(id) {
+    const current = game(id);
+    const entries = db.prepare("SELECT * FROM entries WHERE game_id=? ORDER BY member_id").all(id);
+    const teams = db.prepare("SELECT * FROM team_members WHERE game_id=? ORDER BY member_id").all(id);
+    const registrationCount = entries.filter(entry => {
+      const member = db.prepare("SELECT name FROM members WHERE id=?").get(entry.member_id);
+      return member && !wildcardType(member.name);
+    }).length;
+    return {
+      game: current, registrationCount, teamCount: new Set(teams.map(row => row.team_id)).size,
+      revision: hashToken(JSON.stringify({ today: today(), game: current, entries, teams }))
+    };
+  }
   function completePair(gameId, memberId) {
     const row = db.prepare("SELECT partner_id FROM entries WHERE game_id=? AND member_id=?").get(gameId, memberId);
     if (!row?.partner_id) throw new HttpError(409, "Both pairs must be fully registered. Refresh the calendar and try again.");
@@ -310,6 +330,35 @@ export function createApp({ db = openDatabase(), preview = false, previewToday }
           }
         });
         return reply(200, { ok: true });
+      }
+      const gameManageRoute = /^\/api\/games\/(\d+)\/manage$/.exec(route);
+      if (gameManageRoute && ["GET", "PATCH", "DELETE"].includes(req.method)) {
+        admin(user);
+        const id = Number(gameManageRoute[1]);
+        if (!Number.isSafeInteger(id) || id <= 0) throw new HttpError(400, "Invalid game.");
+        const result = transaction(db, () => {
+          admin(auth(req));
+          const plan = gamePlan(id);
+          if (req.method === "GET") return plan;
+          if (typeof body.revision !== "string" || body.revision !== plan.revision)
+            throw new HttpError(409, "This game or its registrations changed. Close this dialog and reopen it to review the latest game.");
+          if (req.method === "DELETE") {
+            if (body.confirm !== true) throw new HttpError(400, "Confirm deletion of this game.");
+            db.prepare("DELETE FROM team_members WHERE game_id=?").run(id);
+            db.prepare("DELETE FROM entries WHERE game_id=?").run(id);
+            db.prepare("DELETE FROM games WHERE id=?").run(id);
+            return { id, deleted: true };
+          }
+          const name = gameName(body.name);
+          gameDateTime(body.date, body.time);
+          if (body.eventType !== undefined && body.eventType !== plan.game.event_type)
+            throw new HttpError(400, "Event type cannot be changed. Create a new game instead.");
+          if (db.prepare("SELECT id FROM games WHERE date=? AND id<>?").get(body.date, id))
+            throw new HttpError(409, "This playing date already exists.");
+          db.prepare("UPDATE games SET name=?,date=?,time=? WHERE id=?").run(name, body.date, body.time, id);
+          return { id, name, date: body.date, time: body.time, eventType: plan.game.event_type };
+        });
+        return reply(200, result);
       }
       const nameRoute = /^\/api\/games\/(\d+)\/name$/.exec(route);
       if (nameRoute && req.method === "POST") {
