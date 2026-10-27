@@ -99,11 +99,40 @@ export function migrateMemberStatus(filename = process.env.DB_PATH || path.join(
     throw error;
   } finally { db.close(); }
 }
+export function migrateRegistrationAudit(filename = process.env.DB_PATH || path.join(ROOT, "data/club.sqlite")) {
+  const file = privateFile(filename);
+  if (!existsSync(file)) throw new Error("Database not found. Check DB_PATH; migration will not initialize a replacement.");
+  const db = new DatabaseSync(file);
+  let pending = false;
+  try {
+    db.exec("PRAGMA foreign_keys=ON; PRAGMA busy_timeout=10000;");
+    if (db.prepare("PRAGMA user_version").get().user_version !== 1)
+      throw new Error("Unsupported database schema. Expected CABC baseline version 1.");
+    db.exec("BEGIN IMMEDIATE"); pending = true;
+    if (!db.prepare("PRAGMA table_info(members)").all().some(c => c.name === "active"))
+      throw new Error("Run node migrate.mjs member-status first.");
+    const counts = () => Object.fromEntries(["members", "games", "entries", "sessions", "team_members"].map(
+      table => [table, db.prepare(`SELECT count(*) AS n FROM ${table}`).get().n]));
+    const before = counts();
+    const existing = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='registration_audit'").get();
+    db.exec(readFileSync(path.join(ROOT, "registration-audit-schema.sql"), "utf8"));
+    db.prepare("SELECT id,created_at,actor_id,actor_name,target_id,target_name,game_id,game_date,action,before_json,after_json FROM registration_audit LIMIT 0").all();
+    db.prepare("INSERT INTO metadata(key,value) VALUES('migration:004-registration-audit',?) ON CONFLICT(key) DO NOTHING")
+      .run(new Date().toISOString());
+    const after = counts();
+    if (JSON.stringify(before) !== JSON.stringify(after)) throw new Error("Row counts changed; migration rolled back.");
+    db.exec("COMMIT"); pending = false;
+    return { applied: !existing, before, after };
+  } catch (error) {
+    if (pending) db.exec("ROLLBACK");
+    throw error;
+  } finally { db.close(); }
+}
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try {
     const command = process.argv[2];
-    if (!["game-names", "team-events", "member-status"].includes(command)) throw new Error("Usage: node migrate.mjs game-names | team-events | member-status");
-    const result = command === "member-status" ? migrateMemberStatus() : command === "team-events" ? migrateTeamEvents() : migrateGameNames();
+    if (!["game-names", "team-events", "member-status", "registration-audit"].includes(command)) throw new Error("Usage: node migrate.mjs game-names | team-events | member-status | registration-audit");
+    const result = command === "registration-audit" ? migrateRegistrationAudit() : command === "member-status" ? migrateMemberStatus() : command === "team-events" ? migrateTeamEvents() : migrateGameNames();
     console.log(result.applied ? `${command} migration applied.` : `${command} schema already present; no duplicate changes.`);
     console.log("Before:", result.before);
     console.log("After: ", result.after);

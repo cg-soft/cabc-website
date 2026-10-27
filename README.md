@@ -20,6 +20,17 @@ To load members from a private CSV containing `name,email,initial-password`,
 follow [IMPORT-MEMBERS.md](IMPORT-MEMBERS.md). The importer defaults to a dry run,
 adds member accounts only, and never overwrites existing credentials.
 
+## Act on behalf of members
+
+Administrators can use Acting for to manage an active member's registrations,
+partner or wildcard status, and teams without signing in as that member.
+A named banner identifies the target; account controls and Export my games
+remain the administrator's own. Normal scheduling rules and confirmations
+apply, stale game revisions are rejected, and delegated writes are atomically
+recorded in a private audit table. See
+[ACTING-FOR-MEMBERS.md](ACTING-FOR-MEMBERS.md) for usage and the explicit
+additive registration-audit migration required during the seven-file upgrade.
+
 ## Edit and delete games
 
 Administrators select a current/future playing date, then choose Edit game

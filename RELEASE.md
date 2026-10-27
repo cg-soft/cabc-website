@@ -1,9 +1,11 @@
 # CABC Minimal Website: Hosting Source
 
-Updated October 22, 2026. This is the separate minimal website, including named
-games, upcoming-month navigation, mobile playing-date lists and dance cards.
-Existing installations must follow `UPGRADE-GAME-NAMES.md` before starting
-this version against their existing database.
+Updated October 27, 2026. This is the separate minimal website, including
+administrator scheduling on behalf of members, an atomic scheduling audit,
+game editing/deletion, wildcard statuses, teams and mobile dance cards.
+Current installations must follow `ACTING-FOR-MEMBERS.md`, including the
+explicit registration-audit migration. Older installations must also apply
+the prerequisite feature migrations described in `HOSTING.md`.
 
 ## Start here
 
@@ -19,9 +21,10 @@ selection and migration safety.
 
 ## Verification
 
-The application and hosting-startup suites pass on Node 22.23.2. Fresh
-administrator initialization and production-mode browser workflows were also
-checked. See `QA.md` for what was tested and what remains host-specific.
+All 201 tests pass on Node 22.23.2 and 24.20.0. Browser workflows were checked
+with fictional preview accounts, including delegated scheduling, stale-action
+rejection, mobile layout and existing account/calendar controls. See `QA.md`
+for what was tested and what remains host-specific.
 
 After extracting, verify the files from the `cabc-minimal` directory:
 
@@ -38,9 +41,9 @@ The hashes detect accidental file changes; they are not a digital signature.
 
 No production data, preview database, passwords, environment files, dependency
 folder or Git history is included. No migration from the old website is included.
-The database retains baseline version 1 plus an optional game-name column.
-The new column has an explicit additive migration; ordinary startup never
-runs migrations.
+The database retains baseline version 1 plus additive game-name, team,
+member-status and registration-audit features. Existing databases require
+explicit feature migrations; ordinary startup never runs migrations.
 
 The repository contains the minimal implementation with fresh-start history,
 as authorized by the owner. Repository and preview updates do not deploy to

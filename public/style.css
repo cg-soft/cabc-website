@@ -45,6 +45,12 @@ nav{display:flex;align-items:center;gap:var(--space-3)}
 .identity{font-size:var(--text-sm);margin-right:var(--space-4);color:var(--muted)}
 .login-notice{margin-top:var(--space-5);padding:var(--space-4);background:var(--tint);border:1px solid var(--line);border-radius:5px;color:var(--green);font-size:var(--text-sm)}
 .admin-actions{flex-wrap:wrap;justify-content:flex-end}
+.acting-controls{display:flex;flex-wrap:wrap;gap:var(--space-5);align-items:center;background:var(--tint);border:1px solid var(--line);border-radius:5px;padding:var(--space-5);margin-bottom:var(--space-6)}
+.acting-controls label{flex:1 1 240px;min-width:0;max-width:100%;margin-bottom:0}
+.acting-controls select{width:100%;min-height:44px}
+.acting-context{flex:2 1 280px;min-width:0;overflow-wrap:anywhere;font-size:var(--text-sm)}
+.acting-context strong{display:block;color:var(--green);margin-bottom:var(--space-1)}
+.acting-context .text-button{min-height:44px}
 #password-form .small-note{margin-bottom:var(--space-5)}
 #password-form button+button{margin-top:var(--space-2)}
 .home-scene{height:100svh;min-height:420px;position:relative;background:#203c2d}

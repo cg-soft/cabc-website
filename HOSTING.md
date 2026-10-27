@@ -18,6 +18,7 @@ manage.mjs
 schema.sql
 team-schema.sql
 member-status-schema.sql
+registration-audit-schema.sql
 migrate.mjs
 package.json
 public/
@@ -37,7 +38,17 @@ No database, accounts, credentials, or preview deployment folder is included.
 
 ## Confirm the host runtime first
 
-### Current release: align Show and month navigation
+### Current release: administrator scheduling on behalf of members
+
+Follow [Administrator scheduling on behalf of members](ACTING-FOR-MEMBERS.md).
+Back up the existing private database, stop the application, upload the seven
+listed runtime files, explicitly run `node migrate.mjs registration-audit`
+with the production DB_PATH, then restart and fully reload the browser.
+This adds only an audit table and migration marker; original rows and the
+baseline database version are preserved. There is no build or dependency
+installation. Production deployment remains the owner's manual step.
+
+### Previous release: align Show and month navigation
 
 If the preceding release is installed, upload only `public/style.css` and do
 a full browser reload (Cmd+Shift+R on Mac, Ctrl+Shift+R on Windows/Linux).

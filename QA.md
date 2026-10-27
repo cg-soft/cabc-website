@@ -1,5 +1,65 @@
 # New minimal website verification
 
+## Administrator scheduling on behalf of members
+
+The new acting-for suite adds 24 checks, bringing the complete suite to 201
+tests on Node 22.23.2 and 24.20.0. Coverage includes all delegated entry/team
+methods, forged ordinary-member requests, expired/demoted administrators,
+strict target IDs, inactive/placeholder targets, self-partnership, existing
+partnership restrictions, guest/standby/unavailable assignments, closed/missing
+games, explicit confirmation and stale revisions after registration/team/game
+changes. Audit failure rolls back scheduling; deleting a game retains history.
+Self-service, account records and session ownership remain unchanged.
+
+Migration tests cover first installation on a synthetic preceding-release
+database, repeatability, preserved original row counts/audit history/baseline
+version, missing-file refusal and the clear no-write error before migration.
+Browser-model tests cover escaped names, inactive/wildcard exclusion, exact
+target/revision payloads, pending/modal target locks, demotion, and the
+new-browser/old-server compatibility guard.
+
+Browser QA used fictional accounts and newly created QA games only. An admin
+registered Alex Chen solo, with each wildcard, and with Jamie Wu; cancellation
+left the former real partner registered as a single. Two guest pairs sharing
+one placeholder formed/dissolved teams for another member. Dialogs named the
+target and explained team/partner impact, and their non-destructive choice
+received initial focus. The signed-in identity stayed Morgan Lee.
+
+Two independent browser contexts verified a concurrent registration produces
+HTTP 409 and a visible refresh/review message rather than changing the target.
+An intercepted in-flight write verified both target and Return to myself were
+disabled until completion. A simulated preceding-release calendar response
+showed the upgrade/restart explanation and no acting selector. Keyboard
+selection worked; full reload defaulted to Myself.
+
+Created a disposable fictional member using Add member, changed its password
+through real member controls, signed in with the replacement, registered it
+and deactivated it through admin review. Its session was revoked, the acting
+target returned to Myself and the account remained inactive, preserving the
+deactivation contract. No real accounts or production data were used.
+
+Regression browser checks covered all wildcard Show modes, month navigation
+and Upcoming, the displayed-month Add date default, all administrator dialogs,
+both preview roles, export, Home's two buttons, About and logout. Export while
+acting still downloaded only Morgan Lee's games, not the target's QA game.
+Edit moved the QA team game into January 2027 and preserved the selected
+member, guest pairs and complete team; deletion removed the QA game.
+
+Desktop and 375px screenshots of the banner, named confirmation and populated
+team card were inspected. Checks at 375/480/481/640/768/900/1000/1440px found no
+horizontal overflow; Show and navigation remain 44px with aligned edges
+(the Show row is separate below 481px). No JavaScript page errors occurred.
+The original 15 games, 53 registrations, seven team rows and first 16 member
+accounts had identical SHA256 snapshots before/after QA-game cleanup:
+79b98faeda96960c309d8ab1817f7a9433d4962a3f72707bea4be360b4ebf841.
+The inactive disposable QA account and delegated audit records are retained in
+the private fictional preview database. Foreign-key checks remain clean.
+
+The explicit audit migration was applied only to the fictional preview
+database, preserving all five original table counts. Dathorn deployment,
+production migration and host/browser acceptance remain manual owner steps.
+The seven-file upgrade is documented in ACTING-FOR-MEMBERS.md.
+
 ## Align Show and month navigation
 
 All 177 tests passed on Node 22.23.2 and 24.20.0. A new stylesheet regression

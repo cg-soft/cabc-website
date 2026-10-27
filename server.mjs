@@ -94,6 +94,35 @@ export function createApp({ db = openDatabase(), preview = false, previewToday }
       revision: hashToken(JSON.stringify({ today: today(), game: current, entries, teams }))
     };
   }
+  function schedulingSnapshot(gameId) {
+    return {
+      entries: db.prepare("SELECT * FROM entries WHERE game_id=? ORDER BY member_id").all(gameId),
+      teams: db.prepare("SELECT * FROM team_members WHERE game_id=? ORDER BY member_id").all(gameId)
+    };
+  }
+  function schedulingTarget(req, body, gameId) {
+    const actor = auth(req);
+    if (body.memberId === undefined) return { target: actor, actor };
+    admin(actor);
+    if (!Number.isSafeInteger(body.memberId) || body.memberId <= 0)
+      throw new HttpError(400, "Choose a valid member to act for.");
+    const target = db.prepare("SELECT id,name,active FROM members WHERE id=?").get(body.memberId);
+    if (!target || target.active !== 1 || wildcardType(target.name))
+      throw new HttpError(409, "That member is no longer available to act for. Return to Myself or choose another active member.");
+    if (!db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='registration_audit'").get())
+      throw new HttpError(503, "Administrator scheduling requires the registration-audit migration. Run node migrate.mjs registration-audit with the same DB_PATH.");
+    if (body.confirm !== true) throw new HttpError(400, "Confirm the scheduling action for the selected member.");
+    const plan = gamePlan(gameId);
+    if (body.revision !== plan.revision)
+      throw new HttpError(409, "This game or its registrations changed. Refresh the calendar and review the action again.");
+    return { actor, target, date: plan.game.date, before: schedulingSnapshot(gameId) };
+  }
+  function auditScheduling(context, gameId, action) {
+    if (!context.before) return;
+    db.prepare("INSERT INTO registration_audit(created_at,actor_id,actor_name,target_id,target_name,game_id,game_date,action,before_json,after_json) VALUES(?,?,?,?,?,?,?,?,?,?)")
+      .run(new Date().toISOString(), context.actor.id, context.actor.name, context.target.id, context.target.name,
+        gameId, context.date, action, JSON.stringify(context.before), JSON.stringify(schedulingSnapshot(gameId)));
+  }
   function completePair(gameId, memberId) {
     const row = db.prepare("SELECT partner_id FROM entries WHERE game_id=? AND member_id=?").get(gameId, memberId);
     if (!row?.partner_id) throw new HttpError(409, "Both pairs must be fully registered. Refresh the calendar and try again.");
@@ -294,13 +323,16 @@ export function createApp({ db = openDatabase(), preview = false, previewToday }
           if (!groups.has(key)) groups.set(key, { id: row.team_id, game_id: row.game_id, memberIds: [] });
           groups.get(key).memberIds.push(row.member_id);
         }
-        return reply(200, { month, months, games, entries, members, teams: [...groups.values()], wildcards, user, today: currentDate });
+        const registrationRevisions = user.role === "admin"
+          ? Object.fromEntries(games.filter(g => g.date >= currentDate).map(g => [g.id, gamePlan(g.id).revision])) : undefined;
+        return reply(200, { month, months, games, entries, members, teams: [...groups.values()], wildcards, user, today: currentDate, registrationRevisions });
       }
       const teamRoute = /^\/api\/games\/(\d+)\/team$/.exec(route);
       if (teamRoute && ["POST", "DELETE"].includes(req.method)) {
         const gameId = Number(teamRoute[1]);
         transaction(db, () => {
-          auth(req);
+          const context = schedulingTarget(req, body, gameId);
+          const user = context.target;
           if (game(gameId).event_type !== "teams") throw new HttpError(409, "This date is a pairs event, not a team event.");
           if (req.method === "DELETE") {
             if (typeof body.teamId !== "string") throw new HttpError(400, "Choose your current team.");
@@ -328,6 +360,7 @@ export function createApp({ db = openDatabase(), preview = false, previewToday }
             const insert = db.prepare("INSERT INTO team_members(game_id,member_id,team_id) VALUES(?,?,?)");
             for (const id of realIds) insert.run(gameId, id, teamId);
           }
+          auditScheduling(context, gameId, req.method === "DELETE" ? "leave-team" : "form-team");
         });
         return reply(200, { ok: true });
       }
@@ -376,10 +409,12 @@ export function createApp({ db = openDatabase(), preview = false, previewToday }
       if (entryRoute && req.method === "POST") {
         const gameId = Number(entryRoute[1]);
         const partner = body.partnerId === null ? null : Number(body.partnerId);
-        if (partner !== null && (!Number.isSafeInteger(partner) || partner <= 0 || partner === user.id))
+        if (partner !== null && (!Number.isSafeInteger(partner) || partner <= 0))
           throw new HttpError(400, "Choose a different available member.");
         transaction(db, () => {
-          auth(req);
+          const context = schedulingTarget(req, body, gameId);
+          const user = context.target;
+          if (partner === user.id) throw new HttpError(400, "Choose a different available member.");
           game(gameId);
           const current = db.prepare("SELECT * FROM entries WHERE game_id=? AND member_id=?").get(gameId, user.id);
           if (current?.partner_id) throw new HttpError(409, "You already have a partner for this date.");
@@ -400,13 +435,15 @@ export function createApp({ db = openDatabase(), preview = false, previewToday }
           const upsert = db.prepare("INSERT INTO entries(game_id,member_id,partner_id) VALUES(?,?,?) ON CONFLICT(game_id,member_id) DO UPDATE SET partner_id=excluded.partner_id");
           upsert.run(gameId, user.id, partner);
           if (partner !== null && !partnerIsPlaceholder) upsert.run(gameId, partner, user.id);
+          auditScheduling(context, gameId, "register");
         });
         return reply(200, { ok: true });
       }
       if (entryRoute && req.method === "DELETE") {
         const gameId = Number(entryRoute[1]);
         transaction(db, () => {
-          auth(req);
+          const context = schedulingTarget(req, body, gameId);
+          const user = context.target;
           game(gameId);
           // Remove legacy reciprocal rows owned by placeholders that point back at
           // this member, so a cancelled assignment disappears completely.
@@ -415,6 +452,7 @@ export function createApp({ db = openDatabase(), preview = false, previewToday }
             db.prepare(`DELETE FROM entries WHERE game_id=? AND member_id IN (${markerIds.map(() => "?").join(",")}) AND partner_id=?`).run(gameId, ...markerIds, user.id);
           db.prepare("UPDATE entries SET partner_id=NULL WHERE game_id=? AND partner_id=?").run(gameId, user.id);
           db.prepare("DELETE FROM entries WHERE game_id=? AND member_id=?").run(gameId, user.id);
+          auditScheduling(context, gameId, "cancel");
         });
         return reply(200, { ok: true });
       }

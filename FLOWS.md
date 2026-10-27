@@ -1,5 +1,18 @@
 # Main flows and calendar layout checks
 
+## Administrator acting for a member
+- Keep the signed-in administrator identity, password changes, export and account/game controls unchanged.
+- Show a separate Acting for selector of active real members, with Myself as the default; exclude inactive members and all wildcards.
+- Display a persistent named scheduling banner while acting; calendar marks, dance card, partner availability and team controls follow the selected member.
+- Switching target preserves the date/month, resets the read-only wildcard view and cannot occur during an in-flight scheduling request or confirmation.
+- Register solo, choose a real partner or guest/standby/unavailable, cancel with named impact confirmation, form and dissolve teams for the selected member.
+- Apply normal closed-date, partnership, team and inactive-account rules. Revalidate authorization, target and reviewed game revision inside the write transaction.
+- Reject missing confirmation, stale reviews, ordinary-member forged requests, inactive/wildcard targets and expired sessions without writes.
+- When new browser assets meet the old server, hide the acting selector and explain the required server upgrade/restart; never send delegated requests to an unsupported server.
+- Atomically audit administrator, target, game, action and before/after scheduling state. Failed writes produce no audit rows; game deletion preserves audit history.
+- Install only the additive registration-audit table through an explicit repeatable migration; existing releases continue reading all original tables.
+- Check desktop and 375px layouts, named confirmations, keyboard selection, rapid switching, stale data, both preview roles, all wildcard views and existing main flows.
+
 ## Align Show and month navigation
 - On desktop/tablet, Show's dropdown and Previous month, Upcoming and Next month share top/bottom edges and a 44px height; its label has no inherited form margin.
 - On narrow phones, preserve the full-width Show row above the navigation buttons with no extra label margin or horizontal overflow.

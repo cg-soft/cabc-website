@@ -54,6 +54,7 @@ export function openDatabase(filename = process.env.DB_PATH || path.join(ROOT, "
           db.exec("ALTER TABLE games ADD COLUMN event_type TEXT NOT NULL DEFAULT 'pairs' CHECK(event_type IN ('pairs','teams'))");
           db.exec(readFileSync(path.join(ROOT, "team-schema.sql"), "utf8"));
           installMemberStatus(db);
+          db.exec(readFileSync(path.join(ROOT, "registration-audit-schema.sql"), "utf8"));
         }
         db.exec("COMMIT");
       }
