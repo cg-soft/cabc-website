@@ -1,5 +1,13 @@
 # Main flows and calendar layout checks
 
+## Align Show and month navigation
+- On desktop/tablet, Show's dropdown and Previous month, Upcoming and Next month share top/bottom edges and a 44px height; its label has no inherited form margin.
+- On narrow phones, preserve the full-width Show row above the navigation buttons with no extra label margin or horizontal overflow.
+- When title and controls cannot fit side by side, wrap the header; never squeeze the month title into a narrow sliver.
+- Check 375px, 480px, 481px, 640px, 768px, 900px, 1000px and 1440px, including resize in the same session.
+- Change Show to each wildcard and back, navigate months/Upcoming, and verify keyboard selection.
+- Preserve Add date, edit/delete review, public navigation, both preview roles, registrations/teams, export and administrator dialogs. CSS-only runtime upgrade; no database or server changes.
+
 ## Edit and delete games
 - Administrators see Edit game and Delete game on the selected current/future game's dance card; members and past games have no such controls.
 - Edit opens with the stored name/date/time and fixed event type. Saving preserves game ID, every registration, partnership and team; the calendar follows a moved game to its new month.

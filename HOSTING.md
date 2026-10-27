@@ -37,7 +37,18 @@ No database, accounts, credentials, or preview deployment folder is included.
 
 ## Confirm the host runtime first
 
-### Current release: edit and delete games
+### Current release: align Show and month navigation
+
+If the preceding release is installed, upload only `public/style.css` and do
+a full browser reload (Cmd+Shift+R on Mac, Ctrl+Shift+R on Windows/Linux).
+The Show dropdown and month-navigation buttons now share a 44px height, and
+the Show label no longer inherits a form label's 20px bottom margin. The
+header wraps when needed rather than squeezing the month title.
+No server restart, migration, build or dependency installation is needed.
+The owner performs the Dathorn upload manually; production remains unchanged
+until then.
+
+### Previous release: edit and delete games
 
 Follow [Edit and delete games: usage and Dathorn upgrade](GAME-MANAGEMENT.md).
 If the wildcard release is installed, back up the private database, stop the

@@ -9,6 +9,22 @@ import { openDatabase, addMember, ROOT } from "./db.mjs";
 import { migrateGameNames } from "./migrate.mjs";
 import { createApp } from "./server.mjs";
 
+test("Show selector and month buttons share height without form-label spacing", () => {
+  const css = readFileSync(new URL("./public/style.css", import.meta.url), "utf8");
+  const rule = selector => {
+    const start = css.indexOf(`${selector}{`);
+    assert.notEqual(start, -1, `Missing CSS rule: ${selector}`);
+    return css.slice(start + selector.length + 1).split("}")[0];
+  };
+  assert.match(rule(".show-filter"), /(?:^|;)margin-bottom:0(?:;|$)/);
+  assert.match(rule(".month-nav"), /(?:^|;)flex-wrap:wrap(?:;|$)/);
+  assert.match(rule(".month-title"), /(?:^|;)flex:1 0 10rem(?:;|$)/);
+  for (const selector of [".show-filter select", ".month-controls button"]) {
+    assert.match(rule(selector), /(?:^|;)height:44px(?:;|$)/);
+    assert.match(rule(selector), /(?:^|;)min-height:44px(?:;|$)/);
+  }
+});
+
 test("explicit game-name migration", async t => {
   const directory = mkdtempSync(path.join(tmpdir(), "cabc-migration-"));
   const file = path.join(directory, "legacy.sqlite");

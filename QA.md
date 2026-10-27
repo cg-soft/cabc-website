@@ -1,5 +1,42 @@
 # New minimal website verification
 
+## Align Show and month navigation
+
+All 177 tests passed on Node 22.23.2 and 24.20.0. A new stylesheet regression
+test guards the Show label's zero bottom margin, matching 44px selector/button
+heights, and header wrapping with a readable minimum month-title width.
+Runtime changes are CSS-only; no server, database or JavaScript changes.
+
+Before editing, browser measurements showed the Show label inheriting a 20px
+bottom margin: its 40px dropdown started at y=267.578, Upcoming at y=275.578,
+and the arrows at y=274.969 with a 45.203px height. The scoped fix removes the
+margin and normalizes all four controls to 44px. Header wrapping also prevents
+the month title shrinking to 13px wide just above the mobile breakpoint.
+
+After the fix, exact top/bottom-edge and height assertions passed at 481px,
+640px, 768px, 900px, 1000px and 1440px. At 375px and 480px the existing
+full-width Show row stays above a consistently aligned button row. All eight
+widths had no horizontal document overflow and a month title at least 160px
+wide. Resizing the same session back to 1440px preserved alignment. Desktop,
+375px mobile and the 481px boundary screenshots were visually inspected.
+
+Browser regression checks covered all three wildcard views and All members,
+keyboard selection, month navigation/Upcoming, Add date's November 1 default,
+Edit/Delete game review, Add member/Deactivate member/Change password dialogs,
+calendar export, both fictional preview roles, Home's two buttons and About.
+No JavaScript page exceptions were observed. No seeded registrations or teams
+were changed by this CSS QA; account/game mutation coverage remains in the
+isolated automated tests.
+
+After redeployment, a fresh hosted browser context signed in as the fictional
+administrator through the preview API. The selector and all three buttons
+measured y=272.71875 to y=316.71875, each exactly 44px tall. Hosted desktop and
+375px mobile screenshots were inspected. Standby schedule data loaded through
+the API, navigating to November worked, and Add date still defaulted to
+November 1. No horizontal overflow or JavaScript page exceptions were found.
+Verification used the deployment tool's direct hosted URL; the Perplexity
+wrapper requires owner sign-in.
+
 ## Edit and delete games
 
 All 176 automated tests passed on Node 22.23.2 and 24.20.0. The new isolated
