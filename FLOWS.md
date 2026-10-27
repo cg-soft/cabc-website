@@ -1,5 +1,12 @@
 # Main flows and calendar layout checks
 
+## Smaller mobile logo
+- At widths up to 640px, show the unchanged transparent logo at 48px wide instead of 64px on Home, About, Login and member/admin Calendar.
+- Preserve its aspect ratio and upper-left position, centered in each page's existing header.
+- Keep desktop/tablet widths above 640px at 72px and retain navigation clearance.
+- Check 320px, 375px, 640px, 641px and 1440px, scrolling and open dialogs for overlap or overflow.
+- Recheck public navigation, both preview roles, calendar navigation, partnerships, teams, exports and admin dialogs; no backend/schema changes.
+
 ## Deactivate member
 - Admin-only selector shows account names/emails and active/inactive status; members cannot access its API.
 - Review names the target and counts their registrations for today/later and affected teams.

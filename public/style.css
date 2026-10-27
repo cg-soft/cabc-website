@@ -188,9 +188,9 @@ dialog .small-note{margin-bottom:var(--space-5)}
   .identity{display:none}
 }
 @media(max-width:640px){
-  :root{--logo-width:64px}
-  .floating-club-logo{top:19px}
-  .home .floating-club-logo{top:35px}
+  :root{--logo-width:48px}
+  .floating-club-logo{top:26px}
+  .home .floating-club-logo{top:42px}
   .site-header{justify-content:flex-end}
   .site-header .brand{display:none}
   .calendar .weekdays,.calendar .calendar-grid{display:none}
@@ -215,7 +215,7 @@ dialog .small-note{margin-bottom:var(--space-5)}
 }
 @media(max-width:480px){
   .site-header{height:96px;padding:var(--space-5);padding-left:calc(var(--header-gutter) + var(--logo-width) + 16px);gap:var(--space-2)}
-  .home .floating-club-logo{top:27px}
+  .home .floating-club-logo{top:34px}
   .brand{font-size:1.2rem}
   nav{gap:var(--space-1)}
   nav button{padding:var(--space-2) var(--space-3)}
