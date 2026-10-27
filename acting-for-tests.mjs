@@ -13,17 +13,18 @@ function browserModel() {
   const handlers = {};
   const select = {};
   const container = { innerHTML: "", querySelector: () => select, replaceChildren() { this.innerHTML = ""; } };
+  const status = { innerHTML: "", replaceChildren() { this.innerHTML = ""; } };
   const dialog = { addEventListener() {}, open: false };
   const sandbox = {
     document: {
-      querySelector: selector => selector === "#dialog" ? dialog : selector === "#acting-controls" ? container : {},
+      querySelector: selector => selector === "#dialog" ? dialog : selector === "#acting-controls" ? container : selector === "#acting-status" ? status : {},
       addEventListener: (name, handler) => { handlers[name] = handler; }
     },
     window: { addEventListener() {} }
   };
   const source = readFileSync(new URL("./public/app.js", import.meta.url), "utf8");
   vm.runInNewContext(source.replace("  route();\n})();",
-    "  window.model = { state, schedulingMember, actingForMember, schedulingFields, drawActingControls };\n})();"), sandbox);
+    "  window.model = { state, schedulingMember, actingForMember, schedulingFields, drawActingControls, calendarShell };\n})();"), sandbox);
   const model = sandbox.window.model;
   Object.assign(model.state, {
     user: { id: 1, name: "QA Administrator", role: "admin" },
@@ -34,7 +35,7 @@ function browserModel() {
       registrationRevisions: { 7: "reviewed-revision" }
     }
   });
-  return { ...model, handlers, container, select, dialog };
+  return { ...model, handlers, container, status, select, dialog };
 }
 
 test("new browser fails closed when the previous server lacks delegated-scheduling support", () => {
@@ -46,7 +47,8 @@ test("new browser fails closed when the previous server lacks delegated-scheduli
   assert.equal(JSON.stringify(model.schedulingFields(7)), "{}");
   model.drawActingControls();
   assert.equal(model.state.actingMemberId, null);
-  assert.match(model.container.innerHTML, /updated server/);
+  assert.match(model.status.innerHTML, /updated server/);
+  assert.match(model.container.innerHTML, /QA Administrator/);
   assert.doesNotMatch(model.container.innerHTML, /<select/);
 });
 
@@ -84,7 +86,31 @@ test("a demoted administrator cannot retain another member's scheduling perspect
   assert.equal(model.actingForMember(), false);
   model.drawActingControls();
   assert.equal(model.state.actingMemberId, null);
-  assert.equal(model.container.innerHTML, "");
+  assert.match(model.container.innerHTML, /QA Administrator/);
+  assert.doesNotMatch(model.container.innerHTML, /<select/);
+  assert.equal(model.status.innerHTML, "");
+});
+
+test("administrator selector replaces header identity beside Home and Log out", () => {
+  const model = browserModel();
+  const shell = model.calendarShell();
+  const header = shell.slice(0, shell.indexOf("</header>"));
+  assert.match(header, /id="acting-controls"[\s\S]*data-action="home"[\s\S]*data-action="logout"/);
+  assert.equal((shell.match(/id="acting-controls"/g) || []).length, 1);
+  assert.match(shell.slice(shell.indexOf("</header>")), /id="acting-status"/);
+  model.drawActingControls();
+  assert.match(model.container.innerHTML, /Myself \(QA Administrator\)/);
+  assert.equal(model.status.innerHTML, "");
+  model.state.actingMemberId = 2;
+  model.drawActingControls();
+  assert.match(model.container.innerHTML, /Signed in as QA Administrator/);
+  assert.match(model.status.innerHTML, /Acting for QA &lt;Member&gt;/);
+  assert.match(model.status.innerHTML, /acting-reset/);
+  model.state.actingMemberId = null;
+  model.drawActingControls();
+  assert.equal(model.status.innerHTML, "");
+  model.state.user.role = "member";
+  assert.doesNotMatch(model.calendarShell(), /id="acting-controls"|id="acting-status"/);
 });
 
 test("administrator scheduling on behalf of a member", async t => {

@@ -1,5 +1,14 @@
 # Main flows and calendar layout checks
 
+## Acting for in the signed-in header
+- Replace the administrator's plain login name with one Acting for selector beside Home and Log out, not a duplicate selector above the calendar.
+- Myself names the signed-in administrator; while acting, show the actual administrator in the header and retain the named scheduling notice and Return to myself above the calendar.
+- Ordinary members retain their login name and never receive the selector. Unsupported servers retain the login identity and the upgrade notice, with no acting selector.
+- Preserve target exclusions, scoped writes, pending/modal locks, date/month selection, self-only export/password controls and full-reload reset.
+- Check header alignment, long names, keyboard operation, sticky scrolling and no logo/button overlap at 320, 375, 480, 640, 768, 1000 and 1440px.
+- Recheck public navigation, both preview roles, calendar/Show navigation, registration/cancellation, team controls, export and all administrator dialogs using fictional QA data only.
+- This is a two-file frontend upgrade (public/app.js and public/style.css); no server or database migration.
+
 ## Administrator acting for a member
 - Keep the signed-in administrator identity, password changes, export and account/game controls unchanged.
 - Show a separate Acting for selector of active real members, with Myself as the default; exclude inactive members and all wildcards.

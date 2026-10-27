@@ -1,5 +1,44 @@
 # New minimal website verification
 
+## Acting for in the navigation header
+
+The administrator's selector now occupies the former login-name position
+beside Home and Log out. There is exactly one selector, with Myself as the
+default. Acting mode identifies the actual signed-in administrator in the
+header and retains the named scheduling notice and Return to myself above the
+calendar. Returning to self clears that notice. Ordinary members retain their
+existing identity display and have no selector.
+
+All 202 tests passed on Node 22.23.2 and 24.20.0 after the final code change.
+The new browser-model regression checks header placement, a single selector,
+self/acting/reset notices, escaped target names and ordinary-member exclusion.
+Existing authorization, audit, stale-review, migration and pending-lock
+coverage remains passing.
+
+Chromium browser checks covered desktop and phone layouts, live resizing at
+320, 375, 480, 481, 640, 768, 1000 and 1440px, and unusually long fictional
+administrator/member names. No horizontal overflow or selector/logo/button
+overlap was observed. Desktop, 375px and long-name screenshots were inspected.
+Keyboard selection preserved focus on the replacement selector. A simulated
+older server showed the upgrade notice without offering an acting selector.
+
+Using only new fictional QA games, an administrator registered two selected
+members with -Guest-, formed/dissolved their team, cancelled a named member's
+registration, moved a game across months while retaining its registrations,
+and deleted the QA games through reviewed confirmations. A delayed scheduling
+request disabled both the header selector and Return to myself until it
+completed. A separate mobile solo registration/cancellation passed.
+
+Regression checks exercised all wildcard Show values and reset, month controls
+and Upcoming, the future-month Add date default, export download, administrator
+dialogs, Home/About/Login/logout and both preview roles. Fresh sign-in reset
+to Myself. No JavaScript page errors were observed. These are Chromium
+responsive checks, not physical-device iOS Safari certification.
+
+Runtime deployment for this layout-only revision consists of public/app.js
+and public/style.css. No server code, schema or migration changes are needed
+when the administrator-scheduling release is already installed.
+
 ## Administrator scheduling on behalf of members
 
 The new acting-for suite adds 24 checks, bringing the complete suite to 201

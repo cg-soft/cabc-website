@@ -3,12 +3,14 @@
 ## Use Acting for
 
 Sign in with your own administrator account and open Playing dates. The new
-Acting for selector is separate from the read-only wildcard Show selector.
+Acting for selector replaces your plain login name in the header, beside Home
+and Log out. It is separate from the read-only wildcard Show selector.
 It defaults to Myself and lists other active real members, including other
 administrators. The numeric member ID distinguishes duplicate names.
 Inactive accounts and shared wildcard placeholders cannot be acting targets.
 
 Choose a member. The banner names that member and the signed-in administrator.
+The header also identifies the administrator while another member is selected.
 Calendar registration checks, the mobile agenda, partner choices and team
 controls now follow the selected member. The selected game and month stay
 unchanged. Choosing a target also returns Show to All members.
@@ -30,6 +32,14 @@ password always apply to that administrator, not the selected member.
 Member creation, deactivation and game administration remain explicitly
 named, separate controls. This is not an impersonation login and does not
 give access to someone else's password or personal calendar export.
+
+## Header-only layout upgrade
+
+If administrator scheduling is already installed and working, upload only
+`public/app.js` and `public/style.css` from this release, then reload the browser
+and sign in again. This layout change requires no server update or migration.
+The full initial installation instructions below still apply when upgrading
+from a release without administrator scheduling.
 
 ## Safeguards and audit records
 

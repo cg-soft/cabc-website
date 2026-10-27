@@ -45,12 +45,27 @@ nav{display:flex;align-items:center;gap:var(--space-3)}
 .identity{font-size:var(--text-sm);margin-right:var(--space-4);color:var(--muted)}
 .login-notice{margin-top:var(--space-5);padding:var(--space-4);background:var(--tint);border:1px solid var(--line);border-radius:5px;color:var(--green);font-size:var(--text-sm)}
 .admin-actions{flex-wrap:wrap;justify-content:flex-end}
-.acting-controls{display:flex;flex-wrap:wrap;gap:var(--space-5);align-items:center;background:var(--tint);border:1px solid var(--line);border-radius:5px;padding:var(--space-5);margin-bottom:var(--space-6)}
-.acting-controls label{flex:1 1 240px;min-width:0;max-width:100%;margin-bottom:0}
-.acting-controls select{width:100%;min-height:44px}
-.acting-context{flex:2 1 280px;min-width:0;overflow-wrap:anywhere;font-size:var(--text-sm)}
+.calendar-header{height:auto;min-height:96px;padding-block:var(--space-3)}
+.calendar-header nav{min-width:0}
+#acting-controls{width:clamp(160px,22vw,280px);min-width:0}
+.acting-identity{display:flex;flex-direction:column;gap:var(--space-1);margin:0;min-width:0;color:var(--muted);font-size:var(--text-xs)}
+.acting-identity select{width:100%;min-width:0;min-height:44px;margin:0;padding:var(--space-2);font-size:var(--text-base);color:var(--ink)}
+.acting-signed-in{overflow-wrap:anywhere}
+.acting-context{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-3) var(--space-5);background:var(--tint);border:1px solid var(--line);border-radius:5px;padding:var(--space-4);margin-bottom:var(--space-6);overflow-wrap:anywhere;font-size:var(--text-sm)}
+.acting-context>div{flex:1 1 280px;min-width:0}
 .acting-context strong{display:block;color:var(--green);margin-bottom:var(--space-1)}
 .acting-context .text-button{min-height:44px}
+.acting-unavailable{margin-bottom:var(--space-6)}
+@media(max-width:1000px){
+  .calendar-header .brand{display:none}
+  .calendar-header nav{margin-left:auto}
+}
+@media(max-width:640px){
+  .calendar-header nav{flex:1;gap:var(--space-1)}
+  #acting-controls{flex:1;width:auto}
+  .calendar-header nav>button{flex-shrink:0;padding-inline:var(--space-2)}
+  .calendar-header .identity{margin-right:0;overflow-wrap:anywhere;min-width:0}
+}
 #password-form .small-note{margin-bottom:var(--space-5)}
 #password-form button+button{margin-top:var(--space-2)}
 .home-scene{height:100svh;min-height:420px;position:relative;background:#203c2d}
@@ -241,6 +256,7 @@ dialog .small-note{margin-bottom:var(--space-5)}
 }
 @media(max-width:480px){
   .site-header{height:96px;padding:var(--space-5);padding-left:calc(var(--header-gutter) + var(--logo-width) + 16px);gap:var(--space-2)}
+  .calendar-header{height:auto;min-height:96px;padding-block:var(--space-3)}
   .home .floating-club-logo{top:34px}
   .brand{font-size:1.2rem}
   nav{gap:var(--space-1)}

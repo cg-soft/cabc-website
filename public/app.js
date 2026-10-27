@@ -28,10 +28,15 @@
   function drawActingControls() {
     const container = document.querySelector("#acting-controls");
     if (!container) return;
-    if (state.user?.role !== "admin") { container.replaceChildren(); state.actingMemberId = null; return; }
+    const restoreFocus = document.activeElement === container.querySelector("select");
+    const status = document.querySelector("#acting-status");
+    if (status) status.replaceChildren();
+    const identity = `<span class="identity">${esc(state.user?.name)}</span>`;
+    if (state.user?.role !== "admin") { container.innerHTML = identity; state.actingMemberId = null; return; }
     if (!state.calendar.registrationRevisions) {
       state.actingMemberId = null;
-      container.innerHTML = '<p class="small-note" role="status">Acting for is unavailable until the updated server is running. Complete the server upgrade and restart, then reload this page. Scheduling remains for your own account.</p>';
+      container.innerHTML = identity;
+      if (status) status.innerHTML = '<p class="small-note acting-unavailable" role="status">Acting for is unavailable until the updated server is running. Complete the server upgrade and restart, then reload this page. Scheduling remains for your own account.</p>';
       return;
     }
     if (state.actingMemberId !== null && !state.calendar.members.some(member =>
@@ -41,12 +46,12 @@
     }
     const members = state.calendar.members.filter(member => member.active !== 0 && member.id !== state.user.id && !wildcardById(member.id));
     const selected = schedulingMember();
-    container.innerHTML = `<section class="acting-controls" aria-label="Administrator scheduling"><label>Acting for<select data-acting="member" aria-label="Acting for">
+    container.innerHTML = `<label class="acting-identity"><span>Acting for</span><select data-acting="member" aria-label="Acting for">
       <option value="">Myself (${esc(state.user.name)})</option>${members.map(member => `<option value="${member.id}"${member.id === state.actingMemberId ? " selected" : ""}>${esc(member.name)} · #${member.id}</option>`).join("")}
-      </select></label><div class="acting-context" role="status">${actingForMember()
-        ? `<strong>Acting for ${esc(selected.name)}</strong><p>Registration and team controls below apply to this member. Signed in as ${esc(state.user.name)}. Changes are recorded.</p>${button("Return to myself", "acting-reset", "text-button")}`
-        : "<p>Manage your own registrations, or select a member to manage theirs. Account controls and Export my games always remain yours.</p>"}</div></section>`;
+      </select>${actingForMember() ? `<span class="acting-signed-in">Signed in as ${esc(state.user.name)}</span>` : ""}</label>`;
+    if (status && actingForMember()) status.innerHTML = `<section class="acting-context" role="status" aria-label="Administrator scheduling"><div><strong>Acting for ${esc(selected.name)}</strong><p>Registration and team controls below apply to this member. Signed in as ${esc(state.user.name)}. Changes are recorded.</p></div>${button("Return to myself", "acting-reset", "text-button")}</section>`;
     container.querySelector("select").disabled = state.schedulingPending;
+    if (restoreFocus && !state.schedulingPending) container.querySelector("select").focus();
   }
   // A partnership row appears once: real pairs via the lower member id, guest
   // placeholders via their single one-directional row. Standby and unavailable
@@ -76,7 +81,7 @@
     }
     return result;
   }
-  const header = (controls, home = false) => `<header class="site-header ${home ? "over-photo" : ""}">${brand}<nav aria-label="Main navigation">${controls}</nav></header>`;
+  const header = (controls, home = false, extraClass = "") => `<header class="site-header ${home ? "over-photo" : ""} ${extraClass}">${brand}<nav aria-label="Main navigation">${controls}</nav></header>`;
   function route() {
     state.generation++;
     clearInterval(slideTimer);
@@ -139,11 +144,11 @@
     } catch { if (container.isConnected) container.innerHTML = '<p class="form-error" role="alert">The service is unavailable. Please try again later.</p>'; }
   }
   function calendarShell() {
-    return header(`<span class="identity">${esc(state.user.name)}</span>${button("Home", "home", "quiet")}${button("Log out", "logout", "quiet")}`) +
+    return header(`${state.user.role === "admin" ? `<div id="acting-controls"><span class="identity">${esc(state.user.name)}</span></div>` : `<span class="identity">${esc(state.user.name)}</span>`}${button("Home", "home", "quiet")}${button("Log out", "logout", "quiet")}`, false, "calendar-header") +
       `<main class="calendar-page"><div class="calendar-heading"><div><p class="eyebrow">Members’ calendar</p><h1>Playing dates</h1></div>
       <div class="admin-actions">${button("Export my games", "export-games", "quiet")}${button("Change password", "change-password", "quiet")}${state.user.role === "admin" ? `${button("Add member", "add-member", "quiet")}${button("Deactivate member", "deactivate-member", "quiet")}${button("+ Add date", "add-date", "primary")}` : ""}</div></div>
       ${state.config?.preview ? '<p class="preview-line">Private preview · fictional members and sample dates</p>' : ""}
-      ${state.user.role === "admin" ? '<div id="acting-controls"></div>' : ""}
+      ${state.user.role === "admin" ? '<div id="acting-status"></div>' : ""}
       <div id="calendar-content" aria-busy="true"><div class="loading-surface">Loading the calendar…</div></div></main>`;
   }
   async function renderCalendar() {
