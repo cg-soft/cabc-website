@@ -1,5 +1,15 @@
 # Main flows and calendar layout checks
 
+## iPhone home-screen calendar
+- Keep ordinary browser Home/About/Login unchanged; a standalone launch opens the calendar, or sign-in when no in-memory session exists.
+- Supply the club's existing logo as opaque 180px Apple touch and 192/512px web-app icons; manifest uses relative scope/start URL and standalone display.
+- Show installation instructions on Login and beneath the calendar in a normal browser, and hide them in standalone mode.
+- Keep existing bearer-token sessions in memory only. No cookies, local storage, service worker, cached private calendar or offline mutation queue.
+- Clearly signal an offline connection; failed offline actions do not claim success or change registrations. Reconnection reloads the current calendar.
+- Resume/online refresh keeps selected date/month and acting target, but does not replace open forms or interrupt pending writes.
+- Check phone portrait/landscape safe-area spacing, header alignment, dialog scrolling, ordinary desktop behavior, both roles, export and all existing game/member/team flows.
+- Verify server MIME/cache headers for all new public assets and retain explicit static-file allowlisting; no database migration or production deployment.
+
 ## Acting for in the signed-in header
 - Align the dropdown's top and bottom edges with Home and Log out, with Acting for above it; retain alignment both for Myself and when the signed-in-administrator caption wraps across several lines.
 - Replace the administrator's plain login name with one Acting for selector beside Home and Log out, not a duplicate selector above the calendar.

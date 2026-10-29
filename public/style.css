@@ -59,6 +59,15 @@ nav{display:flex;align-items:center;gap:var(--space-3)}
 .acting-context strong{display:block;color:var(--green);margin-bottom:var(--space-1)}
 .acting-context .text-button{min-height:44px}
 .acting-unavailable{margin-bottom:var(--space-6)}
+.install-help{margin-top:var(--space-6);font-size:var(--text-sm)}
+.install-help .text-button{min-height:44px}
+.install-steps{padding-left:var(--space-5);margin-bottom:var(--space-6)}
+.install-steps li+li{margin-top:var(--space-3)}
+.standalone-app .install-help{display:none}
+.network-notice{position:fixed;z-index:20;bottom:max(var(--space-4),env(safe-area-inset-bottom,0px));left:max(var(--space-4),env(safe-area-inset-left,0px));right:max(var(--space-4),env(safe-area-inset-right,0px));margin:0;padding:var(--space-3) var(--space-4);border:1px solid var(--line);border-radius:5px;background:var(--tint);color:var(--ink);font-size:var(--text-sm);box-shadow:0 2px 12px #0002}
+.network-notice[hidden]{display:none}
+.is-offline body{padding-bottom:calc(var(--space-16) + var(--space-12) + env(safe-area-inset-bottom,0px))}
+.is-offline #toast{bottom:calc(var(--space-16) + var(--space-12) + env(safe-area-inset-bottom,0px))}
 @media(max-width:1000px){
   .calendar-header .brand{display:none}
   .calendar-header nav{margin-left:auto}
@@ -290,3 +299,26 @@ dialog .small-note{margin-bottom:var(--space-5)}
   dialog{padding:var(--space-6)}
 }
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+/* A home-screen launch can draw edge-to-edge; keep controls clear of notches
+   and the home indicator without changing the ordinary browser layout. */
+.standalone-app{--safe-top:env(safe-area-inset-top,0px);--safe-bottom:env(safe-area-inset-bottom,0px);--safe-left:env(safe-area-inset-left,0px);--safe-right:env(safe-area-inset-right,0px);scroll-padding-top:calc(112px + var(--safe-top))}
+.standalone-app body{padding-bottom:var(--safe-bottom)}
+.standalone-app.is-offline body{padding-bottom:calc(var(--space-16) + var(--space-12) + var(--safe-bottom))}
+.standalone-app .site-header{height:calc(96px + var(--safe-top));padding-top:calc(var(--space-6) + var(--safe-top));padding-left:calc(var(--header-gutter) + var(--logo-width) + 16px + var(--safe-left));padding-right:calc(var(--header-gutter) + var(--safe-right))}
+.standalone-app .calendar-header{height:auto;min-height:calc(96px + var(--safe-top));padding-top:calc(var(--space-3) + var(--safe-top))}
+.standalone-app .floating-club-logo{top:calc(15px + var(--safe-top));left:calc(var(--header-gutter) + var(--safe-left))}
+.standalone-app .home .floating-club-logo{top:calc(31px + var(--safe-top))}
+.standalone-app .calendar-page{padding-left:max(clamp(var(--space-5),4vw,var(--space-16)),var(--safe-left));padding-right:max(clamp(var(--space-5),4vw,var(--space-16)),var(--safe-right))}
+.standalone-app .login-layout{padding-left:max(var(--space-6),var(--safe-left));padding-right:max(var(--space-6),var(--safe-right))}
+.standalone-app dialog{max-height:calc(100svh - var(--safe-top) - var(--safe-bottom) - var(--space-8))}
+.standalone-app #toast{bottom:calc(var(--space-6) + var(--safe-bottom))}
+.standalone-app.is-offline #toast{bottom:calc(var(--space-16) + var(--space-12) + var(--safe-bottom))}
+@media(max-width:640px){
+  .standalone-app .floating-club-logo{top:calc(26px + var(--safe-top))}
+  .standalone-app .home .floating-club-logo{top:calc(42px + var(--safe-top))}
+}
+@media(max-width:480px){
+  .standalone-app .home .floating-club-logo{top:calc(34px + var(--safe-top))}
+  .standalone-app .calendar-page{padding-left:max(var(--space-4),var(--safe-left));padding-right:max(var(--space-4),var(--safe-right))}
+}

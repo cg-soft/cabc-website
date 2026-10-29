@@ -11,6 +11,7 @@
   const timeLabel = (value) => { const [h, m] = value.split(":").map(Number); return `${h % 12 || 12}:${String(m).padStart(2, "0")} ${h < 12 ? "am" : "pm"}`; };
   const brand = '<span class="brand">Chinese American<br>Bridge Club</span>';
   const button = (label, action, cls = "") => `<button type="button" class="${cls}" data-action="${action}">${label}</button>`;
+  const installHelp = () => `<p class="install-help">${button("Add this calendar to your iPhone", "install-app", "text-button")}</p>`;
   const defaultGameDate = () => {
     const firstOfMonth = `${state.month || state.config.today.slice(0, 7)}-01`;
     return firstOfMonth > state.config.today ? firstOfMonth : state.config.today;
@@ -64,12 +65,16 @@
     toastTimer = setTimeout(() => el.classList.remove("visible"), 5000);
   }
   async function api(route, method = "GET", body, format = "json") {
-    const response = await fetch(`${window.CABC_API || ""}/api${route}`, {
-      method, credentials: "same-origin", headers: {
+    if (window.navigator?.onLine === false) throw new Error("You’re offline. Reconnect to the internet and try again. No changes have been sent.");
+    let response;
+    try { response = await fetch(`${window.CABC_API || ""}/api${route}`, {
+      method, credentials: "same-origin", cache: "no-store", headers: {
         ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
         ...(state.token ? { Authorization: `Bearer ${state.token}` } : {})
       }, body: body !== undefined ? JSON.stringify(body) : undefined
-    });
+    }); } catch {
+      throw new Error("Unable to connect to the club. Check your connection and try again. If you were saving a change, refresh the calendar to check whether it was saved.");
+    }
     const result = response.ok && format === "blob" ? await response.blob() : await response.json();
     if (!response.ok) {
       if (response.status === 401 && route !== "/login") {
@@ -131,7 +136,7 @@
       <label>Password<input name="password" type="password" autocomplete="current-password" required maxlength="128"></label>
       <p class="form-error" role="alert"></p><button class="primary wide" type="submit">Login</button></form>
       <p class="small-note">Need an account or a password reset? Contact your club administrator.</p>
-      <div id="preview-access"></div></section></main>`;
+      <div id="preview-access"></div>${installHelp()}</section></main>`;
     state.loginNotice = null;
     showPreview();
   }
@@ -149,7 +154,7 @@
       <div class="admin-actions">${button("Export my games", "export-games", "quiet")}${button("Change password", "change-password", "quiet")}${state.user.role === "admin" ? `${button("Add member", "add-member", "quiet")}${button("Deactivate member", "deactivate-member", "quiet")}${button("+ Add date", "add-date", "primary")}` : ""}</div></div>
       ${state.config?.preview ? '<p class="preview-line">Private preview · fictional members and sample dates</p>' : ""}
       ${state.user.role === "admin" ? '<div id="acting-status"></div>' : ""}
-      <div id="calendar-content" aria-busy="true"><div class="loading-surface">Loading the calendar…</div></div></main>`;
+      <div id="calendar-content" aria-busy="true"><div class="loading-surface">Loading the calendar…</div></div>${installHelp()}</main>`;
   }
   async function renderCalendar() {
     document.title = "Playing dates | Chinese American Bridge Club";
@@ -389,6 +394,10 @@
     const action = control.dataset.action;
     try {
       if (["home", "about", "login"].includes(action)) { location.hash = `#${action}`; return; }
+      if (action === "install-app") {
+        openDialog("Add CABC to your iPhone", `<ol class="install-steps"><li>Open the club website in <strong>Safari</strong> on your iPhone.</li><li>Open <strong>Share</strong>, then choose <strong>Add to Home Screen</strong>. You may need to scroll through the actions.</li><li>If offered, turn on <strong>Open as Web App</strong>, then tap <strong>Add</strong>.</li></ol><p class="small-note">Use the new CABC Calendar icon to open the calendar. Sign in when asked. An internet connection is required; registrations are never queued offline. A fresh launch may require signing in again.</p>${button("Done", "close-dialog", "primary wide")}`);
+        return;
+      }
       if (action === "close-dialog") {
         if (dialog.dataset.passwordPending === "true" || dialog.dataset.memberPending === "true" || dialog.dataset.gamePending === "true" || state.schedulingPending) return;
         dialog.close(); return;
@@ -610,5 +619,12 @@
     }
   });
   window.addEventListener("hashchange", route);
+  function refreshVisibleCalendar() {
+    if (!document.hidden && state.user && location.hash === "#calendar" &&
+        !dialog.open && !state.schedulingPending) loadCalendar();
+  }
+  document.addEventListener("visibilitychange", refreshVisibleCalendar);
+  window.addEventListener("online", refreshVisibleCalendar);
+  window.addEventListener("pageshow", event => { if (event.persisted) refreshVisibleCalendar(); });
   route();
 })();

@@ -1,5 +1,8 @@
 # Chinese American Bridge Club: minimal new website
 
+For iPhone home-screen installation, online-only behavior and the nine-file
+upgrade, see [CABC Calendar on the iPhone Home Screen](HOME-SCREEN.md).
+
 An independent replacement concept, not an update to the old application.
 
 For the downloadable hosting package, start with [HOSTING.md](HOSTING.md).

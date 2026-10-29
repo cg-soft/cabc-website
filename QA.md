@@ -1,5 +1,53 @@
 # New minimal website verification
 
+## iPhone home-screen calendar
+
+All 217 tests passed on Node 22.23.2 and 24.20.0. The 15 new checks cover
+manifest scope/start URL and icon references, opaque PNG dimensions, Apple
+metadata, both standalone-detection methods, ordinary browser routing,
+offline/reconnect status, no credential/data storage or service worker,
+uncached requests, ambiguous save errors, resume guards, installation
+instructions and server asset allowlisting/MIME/HEAD/cache headers.
+
+Chromium browser checks used the real preview API with fictional data, plus
+an explicitly simulated navigator.standalone flag for the home-screen mode.
+An ordinary launch retained the public homepage; standalone redirected to
+calendar/sign-in, hid installation help and loaded the calendar after login.
+Installation instructions were opened from the browser UI and visually
+inspected at 375px. Desktop, member/admin phone views, opaque icons and
+simulated portrait/landscape safe-area screenshots were inspected.
+
+Known-offline registration sent zero POST requests, displayed a clear error
+and offline notice, and did not create a registration. Reconnection loaded
+the same selected game/month/acting target. A real successful solo
+registration/cancellation then passed. Two fictional guest pairs formed and
+dissolved a team; named cancellation, cross-month editing and reviewed game
+deletion passed using only a newly created QA game. An open edit draft
+survived a simulated visibility event without any background calendar request.
+
+Both roles, all wildcard Show options, month navigation/Upcoming, future-month
+date defaults, game/member/password dialogs, export download, public Home/
+About/Login, slideshow keyboard pause and logout were exercised. A new
+fictional QA Home Screen member signed in through the actual email/password
+form, changed the password, signed in again, and was deactivated by an admin.
+Returning to that standalone page revoked its session and displayed sign-in.
+The account remains inactive in the disposable preview; no original member
+or original game was edited for testing.
+
+Safe-area fixtures used 47px top/34px bottom portrait and 44px side/21px bottom
+landscape insets. The portrait header and logo stayed below the simulated
+status area; the short landscape dialog stayed inside the safe viewport and
+scrolled internally. No new JavaScript page errors or horizontal overflow
+were observed in these checks.
+
+This is not physical-device iOS Safari certification. The actual Add to Home
+Screen sheet, standalone status-bar behavior, keyboard and .ics handoff still
+need an iPhone check after Dathorn deployment. WebKit could not run because
+Playwright's WebKit install does not support this sandbox's Ubuntu 26.04.
+The app deliberately requires internet access and keeps the existing
+in-memory authentication; cold starts can require signing in again.
+Deployment and actual-device checks are documented in HOME-SCREEN.md.
+
 ## Header dropdown alignment
 
 Aligned the dropdown itself, rather than its label/caption group, with Home

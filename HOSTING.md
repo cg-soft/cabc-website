@@ -27,6 +27,11 @@ public/
   config.js
   app.js
   style.css
+  web-app.js
+  manifest.webmanifest
+  apple-touch-icon.png
+  app-icon-192.png
+  app-icon-512.png
   slides/table.webp
   slides/room.webp
 ```
@@ -38,7 +43,15 @@ No database, accounts, credentials, or preview deployment folder is included.
 
 ## Confirm the host runtime first
 
-### Current release: administrator scheduling on behalf of members
+### Current release: iPhone home-screen calendar
+
+Follow [CABC Calendar on the iPhone Home Screen](HOME-SCREEN.md). With the
+administrator-scheduling release already installed, upload the nine listed
+runtime files and restart the application to load its updated asset allowlist.
+No database migration, dependency installation or build is required. Preserve
+the existing production configuration/database; never upload preview config.
+
+### Previous release: administrator scheduling on behalf of members
 
 Follow [Administrator scheduling on behalf of members](ACTING-FOR-MEMBERS.md).
 Back up the existing private database, stop the application, upload the seven

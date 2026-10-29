@@ -2,20 +2,29 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f7f7f1">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="CABC Calendar">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="description" content="Chinese American Bridge Club. A place to play, and a partner for every date.">
   <title>Chinese American Bridge Club</title>
   <link rel="icon" type="image/png" sizes="64x64" href="./favicon.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png">
+  <link rel="manifest" href="./manifest.webmanifest">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Libre+Caslon+Display&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./style.css">
   <script src="./config.js" defer></script>
+  <script src="./web-app.js" defer></script>
   <script src="./app.js" defer></script>
 </head>
 <body>
   <img class="floating-club-logo" src="./club-logo.png" alt="Chinese American Bridge Club" width="548" height="500" fetchpriority="high" draggable="false">
   <div id="app"></div>
+  <p id="network-notice" class="network-notice" role="status" aria-live="polite" hidden>You’re offline. Connect to the internet to load or change the calendar.</p>
   <div id="toast" role="status" aria-live="polite"></div>
   <dialog id="dialog" aria-labelledby="dialog-title"></dialog>
 </body>
