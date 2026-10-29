@@ -1,5 +1,9 @@
 # Chinese American Bridge Club: minimal new website
 
+For application code in `~/src/cabc-minimal` and public files in `~/public_html`,
+follow [the split-directory correction](SPLIT-PUBLIC-DIRECTORY.md). Set the
+managed Node application's `PUBLIC_DIR` to the absolute public directory path.
+
 For iPhone home-screen installation, online-only behavior and the nine-file
 upgrade, see [CABC Calendar on the iPhone Home Screen](HOME-SCREEN.md).
 

@@ -1,9 +1,12 @@
 # CABC Minimal Website: Hosting Source
 
-Updated October 28, 2026. This is the separate minimal website, including
+Updated October 29, 2026. This is the separate minimal website, including
 an online iPhone home-screen calendar and installation help, as well as
 administrator scheduling on behalf of members, an atomic scheduling audit,
 game editing/deletion, wildcard statuses, teams and mobile dance cards.
+Split application/public installations should follow `SPLIT-PUBLIC-DIRECTORY.md`
+for the configurable public directory. This correction needs only `server.mjs`,
+the `PUBLIC_DIR` environment setting and a restart, with no migration.
 Current administrator-scheduling installations should follow `HOME-SCREEN.md`;
 this release requires no migration. Earlier installations must first follow
 `ACTING-FOR-MEMBERS.md`, including its explicit registration-audit migration,
@@ -24,7 +27,7 @@ selection and migration safety.
 
 ## Verification
 
-All 217 tests pass on Node 22.23.2 and 24.20.0. Browser workflows were checked
+All 219 tests pass on Node 22.23.2 and 24.20.0. Browser workflows were checked
 with fictional preview accounts, including delegated scheduling, stale-action
 rejection, mobile layout and existing account/calendar controls. See `QA.md`
 for what was tested and what remains host-specific.

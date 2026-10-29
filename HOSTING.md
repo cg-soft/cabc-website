@@ -205,6 +205,41 @@ before proceeding. The shell and web application must select the same runtime.
 
 ## Suggested paths and control-panel settings
 
+### Split application and public directories
+
+The public files do not need to live inside the application directory. For an
+application in `~/src/cabc-minimal` and public files in `~/public_html`, set
+`PUBLIC_DIR` in the Node application manager to the full absolute path:
+
+```text
+PUBLIC_DIR=/home/ACCOUNT/public_html
+```
+
+Replace `ACCOUNT` with the actual hosting account directory. Do not enter
+`~/public_html` or `$HOME/public_html` in the control-panel value: these are
+shell expressions and are not expanded by Node. In an SSH shell,
+`export PUBLIC_DIR="$HOME/public_html"` does expand correctly, but it does
+not configure the separately managed web process.
+
+Upload the updated `server.mjs` to `~/src/cabc-minimal`, leave the existing
+public files in `~/public_html`, save the environment setting and restart the
+Node application. Keep `DB_PATH` unchanged. No database migration, frontend
+change, dependency installation or build is required for this path correction.
+When `PUBLIC_DIR` is unset or empty, the default remains the application's
+`public/` subdirectory. Relative paths are rejected at startup; unknown files
+remain blocked by the existing static-file allowlist.
+
+For split deployments, all future `public/...` release files belong directly
+inside `~/public_html` (for example, `public/app.js` becomes
+`~/public_html/app.js`), not in a second `public/` subdirectory.
+Preserve the production `config.js` and host-generated `.htaccess`.
+Do not expose application source or private database files in `public_html`.
+
+If LiteSpeed serves existing files directly, those requests can bypass Node.
+This setting fixes Node's file lookup but cannot fix a LiteSpeed-generated
+403. If a public asset remains forbidden after the path correction, inspect
+the host error log for ownership, symlink, access-rule or document-root errors.
+
 These are proposed paths, not statements about the current server configuration.
 Use a new folder so the previous application remains recoverable:
 

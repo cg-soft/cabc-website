@@ -1,5 +1,10 @@
 # CABC Calendar on the iPhone Home Screen
 
+For your split production layout, apply [the public-directory correction](SPLIT-PUBLIC-DIRECTORY.md):
+application files remain in `~/src/cabc-minimal`, while `public/...` files go
+directly into `~/public_html`. Set the managed process's `PUBLIC_DIR` to that
+directory's absolute path and restart Node.
+
 This release adds an online home-screen web app using the existing frontend
 and server. It does not create an App Store application or change the
 authentication model. Production deployment remains the owner's manual step;

@@ -1,5 +1,33 @@
 # New minimal website verification
 
+## Split public directory
+
+All 219 tests passed on Node 22.23.2 and 24.20.0. New production-entry-point
+checks launch with an external temporary public_html directory, verify that
+the selected directory wins over bundled files, and exercise homepage, script,
+GET/HEAD, cache/MIME headers, sign-in and authenticated calendar reads. Unknown
+and private files remain blocked; missing public files return 404 without a
+fallback to old assets. Relative and literal tilde paths fail at startup with
+an actionable PUBLIC_DIR error. Existing default-path and Passenger tests pass.
+
+A separate disposable preview database and external public_html copy were used
+for Chromium checks. Public Home/About/Login, both roles, calendar loading,
+registration and reviewed cancellation, newly created game add/edit/delete,
+month navigation, acting-target selection/reset, account dialogs and installation
+help worked through real controls. Desktop and 375px screenshots were reviewed;
+no horizontal overflow was observed. No production files or database were touched.
+
+An exploratory rapid Upcoming-then-acting-selection sequence reproduced an
+existing frontend race: state.month can be null while the new calendar request
+is in flight, causing drawCalendar to throw. The frontend is byte-for-byte
+unchanged by this path correction. Waiting for aria-busy=false before target
+selection passed without additional page errors. This separate frontend issue
+is not fixed by PUBLIC_DIR and remains a follow-up, not a hosting-path regression.
+
+Production verification still requires the owner's server.mjs upload, absolute
+PUBLIC_DIR setting and managed-process restart. LiteSpeed-generated 403s may
+precede Node and require a separate host access/ownership/routing correction.
+
 ## iPhone home-screen calendar
 
 All 217 tests passed on Node 22.23.2 and 24.20.0. The 15 new checks cover

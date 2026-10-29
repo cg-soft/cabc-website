@@ -6,7 +6,11 @@ import path from "node:path";
 import { registeredGamesCalendar } from "./icalendar.mjs";
 import { ROOT, openDatabase, passwordHash, passwordMatches, hashToken, transaction, addMember, clubToday, HttpError, requireMemberStatus, wildcardType, WILDCARD_TYPES } from "./db.mjs";
 
-export function createApp({ db = openDatabase(), preview = false, previewToday } = {}) {
+export function createApp({ db = openDatabase(), preview = false, previewToday,
+  publicDir = process.env.PUBLIC_DIR || path.join(ROOT, "public") } = {}) {
+  if (typeof publicDir !== "string" || !path.isAbsolute(publicDir))
+    throw new Error("PUBLIC_DIR must be an absolute path to the public files, for example /home/ACCOUNT/public_html. Shell shortcuts such as ~ are not expanded.");
+  const publicRoot = path.resolve(publicDir);
   if (!db.prepare("PRAGMA table_info(games)").all().some(column => column.name === "event_type") ||
       !db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='team_members'").get() ||
       db.prepare("SELECT count(*) AS n FROM sqlite_master WHERE type='trigger' AND name IN ('dissolve_team_before_entry_delete','dissolve_team_before_partner_change')").get().n !== 2)
@@ -181,7 +185,13 @@ export function createApp({ db = openDatabase(), preview = false, previewToday }
           "/slides/table.webp": "slides/table.webp", "/slides/room.webp": "slides/room.webp", "/favicon.png": "favicon.png", "/club-logo.png": "club-logo.png" };
         const file = files[route];
         if (!file) throw new HttpError(404, "Not found.");
-        const content = await readFile(path.join(ROOT, "public", file));
+        let content;
+        try { content = await readFile(path.join(publicRoot, file)); }
+        catch (error) {
+          if (["ENOENT", "ENOTDIR"].includes(error.code))
+            throw new HttpError(404, "Public file not found. Check PUBLIC_DIR and uploaded assets.");
+          throw error;
+        }
         const mime = file.endsWith(".html") ? "text/html" : file.endsWith(".css") ? "text/css" : file.endsWith(".js") ? "text/javascript" : file.endsWith(".webmanifest") ? "application/manifest+json" : file.endsWith(".png") ? "image/png" : "image/webp";
         res.writeHead(200, { "Content-Type": mime.startsWith("image/") ? mime : `${mime}; charset=utf-8`, "Cache-Control": "no-cache" });
         res.end(req.method === "HEAD" ? undefined : content);

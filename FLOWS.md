@@ -1,5 +1,12 @@
 # Main flows and calendar layout checks
 
+## Split public-directory deployment
+- Default installations still serve the application's public subdirectory.
+- With PUBLIC_DIR set to an absolute external public_html directory, serve the homepage and allowlisted assets from that directory, with no fallback to stale bundled files.
+- Keep unknown/private files blocked and preserve GET/HEAD, MIME/cache headers, sign-in and authenticated calendar behavior.
+- Reject relative or unexpanded home-directory paths with an actionable startup error.
+- Preserve the preview and existing frontend flows; no database migration or production modification.
+
 ## iPhone home-screen calendar
 - Keep ordinary browser Home/About/Login unchanged; a standalone launch opens the calendar, or sign-in when no in-memory session exists.
 - Supply the club's existing logo as opaque 180px Apple touch and 192/512px web-app icons; manifest uses relative scope/start URL and standalone display.
