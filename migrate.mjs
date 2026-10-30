@@ -128,11 +128,39 @@ export function migrateRegistrationAudit(filename = process.env.DB_PATH || path.
     throw error;
   } finally { db.close(); }
 }
+export function migrateNotifications(filename = process.env.DB_PATH || path.join(ROOT, "data/club.sqlite")) {
+  const file = privateFile(filename);
+  if (!existsSync(file)) throw new Error("Database not found. Check DB_PATH; migration will not initialize a replacement.");
+  const db = new DatabaseSync(file);
+  let pending = false;
+  try {
+    db.exec("PRAGMA foreign_keys=ON; PRAGMA busy_timeout=10000;");
+    if (db.prepare("PRAGMA user_version").get().user_version !== 1)
+      throw new Error("Unsupported database schema. Expected CABC baseline version 1.");
+    db.exec("BEGIN IMMEDIATE"); pending = true;
+    if (!db.prepare("PRAGMA table_info(members)").all().some(c => c.name === "active"))
+      throw new Error("Run node migrate.mjs member-status first.");
+    const counts = () => Object.fromEntries(["members", "games", "entries", "sessions", "team_members", "registration_audit"]
+      .filter(table => db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?").get(table))
+      .map(table => [table, db.prepare(`SELECT count(*) AS n FROM ${table}`).get().n]));
+    const before = counts();
+    const existing = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='notification_outbox'").get();
+    db.exec(readFileSync(path.join(ROOT, "notification-schema.sql"), "utf8"));
+    db.prepare("SELECT member_id,enabled,token,updated_at FROM notification_preferences LIMIT 0").all();
+    db.prepare("SELECT id,event_id,member_id,email,payload_json,state,created_at,next_attempt,attempts,locked_until,last_error FROM notification_outbox LIMIT 0").all();
+    db.prepare("INSERT INTO metadata(key,value) VALUES('migration:005-notifications',?) ON CONFLICT(key) DO NOTHING").run(new Date().toISOString());
+    const after = counts();
+    if (JSON.stringify(before) !== JSON.stringify(after)) throw new Error("Row counts changed; migration rolled back.");
+    db.exec("COMMIT"); pending = false;
+    return { applied: !existing, before, after };
+  } catch (error) { if (pending) db.exec("ROLLBACK"); throw error; }
+  finally { db.close(); }
+}
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try {
     const command = process.argv[2];
-    if (!["game-names", "team-events", "member-status", "registration-audit"].includes(command)) throw new Error("Usage: node migrate.mjs game-names | team-events | member-status | registration-audit");
-    const result = command === "registration-audit" ? migrateRegistrationAudit() : command === "member-status" ? migrateMemberStatus() : command === "team-events" ? migrateTeamEvents() : migrateGameNames();
+    if (!["game-names", "team-events", "member-status", "registration-audit", "notifications"].includes(command)) throw new Error("Usage: node migrate.mjs game-names | team-events | member-status | registration-audit | notifications");
+    const result = command === "notifications" ? migrateNotifications() : command === "registration-audit" ? migrateRegistrationAudit() : command === "member-status" ? migrateMemberStatus() : command === "team-events" ? migrateTeamEvents() : migrateGameNames();
     console.log(result.applied ? `${command} migration applied.` : `${command} schema already present; no duplicate changes.`);
     console.log("Before:", result.before);
     console.log("After: ", result.after);

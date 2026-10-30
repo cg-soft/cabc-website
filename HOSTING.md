@@ -1,5 +1,9 @@
 # CABC Minimal Website: Hosting Instructions
 
+For registration/cancellation emails, follow [EMAIL-NOTIFICATIONS.md](EMAIL-NOTIFICATIONS.md).
+It covers the additive migration, off-server dependency preparation, private SMTP
+settings and separate worker enable/rollback steps.
+
 This package contains the new, minimal website with the revised calendar.
 It is not an in-place upgrade of the previous React/Express site or its database.
 Nothing has been uploaded to Dathorn, and the existing live site is unchanged.

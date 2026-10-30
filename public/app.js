@@ -93,7 +93,12 @@
     if (dialog.open) dialog.close();
     const screen = location.hash.slice(1) || "home";
     document.body.className = screen === "home" ? "home" : "";
-    if (screen === "home") renderHome();
+    if (screen.startsWith("email-opt-out/")) renderEmailOptOut(screen.slice("email-opt-out/".length));
+    else if (screen === "email-opted-out") {
+      document.title = "Email preferences | Chinese American Bridge Club";
+      app.innerHTML = header(button("Home", "home", "quiet")) + '<main class="simple-page"><h1>Email notifications stopped</h1><p>You will no longer receive registration and cancellation emails. Your game registrations have not changed.</p><p>Sign in and open Email notifications to turn them back on.</p>' + button("Sign in", "login", "primary") + '</main>';
+    }
+    else if (screen === "home") renderHome();
     else if (screen === "about") renderAbout();
     else if (screen === "calendar" && state.user) renderCalendar();
     else renderLogin();
@@ -126,6 +131,14 @@
     app.innerHTML = header(button("Home", "home", "quiet") + button("Login", "login", "primary")) +
       `<main class="simple-page"><p class="eyebrow">Chinese American Bridge Club</p><h1>About the club</h1><p>We’re making a new home for our bridge community.</p><p class="muted">More about the club will be added here soon.</p><div class="small-note">The homepage currently uses illustrative photographs, not photographs of the club’s venue.</div></main>`;
   }
+  function renderEmailOptOut(token) {
+    document.title = "Stop email notifications | Chinese American Bridge Club";
+    const valid = /^[a-f0-9]{64}$/.test(token);
+    app.innerHTML = header(button("Home", "home", "quiet")) + `<main class="simple-page"><h1>Stop email notifications?</h1>
+      ${valid ? `<p>This stops registration and cancellation emails for the account associated with this link. It does not change any game registrations.</p>
+      <form id="email-opt-out-form" data-token="${token}"><p class="form-error" role="alert"></p><button type="submit" class="primary">Stop emails</button></form><p>You can turn emails back on in Email notifications after signing in.</p>`
+      : '<p>This email link is invalid. Sign in to change Email notifications instead.</p>'}</main>`;
+  }
   function renderLogin() {
     document.title = "Login | Chinese American Bridge Club";
     app.innerHTML = header(button("Home", "home", "quiet")) + `
@@ -151,7 +164,7 @@
   function calendarShell() {
     return header(`${state.user.role === "admin" ? `<div id="acting-controls"><span class="identity">${esc(state.user.name)}</span></div>` : `<span class="identity">${esc(state.user.name)}</span>`}${button("Home", "home", "quiet")}${button("Log out", "logout", "quiet")}`, false, "calendar-header") +
       `<main class="calendar-page"><div class="calendar-heading"><div><p class="eyebrow">Members’ calendar</p><h1>Playing dates</h1></div>
-      <div class="admin-actions">${button("Export my games", "export-games", "quiet")}${button("Change password", "change-password", "quiet")}${state.user.role === "admin" ? `${button("Add member", "add-member", "quiet")}${button("Deactivate member", "deactivate-member", "quiet")}${button("+ Add date", "add-date", "primary")}` : ""}</div></div>
+      <div class="admin-actions">${button("Export my games", "export-games", "quiet")}${button("Change password", "change-password", "quiet")}<span id="email-settings"></span>${state.user.role === "admin" ? `${button("Add member", "add-member", "quiet")}${button("Deactivate member", "deactivate-member", "quiet")}${button("+ Add date", "add-date", "primary")}` : ""}</div></div>
       ${state.config?.preview ? '<p class="preview-line">Private preview · fictional members and sample dates</p>' : ""}
       ${state.user.role === "admin" ? '<div id="acting-status"></div>' : ""}
       <div id="calendar-content" aria-busy="true"><div class="loading-surface">Loading the calendar…</div></div>${installHelp()}</main>`;
@@ -188,6 +201,8 @@
     return `${count} ${count === 1 ? "team" : "teams"}`;
   }
   function drawCalendar() {
+    const emailSettings = document.querySelector("#email-settings");
+    if (emailSettings) emailSettings.innerHTML = state.calendar.notificationsAvailable ? button("Email notifications", "email-settings", "quiet") : "";
     const { games, entries, today } = state.calendar;
     drawActingControls();
     if (!state.calendar.months.length) {
@@ -367,13 +382,14 @@
   document.addEventListener("change", event => {
     const actingSelect = event.target.closest('select[data-acting="member"]');
     if (actingSelect) {
-      if (state.schedulingPending || dialog.open) { actingSelect.value = state.actingMemberId || ""; return; }
+      if (state.schedulingPending || dialog.open || document.querySelector("#calendar-content")?.getAttribute?.("aria-busy") === "true") { actingSelect.value = state.actingMemberId || ""; return; }
       state.actingMemberId = actingSelect.value ? Number(actingSelect.value) : null;
       state.showWildcard = null; state.generation++;
       drawCalendar(); return;
     }
     const select = event.target.closest('select[data-show="wildcard"]');
     if (!select) return;
+    if (document.querySelector("#calendar-content")?.getAttribute?.("aria-busy") === "true") { select.value = state.showWildcard || ""; return; }
     state.showWildcard = select.value ? Number(select.value) : null;
     drawCalendar();
   });
@@ -381,6 +397,7 @@
     if (state.schedulingPending) { event.preventDefault(); return; }
     const date = event.target.closest("[data-date]");
     if (date) {
+      if (document.querySelector("#calendar-content")?.getAttribute?.("aria-busy") === "true") return;
       state.selected = date.dataset.date; drawCalendar();
       if (matchMedia("(max-width: 800px)").matches) {
         const panel = app.querySelector(".dance-card");
@@ -426,6 +443,15 @@
         } finally { control.textContent = "Export my games"; }
         return;
       }
+      if (action === "email-settings") {
+        const token = state.token, result = await api("/email/preferences");
+        if (state.token !== token) return;
+        openDialog("Email notifications", `<form id="email-preferences-form"><p>These preferences belong to your signed-in account, ${esc(state.user.name)}, even when acting for another member.</p>
+          <label>Registration and cancellation emails<select name="enabled" aria-label="Registration and cancellation emails"><option value="true"${result.enabled ? " selected" : ""}>On (default)</option><option value="false"${result.enabled ? "" : " selected"}>Off</option></select></label>
+          <p class="small-note">Includes partner registrations, cancellations and cancelled games. Turning emails off does not change registrations. Messages already being delivered may still arrive.</p>
+          <p class="form-error" role="alert"></p><button type="submit" class="primary wide">Save email preferences</button>${button("Cancel", "close-dialog", "quiet wide")}</form>`);
+        return;
+      }
       if (action === "change-password") {
         if (!state.user) return;
         openDialog("Change password", `<form id="password-form">
@@ -457,7 +483,7 @@
       if (action === "add-member") openDialog("Add a member", `<form id="member-form"><label>Full name<input name="name" required minlength="2" maxlength="80" autocomplete="off"></label><label>Email<input name="email" type="email" required maxlength="180" autocomplete="off"></label><label>Initial password<input name="password" type="password" required minlength="12" maxlength="128" autocomplete="new-password"></label><p class="small-note">Use at least 12 characters. Share the credentials privately with the member.</p><p class="form-error" role="alert"></p><button type="submit" class="primary wide">Create member</button></form>`);
       if (action === "deactivate-member") { control.disabled = true; await chooseDeactivation(); }
       if (action === "acting-reset") {
-        if (state.schedulingPending || dialog.open) return;
+        if (state.schedulingPending || dialog.open || document.querySelector("#calendar-content")?.getAttribute?.("aria-busy") === "true") return;
         state.actingMemberId = null; state.showWildcard = null; state.generation++; drawCalendar(); return;
       }
       if (action === "wildcard-jump") {
@@ -505,6 +531,18 @@
     }
     try {
       if (form.id === "login-form") { await enter(await api("/login", "POST", fields)); return; }
+      if (form.id === "email-preferences-form") {
+        dialog.dataset.memberPending = "true";
+        dialog.querySelectorAll('[data-action="close-dialog"]').forEach(button => { button.disabled = true; });
+        await api("/email/preferences", "PATCH", { enabled: fields.enabled === "true" });
+        dialog.close(); toast(fields.enabled === "true" ? "Email notifications are on." : "Email notifications are off.");
+        return;
+      }
+      if (form.id === "email-opt-out-form") {
+        await api("/email/opt-out", "POST", { token: form.dataset.token });
+        location.hash = "#email-opted-out";
+        return;
+      }
       if (form.id === "password-form") {
         if (fields.newPassword !== fields.confirmPassword) throw new Error("The new passwords do not match.");
         if (fields.newPassword === fields.currentPassword) throw new Error("Choose a new password different from your current password.");
@@ -605,10 +643,10 @@
         dialog.querySelectorAll('[data-action="close-dialog"]').forEach(button => { button.disabled = false; });
         if (submit.isConnected) submit.textContent = form.id === "delete-game-form" ? "Delete game" : "Save changes";
       }
-      if (form.id === "deactivate-confirm-form") {
+      if (form.id === "deactivate-confirm-form" || form.id === "email-preferences-form") {
         delete dialog.dataset.memberPending;
         dialog.querySelectorAll('[data-action="close-dialog"]').forEach(button => { button.disabled = false; });
-        if (submit.isConnected) submit.textContent = "Deactivate member";
+        if (submit.isConnected) submit.textContent = form.id === "email-preferences-form" ? "Save email preferences" : "Deactivate member";
       }
       if (form.id === "password-form") {
         delete dialog.dataset.passwordPending;

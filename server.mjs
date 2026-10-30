@@ -4,6 +4,7 @@ import { randomBytes } from "node:crypto";
 import { pathToFileURL } from "node:url";
 import path from "node:path";
 import { registeredGamesCalendar } from "./icalendar.mjs";
+import { notificationsAvailable, preference, setPreference, entrySnapshot, queueChanges } from "./notifications.mjs";
 import { ROOT, openDatabase, passwordHash, passwordMatches, hashToken, transaction, addMember, clubToday, HttpError, requireMemberStatus, wildcardType, WILDCARD_TYPES } from "./db.mjs";
 
 export function createApp({ db = openDatabase(), preview = false, previewToday,
@@ -231,7 +232,31 @@ export function createApp({ db = openDatabase(), preview = false, previewToday,
         const email = body.role === "admin" ? "admin@preview.invalid" : "member@preview.invalid";
         return reply(200, transaction(db, () => session(db.prepare("SELECT * FROM members WHERE email=?").get(email))));
       }
+      if (route === "/api/email/opt-out" && req.method === "POST") {
+        limit(req);
+        if (!notificationsAvailable(db)) throw new HttpError(503, "Email preferences are not installed yet.");
+        if (!/^[a-f0-9]{64}$/.test(body.token || "")) throw new HttpError(400, "This email link is invalid.");
+        transaction(db, () => {
+          const pref = db.prepare("SELECT member_id FROM notification_preferences WHERE token=?").get(body.token);
+          if (!pref) throw new HttpError(410, "This email link is no longer valid. Sign in to change Email notifications.");
+          setPreference(db, pref.member_id, false);
+        });
+        return reply(200, { ok: true });
+      }
       const user = auth(req);
+      if (route === "/api/email/preferences" && ["GET", "PATCH"].includes(req.method)) {
+        if (!notificationsAvailable(db)) throw new HttpError(503, "Email preferences require the notifications migration and a server restart.");
+        if (body.memberId !== undefined) throw new HttpError(400, "Email preferences apply only to your signed-in account.");
+        const enabled = transaction(db, () => {
+          auth(req);
+          if (req.method === "PATCH") {
+            if (typeof body.enabled !== "boolean") throw new HttpError(400, "Choose whether to receive email notifications.");
+            setPreference(db, user.id, body.enabled);
+          }
+          return !!preference(db, user.id).enabled;
+        });
+        return reply(200, { enabled });
+      }
       if (route === "/api/members/manage" && req.method === "GET") {
         admin(user);
         return reply(200, { members: db.prepare("SELECT id,name,email,role,active FROM members ORDER BY active DESC,name,email").all() });
@@ -250,6 +275,7 @@ export function createApp({ db = openDatabase(), preview = false, previewToday,
           if (plan.member.active === 0) return { ok: true, alreadyInactive: true, self: id === actor.id };
           if (!plan.canDeactivate) throw new HttpError(409, "You cannot deactivate the last active administrator.");
           if (plan.revision !== body.revision) throw new HttpError(409, "This member or their registrations changed. Review deactivation again.");
+          const notificationSnapshots = plan.games.map(game => ({ game, before: entrySnapshot(db, game.id) }));
           // Remove future relationships before changing status. Existing team
           // triggers dissolve affected teams, leaving unaffected pairs intact.
           db.prepare("UPDATE entries SET partner_id=NULL WHERE partner_id=? AND game_id IN (SELECT id FROM games WHERE date>=?)").run(id, plan.today);
@@ -257,6 +283,8 @@ export function createApp({ db = openDatabase(), preview = false, previewToday,
           db.prepare("UPDATE members SET active=0,deactivated_at=?,deactivated_by=? WHERE id=?")
             .run(new Date().toISOString(), actor.id, id);
           db.prepare("DELETE FROM sessions WHERE member_id=?").run(id);
+          for (const snapshot of notificationSnapshots)
+            queueChanges(db, { ...snapshot, after: entrySnapshot(db, snapshot.game.id), actor });
           return { ok: true, self: id === actor.id, registrationCount: plan.registrationCount, teamCount: plan.teamCount };
         });
         return reply(200, result);
@@ -337,7 +365,8 @@ export function createApp({ db = openDatabase(), preview = false, previewToday,
         }
         const registrationRevisions = user.role === "admin"
           ? Object.fromEntries(games.filter(g => g.date >= currentDate).map(g => [g.id, gamePlan(g.id).revision])) : undefined;
-        return reply(200, { month, months, games, entries, members, teams: [...groups.values()], wildcards, user, today: currentDate, registrationRevisions });
+        return reply(200, { month, months, games, entries, members, teams: [...groups.values()], wildcards, user, today: currentDate, registrationRevisions,
+          notificationsAvailable: notificationsAvailable(db) });
       }
       const teamRoute = /^\/api\/games\/(\d+)\/team$/.exec(route);
       if (teamRoute && ["POST", "DELETE"].includes(req.method)) {
@@ -389,9 +418,11 @@ export function createApp({ db = openDatabase(), preview = false, previewToday,
             throw new HttpError(409, "This game or its registrations changed. Close this dialog and reopen it to review the latest game.");
           if (req.method === "DELETE") {
             if (body.confirm !== true) throw new HttpError(400, "Confirm deletion of this game.");
+            const before = entrySnapshot(db, id);
             db.prepare("DELETE FROM team_members WHERE game_id=?").run(id);
             db.prepare("DELETE FROM entries WHERE game_id=?").run(id);
             db.prepare("DELETE FROM games WHERE id=?").run(id);
+            queueChanges(db, { game: plan.game, before, after: [], actor: user, cancelledGame: true });
             return { id, deleted: true };
           }
           const name = gameName(body.name);
@@ -427,7 +458,7 @@ export function createApp({ db = openDatabase(), preview = false, previewToday,
           const context = schedulingTarget(req, body, gameId);
           const user = context.target;
           if (partner === user.id) throw new HttpError(400, "Choose a different available member.");
-          game(gameId);
+          const notificationGame = game(gameId), notificationBefore = entrySnapshot(db, gameId);
           const current = db.prepare("SELECT * FROM entries WHERE game_id=? AND member_id=?").get(gameId, user.id);
           if (current?.partner_id) throw new HttpError(409, "You already have a partner for this date.");
           let partnerIsPlaceholder = false;
@@ -448,6 +479,7 @@ export function createApp({ db = openDatabase(), preview = false, previewToday,
           upsert.run(gameId, user.id, partner);
           if (partner !== null && !partnerIsPlaceholder) upsert.run(gameId, partner, user.id);
           auditScheduling(context, gameId, "register");
+          queueChanges(db, { game: notificationGame, before: notificationBefore, after: entrySnapshot(db, gameId), actor: context.actor });
         });
         return reply(200, { ok: true });
       }
@@ -456,7 +488,7 @@ export function createApp({ db = openDatabase(), preview = false, previewToday,
         transaction(db, () => {
           const context = schedulingTarget(req, body, gameId);
           const user = context.target;
-          game(gameId);
+          const notificationGame = game(gameId), notificationBefore = entrySnapshot(db, gameId);
           // Remove legacy reciprocal rows owned by placeholders that point back at
           // this member, so a cancelled assignment disappears completely.
           const markerIds = wildcardMembers().map(w => w.id);
@@ -465,6 +497,7 @@ export function createApp({ db = openDatabase(), preview = false, previewToday,
           db.prepare("UPDATE entries SET partner_id=NULL WHERE game_id=? AND partner_id=?").run(gameId, user.id);
           db.prepare("DELETE FROM entries WHERE game_id=? AND member_id=?").run(gameId, user.id);
           auditScheduling(context, gameId, "cancel");
+          queueChanges(db, { game: notificationGame, before: notificationBefore, after: entrySnapshot(db, gameId), actor: context.actor });
         });
         return reply(200, { ok: true });
       }

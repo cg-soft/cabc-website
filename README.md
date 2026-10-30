@@ -1,5 +1,8 @@
 # Chinese American Bridge Club: minimal new website
 
+For opt-out registration/cancellation emails and the separately enabled SMTP
+worker, see [EMAIL-NOTIFICATIONS.md](EMAIL-NOTIFICATIONS.md).
+
 For application code in `~/src/cabc-minimal` and public files in `~/public_html`,
 follow [the split-directory correction](SPLIT-PUBLIC-DIRECTORY.md). Set the
 managed Node application's `PUBLIC_DIR` to the absolute public directory path.

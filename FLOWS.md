@@ -1,5 +1,15 @@
 # Main flows and calendar layout checks
 
+## Opt-out registration/cancellation emails
+- Notifications default on for real members; self-only Email notifications preferences persist and do not follow the acting target.
+- Registration notifies each changed real participant once; no-op/rejected requests and standalone team changes enqueue nothing.
+- Cancellation tells the cancelling member they are removed and the partner they remain registered/unpaired; game cancellation snapshots all real registrants before deletion.
+- Queue inserts share the calendar transaction; opt-outs, inactive accounts, placeholders and changed addresses are suppressed, including at send time.
+- Email opt-out links show a confirmation page without sign-in; GET/scanners cannot change preferences, and re-enabling revokes earlier links.
+- Separate bounded worker uses authenticated implicit TLS to mail.cabc.club:465; sender calendar@cabc.club; disabled by default, always refuses preview data, no SMTP in request handlers/startup.
+- Check retry/backoff, overlapping workers, interrupted/ambiguous sends, expired events, token privacy, old-schema compatibility and explicit repeatable migration with original row counts unchanged.
+- Recheck desktop/375px, both roles, all existing calendar/game/member/team/export flows; never send real emails or modify production during QA.
+
 ## Split public-directory deployment
 - Default installations still serve the application's public subdirectory.
 - With PUBLIC_DIR set to an absolute external public_html directory, serve the homepage and allowlisted assets from that directory, with no fallback to stale bundled files.

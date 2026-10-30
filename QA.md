@@ -1,5 +1,48 @@
 # New minimal website verification
 
+## Opt-out registration and cancellation emails
+
+All **241 tests passed on Node 22.23.2 and 24.20.0** after the final dialog
+cleanup fix. The suite includes 22 notification-specific tests. New private
+modules, schema and package lock were separately checked to return HTTP 404.
+
+The notification suite covers explicit additive/repeatable migration; preservation
+of original table counts and baseline version; default-on self-only preferences;
+anonymous POST-confirmed opt-out and token revocation; real-participant event
+snapshots; no-op suppression; atomic outbox rollback; administrator attribution;
+old-schema compatibility; private database paths; disabled/preview safety;
+stale/expired/inactive/changed-address suppression; bounded backoff and maximum
+attempts; overlapping workers; interrupted and ambiguous send quarantine; stable
+Message-IDs; message wording; and authenticated implicit TLS against a local
+fake SMTP server. Two browser-model tests cover preference-dialog unlocking on
+success and API failure, including subsequent Cancel behavior.
+
+Chromium checks used only the separate fictional preview database. The explicit
+migration preserved members=18, games=15, entries=53, sessions=2, team_members=7
+and registration_audit=38. Preferences were changed Off/On, reopened, and checked
+after full reload; while acting for Alex Chen the preference remained Morgan
+Lee's. An anonymous browser opened a real fictional opt-out link without changing
+the setting, then confirmed Stop emails; the signed-in dialog reported Off.
+Re-enabling restored On. No opt-out token or SMTP password is exposed by the
+preference/calendar API.
+
+A disposable future team game was created, registered with two real pairs,
+combined into a team, cancelled for one participant, edited and deleted through
+reviewed UI controls. The former partner remained registered as a single and
+the other pair remained intact; deletion reviewed the remaining three members.
+The preview outbox contained nine messages and no SMTP was invoked. Existing
+seeded games and registrations were not edited or deleted.
+
+Public navigation, both preview roles, wildcard Show/reset, acting reset, account
+dialogs, installation help and a real .ics download were rechecked. A delayed
+Upcoming request plus acting selection no longer throws with a null month: the
+selection is ignored while loading and normal controls resume afterward.
+Desktop 1440px and mobile 375px calendar/dialog screenshots were inspected,
+including desktop/mobile/desktop resizing. No horizontal overflow or JavaScript
+page errors were observed. The approved logo/design and online-only session model
+remain unchanged. Production SMTP authentication/inbox delivery and iOS hardware
+were not tested; no production files, database or hosting settings were changed.
+
 ## Split public directory
 
 All 219 tests passed on Node 22.23.2 and 24.20.0. New production-entry-point

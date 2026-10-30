@@ -23,16 +23,18 @@ export function passwordMatches(password, stored) {
 }
 export function privateFile(filename, create = false) {
   const absolute = path.resolve(filename);
-  const publicRoot = path.join(ROOT, "public");
-  if (absolute === publicRoot || absolute.startsWith(publicRoot + path.sep) ||
-      absolute.split(path.sep).some((segment) => ["public", "preview", "dist", "node_modules"].includes(segment)))
-    throw new Error("Database must be outside public and build directories.");
+  const publicRoots = [path.join(ROOT, "public"), process.env.PUBLIC_DIR && path.resolve(process.env.PUBLIC_DIR)].filter(Boolean);
+  for (const root of [...publicRoots]) if (existsSync(root)) publicRoots.push(realpathSync(root));
+  const publicPath = value => publicRoots.some(root => value === root || value.startsWith(root + path.sep));
+  if (publicPath(absolute) ||
+      absolute.split(path.sep).some((segment) => ["public", "public_html", "preview", "dist", "node_modules"].includes(segment)))
+    throw new Error("Database must be outside public and build directories, including web document roots.");
   for (let part = absolute; part !== path.dirname(part); part = path.dirname(part)) {
     if (existsSync(part) && lstatSync(part).isSymbolicLink()) throw new Error("Private database paths cannot contain symlinks.");
   }
   if (existsSync(absolute) && !lstatSync(absolute).isFile()) throw new Error("Database path must be a regular file.");
   if (create) mkdirSync(path.dirname(absolute), { recursive: true, mode: 0o700 });
-  if (existsSync(path.dirname(absolute)) && realpathSync(path.dirname(absolute)).startsWith(publicRoot + path.sep))
+  if (existsSync(path.dirname(absolute)) && publicPath(realpathSync(path.dirname(absolute))))
     throw new Error("Database path is public.");
   return absolute;
 }
@@ -55,6 +57,7 @@ export function openDatabase(filename = process.env.DB_PATH || path.join(ROOT, "
           db.exec(readFileSync(path.join(ROOT, "team-schema.sql"), "utf8"));
           installMemberStatus(db);
           db.exec(readFileSync(path.join(ROOT, "registration-audit-schema.sql"), "utf8"));
+          db.exec(readFileSync(path.join(ROOT, "notification-schema.sql"), "utf8"));
         }
         db.exec("COMMIT");
       }

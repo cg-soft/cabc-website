@@ -76,7 +76,7 @@ function formatIssues(issues) {
 function privatePath(filename) {
   let resolved;
   try { resolved = privateFile(filename); }
-  catch { throw new ImportError("Use a regular file outside public/build folders; symlinked paths are not allowed."); }
+  catch { throw new ImportError("Use a regular file outside public/build folders and web document roots; symlinked paths are not allowed."); }
   if (resolved.split(path.sep).some(part => ["public_html", "www", "htdocs"].includes(part)))
     throw new ImportError("Import and database files must be outside web document roots.");
   return resolved;
