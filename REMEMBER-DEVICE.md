@@ -2,7 +2,9 @@
 
 The login form now has an optional, unchecked **Remember this device for 30 days**
 checkbox. Select it only on a personal device. This release is
-`1.0.1+9778ae9ec3ad`; the production upload is still the owner's step.
+`1.0.1+f1edbdc6b426`; the production upload is still the owner's step.
+The personal-device note now sits directly beneath the option's title, with
+both lines aligned beside the checkbox on desktop and phone layouts.
 
 ## Member behavior
 
@@ -45,7 +47,12 @@ Keep `app.cjs`, `.htaccess`, the application's `public` symlink, `PUBLIC_DIR`,
 The live database remains `/home/cabc/src/cabc-minimal/private/cabc-minimal`;
 do not initialize or replace it. Start the app only after completing all uploads.
 
-Open About and confirm both versions are `1.0.1+9778ae9ec3ad`, with a new backend
+If the preceding remembered-sign-in release is already installed, `server.mjs`
+has not changed: this layout-only correction needs `release.mjs`, `public/app.js`
+and `public/style.css`. Upload all three together and restart to load the new
+backend version stamp.
+
+Open About and confirm both versions are `1.0.1+f1edbdc6b426`, with a new backend
 start time. If older workers survive the usual Stop/Start, stop the app, then
 terminate only currently running application workers:
 
@@ -92,7 +99,8 @@ bearer never falls back to a cookie. Protected responses remain uncached.
 No service worker, offline calendar, queued action, third-party login, device
 management page or revoke-other-devices control was added.
 
-The sandbox passed all 273 automated tests on Node 22.23.2 and 24.22.2. Fourteen
+The sandbox passed all 274 automated tests on Node 22.23.2 and 24.22.2. Fifteen
 new tests cover remember/default login, expiry, revocation, CSRF, account switching,
-preview restrictions and restoration races. Browser checks used fictional data
+preview restrictions, restoration races and the helper's nested text column.
+Browser checks used fictional data
 on an isolated HTTPS server, never production accounts or SMTP.

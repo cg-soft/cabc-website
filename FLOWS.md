@@ -1,6 +1,9 @@
 # Main flows and calendar layout checks
 
 ## Remember this device
+- Keep the personal-device note directly beneath the remember label, in the
+  same text column beside the checkbox. Check desktop/375px, wrapped preview
+  guidance, unchecked/checked label clicks and accessible name/description.
 - Login has an optional unchecked 30-day checkbox, with personal-device guidance.
 - Normal sign-in retains a 12-hour in-memory bearer session. Shared preview
   accounts never enable remembered login and continue using their existing flows.

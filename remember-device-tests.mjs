@@ -225,7 +225,7 @@ function browserModel() {
       { member: { id: 1, name: "Admin", role: "admin" }, remembered: true, csrfToken: "a".repeat(64) }
   }; } };
   vm.runInNewContext(source.replace("  route();\n})();",
-    "  window.model = {state, api, acceptIdentity, clearIdentity, restoreRememberedSession, sessionIdentity};\n})();"), sandbox);
+    "  window.model = {state, app, renderLogin, api, acceptIdentity, clearIdentity, restoreRememberedSession, sessionIdentity};\n})();"), sandbox);
   return { ...window.model, window, location, requests, handlers };
 }
 
@@ -240,6 +240,13 @@ test("startup restores cookie identity, resets acting-for, and does not hijack p
   assert.equal(model.requests.at(-1).options.headers["X-CSRF-Token"], "a".repeat(64));
   assert.equal(model.requests.at(-1).options.headers.Authorization, undefined);
   assert.equal(model.requests.at(-1).options.credentials, "same-origin");
+});
+
+test("personal-device guidance stays below the title in the checkbox's text column", () => {
+  const model = browserModel();
+  model.renderLogin();
+  assert.match(model.app.innerHTML,
+    /<label class="remember-device"><input[^>]+aria-labelledby="remember-label"[^>]+aria-describedby="remember-help"[^>]*><span class="remember-device-copy"><span id="remember-label">Remember this device for 30 days<\/span><span class="small-note" id="remember-help">Use only on a personal device\.<\/span><\/span><\/label>/);
 });
 
 test("restoration navigates login to calendar and never revives an explicitly cleared identity", async () => {

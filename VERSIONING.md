@@ -6,7 +6,7 @@ started (ISO UTC, with `Z`). The page is public; no sign-in is needed.
 An older backend that cannot report a version is labelled explicitly, and
 different identifiers produce a deployment-mismatch warning.
 The current 30-day remembered-sign-in release reports
-**1.0.1+9778ae9ec3ad** for both frontend and backend.
+**1.0.1+f1edbdc6b426** for both frontend and backend.
 
 ## Deploy this update
 

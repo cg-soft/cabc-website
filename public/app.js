@@ -1,5 +1,5 @@
 (() => {
-  const FRONTEND_VERSION = "1.0.1+9778ae9ec3ad";
+  const FRONTEND_VERSION = "1.0.1+f1edbdc6b426";
   const app = document.querySelector("#app"), dialog = document.querySelector("#dialog");
   const state = { token: null, csrfToken: null, user: null, config: null, month: null, selected: null, calendar: null, generation: 0, loginNotice: null, showWildcard: null, actingMemberId: null, schedulingPending: false };
   let authRevision = 0, initialRestoreStarted = false;
@@ -201,8 +201,7 @@
       ${state.loginNotice ? `<p class="login-notice" role="status">${esc(state.loginNotice)}</p>` : ""}
       <form id="login-form"><label>Email<input name="email" type="email" autocomplete="username" required maxlength="180"></label>
       <label>Password<input name="password" type="password" autocomplete="current-password" required maxlength="128"></label>
-      <label class="remember-device"><input name="rememberDevice" type="checkbox" value="true" aria-describedby="remember-help"${state.config?.rememberDevice ? "" : " disabled"}><span>Remember this device for 30 days</span></label>
-      <p class="small-note" id="remember-help">Use only on a personal device.</p>
+      <label class="remember-device"><input name="rememberDevice" type="checkbox" value="true" aria-labelledby="remember-label" aria-describedby="remember-help"${state.config?.rememberDevice ? "" : " disabled"}><span class="remember-device-copy"><span id="remember-label">Remember this device for 30 days</span><span class="small-note" id="remember-help">Use only on a personal device.</span></span></label>
       <p class="form-error" role="alert"></p><button class="primary wide" type="submit">Login</button></form>
       <p class="small-note">Need an account or a password reset? Contact your club administrator.</p>
       <div id="preview-access"></div>${installHelp()}</section></main>`;

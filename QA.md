@@ -1,5 +1,22 @@
 # New minimal website verification
 
+## Remember-checkbox helper alignment
+
+Release `1.0.1+f1edbdc6b426` places the personal-device note below the option title,
+with both text lines in one column beside the checkbox. The checkbox retains
+the title as its accessible name and the note as its description; clicking
+either text line toggles the enabled checkbox.
+All 274 automated tests passed on Node 22.23.2 and 24.22.2, including the new
+regression check for the nested helper text.
+
+Browser checks covered desktop to 375px and back, checked/unchecked states,
+wrapped disabled-preview guidance, matching About versions, Home/Login, both
+preview roles, wildcard/month navigation, Acting for/reset and account/game
+dialogs. Measurements confirmed equal title/note left edges, the note below
+the title and no horizontal overflow. Desktop and phone screenshots were
+inspected and no page exceptions occurred. Authentication, database schema,
+mail settings and notification behavior are unchanged.
+
 ## Optional 30-day remembered sign-in
 
 Release `1.0.1+9778ae9ec3ad` passed all 273 tests on Node 22.23.2 and 24.22.2.
