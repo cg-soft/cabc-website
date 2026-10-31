@@ -1,6 +1,6 @@
 import http from "node:http";
 import { readFile } from "node:fs/promises";
-import { randomBytes } from "node:crypto";
+import { randomBytes, timingSafeEqual } from "node:crypto";
 import { pathToFileURL } from "node:url";
 import path from "node:path";
 import { VERSION } from "./release.mjs";
@@ -9,6 +9,24 @@ import { notificationsAvailable, preference, setPreference, entrySnapshot, queue
 import { ROOT, openDatabase, passwordHash, passwordMatches, hashToken, transaction, addMember, clubToday, HttpError, requireMemberStatus, wildcardType, WILDCARD_TYPES } from "./db.mjs";
 
 const SERVER_STARTED_AT = new Date().toISOString();
+const SESSION_COOKIE = "__Host-cabc_session";
+const REMEMBER_SECONDS = 30 * 24 * 3600;
+const cookieHeader = (token = "") => `${SESSION_COOKIE}=${token}; Path=/; Max-Age=${token ? REMEMBER_SECONDS : 0}; HttpOnly; Secure; SameSite=Strict`;
+function cookieToken(req) {
+  const values = (req.headers.cookie || "").split(";").map(part => part.trim())
+    .filter(part => part.startsWith(`${SESSION_COOKIE}=`));
+  if (values.length !== 1) return "";
+  const token = values[0].slice(SESSION_COOKIE.length + 1);
+  return /^[a-f0-9]{64}$/.test(token) ? token : "";
+}
+function requestToken(req) {
+  // An explicit, invalid Authorization header must never fall back to a cookie.
+  if (req.headers.authorization !== undefined)
+    return /^Bearer ([a-f0-9]{64})$/.exec(req.headers.authorization)?.[1] || "";
+  return cookieToken(req);
+}
+const cookieAuth = req => req.headers.authorization === undefined && !!cookieToken(req);
+const csrfToken = token => hashToken(`cabc-csrf:${token}`);
 
 export function createApp({ db = openDatabase(), preview = false, previewToday,
   publicDir = process.env.PUBLIC_DIR || path.join(ROOT, "public") } = {}) {
@@ -50,7 +68,7 @@ export function createApp({ db = openDatabase(), preview = false, previewToday,
   function wildcardMembers() {
     return db.prepare(`SELECT id,name FROM members WHERE name IN (${wildcardNames.map(() => "?").join(",")})`).all(...wildcardNames);
   }
-  function session(member) {
+  function session(member, remembered = false) {
     if (!member || member.active !== 1) throw new HttpError(401, "Email or password is incorrect.");
     if (wildcardType(member.name)) {
       db.prepare("DELETE FROM sessions WHERE member_id=?").run(member.id);
@@ -58,16 +76,24 @@ export function createApp({ db = openDatabase(), preview = false, previewToday,
     }
     db.prepare("DELETE FROM sessions WHERE expires<?").run(Date.now());
     const token = randomBytes(32).toString("hex");
-    db.prepare("INSERT INTO sessions VALUES(?,?,?)").run(hashToken(token), member.id, Date.now() + 12 * 3600000);
+    db.prepare("INSERT INTO sessions VALUES(?,?,?)").run(hashToken(token), member.id,
+      Date.now() + (remembered ? REMEMBER_SECONDS * 1000 : 12 * 3600000));
     return { token, member: { id: member.id, name: member.name, role: member.role } };
   }
   function auth(req) {
-    const token = (req.headers.authorization || "").replace(/^Bearer /, "");
+    const token = requestToken(req);
     if (!/^[a-f0-9]{64}$/.test(token)) throw new HttpError(401, "Please sign in again.");
     const user = db.prepare("SELECT m.id,m.name,m.role FROM members m JOIN sessions s ON s.member_id=m.id WHERE s.hash=? AND s.expires>? AND m.active=1")
       .get(hashToken(token), Date.now());
     if (!user) throw new HttpError(401, "Your session has expired. Please sign in again.");
     if (wildcardType(user.name)) throw new HttpError(401, "This placeholder account cannot sign in.");
+    if (cookieAuth(req) && !["GET", "HEAD"].includes(req.method)) {
+      const supplied = req.headers["x-csrf-token"];
+      if (req.headers["sec-fetch-site"] === "cross-site" ||
+          typeof supplied !== "string" || !/^[a-f0-9]{64}$/.test(supplied) ||
+          !timingSafeEqual(Buffer.from(supplied), Buffer.from(csrfToken(token))))
+        throw new HttpError(403, "Your sign-in changed or this request could not be verified. Reload the page and try again.");
+    }
     return user;
   }
   function admin(user) { if (user.role !== "admin") throw new HttpError(403, "Administrator access required."); }
@@ -216,20 +242,31 @@ export function createApp({ db = openDatabase(), preview = false, previewToday,
       }
       if (route === "/api/version" && req.method === "GET")
         return reply(200, { version: VERSION, startedAt: SERVER_STARTED_AT });
-      if (route === "/api/config" && req.method === "GET") return reply(200, { preview, today: today(), version: VERSION });
+      if (route === "/api/config" && req.method === "GET")
+        return reply(200, { preview, today: today(), version: VERSION, rememberDevice: !preview });
       if (route === "/api/login" && req.method === "POST") {
         limit(req);
         const email = String(body.email || "").trim().toLowerCase();
         const password = String(body.password || "");
+        if (body.rememberDevice !== undefined && typeof body.rememberDevice !== "boolean")
+          throw new HttpError(400, "Choose whether to remember this device.");
+        const remembered = !preview && body.rememberDevice === true;
         if (password.length > 128 || email.length > 180) throw new HttpError(400, "Invalid email or password.");
         const member = db.prepare("SELECT * FROM members WHERE email=?").get(email);
         const valid = passwordMatches(password, member?.password || dummy);
         if (!member || !valid || member.active !== 1) throw new HttpError(401, "Email or password is incorrect.");
-        return reply(200, transaction(db, () => {
+        const result = transaction(db, () => {
           const current = db.prepare("SELECT * FROM members WHERE id=?").get(member.id);
           if (!current || current.password !== member.password) throw new HttpError(401, "Email or password is incorrect.");
-          return session(current);
-        }));
+          const old = cookieToken(req);
+          if (old) db.prepare("DELETE FROM sessions WHERE hash=?").run(hashToken(old));
+          return session(current, remembered);
+        });
+        if (!preview) res.setHeader("Set-Cookie", cookieHeader(remembered ? result.token : ""));
+        // Remembered credentials stay HttpOnly, never in JS or persistent storage.
+        return reply(200, remembered
+          ? { member: result.member, remembered: true, csrfToken: csrfToken(result.token) }
+          : { ...result, remembered: false });
       }
       if (route === "/api/preview" && req.method === "POST") {
         if (!preview) throw new HttpError(404, "Not found.");
@@ -249,6 +286,9 @@ export function createApp({ db = openDatabase(), preview = false, previewToday,
         return reply(200, { ok: true });
       }
       const user = auth(req);
+      if (route === "/api/session" && req.method === "GET")
+        return reply(200, { member: user, remembered: cookieAuth(req),
+          ...(cookieAuth(req) ? { csrfToken: csrfToken(requestToken(req)) } : {}) });
       if (route === "/api/email/preferences" && ["GET", "PATCH"].includes(req.method)) {
         if (!notificationsAvailable(db)) throw new HttpError(503, "Email preferences require the notifications migration and a server restart.");
         if (body.memberId !== undefined) throw new HttpError(400, "Email preferences apply only to your signed-in account.");
@@ -292,6 +332,7 @@ export function createApp({ db = openDatabase(), preview = false, previewToday,
             queueChanges(db, { ...snapshot, after: entrySnapshot(db, snapshot.game.id), actor });
           return { ok: true, self: id === actor.id, registrationCount: plan.registrationCount, teamCount: plan.teamCount };
         });
+        if (result.self) res.setHeader("Set-Cookie", cookieHeader());
         return reply(200, result);
       }
       if (route === "/api/calendar/export.ics" && req.method === "GET") {
@@ -333,10 +374,16 @@ export function createApp({ db = openDatabase(), preview = false, previewToday,
           db.prepare("DELETE FROM sessions WHERE member_id=?").run(user.id);
         });
         passwordAttempts.delete(user.id);
+        res.setHeader("Set-Cookie", cookieHeader());
         return reply(200, { ok: true });
       }
       if (route === "/api/logout" && req.method === "POST") {
-        db.prepare("DELETE FROM sessions WHERE hash=?").run(hashToken(req.headers.authorization.slice(7)));
+        transaction(db, () => {
+          auth(req);
+          for (const token of new Set([requestToken(req), cookieToken(req)].filter(Boolean)))
+            db.prepare("DELETE FROM sessions WHERE hash=?").run(hashToken(token));
+        });
+        res.setHeader("Set-Cookie", cookieHeader());
         return reply(200, { ok: true });
       }
       if (route === "/api/calendar" && req.method === "GET") {
@@ -529,6 +576,9 @@ export function createApp({ db = openDatabase(), preview = false, previewToday,
       }
       throw new HttpError(404, "Not found.");
     } catch (error) {
+      if (error.status === 401 && cookieAuth(req) &&
+          req.url.split("?")[0] !== "/api/login" && !res.headersSent)
+        res.setHeader("Set-Cookie", cookieHeader());
       if (!res.headersSent) reply(error.status || 500, { error: error.status ? error.message : "Something went wrong. Please try again." });
     }
   });

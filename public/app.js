@@ -1,7 +1,20 @@
 (() => {
-  const FRONTEND_VERSION = "1.0.1+14ef89ea2853";
+  const FRONTEND_VERSION = "1.0.1+9778ae9ec3ad";
   const app = document.querySelector("#app"), dialog = document.querySelector("#dialog");
-  const state = { token: null, user: null, config: null, month: null, selected: null, calendar: null, generation: 0, loginNotice: null, showWildcard: null, actingMemberId: null, schedulingPending: false };
+  const state = { token: null, csrfToken: null, user: null, config: null, month: null, selected: null, calendar: null, generation: 0, loginNotice: null, showWildcard: null, actingMemberId: null, schedulingPending: false };
+  let authRevision = 0, initialRestoreStarted = false;
+  const sessionIdentity = () => state.token || state.csrfToken;
+  function clearIdentity() {
+    authRevision++;
+    state.token = null; state.csrfToken = null; state.user = null;
+    state.calendar = null; state.actingMemberId = null; state.showWildcard = null;
+  }
+  function acceptIdentity(result) {
+    authRevision++;
+    state.token = result.token || null; state.csrfToken = result.csrfToken || null;
+    state.user = result.member; state.calendar = null; state.selected = null;
+    state.month = null; state.showWildcard = null; state.actingMemberId = null;
+  }
   dialog.addEventListener("close", () => { if (!dialog.open) dialog.replaceChildren(); });
   dialog.addEventListener("cancel", event => {
     if (dialog.dataset.passwordPending === "true" || dialog.dataset.memberPending === "true" || dialog.dataset.gamePending === "true" || state.schedulingPending) event.preventDefault();
@@ -65,21 +78,22 @@
     el.textContent = message; el.classList.add("visible");
     toastTimer = setTimeout(() => el.classList.remove("visible"), 5000);
   }
-  async function api(route, method = "GET", body, format = "json") {
+  async function api(route, method = "GET", body, format = "json", quietUnauthorized = false) {
     if (window.navigator?.onLine === false) throw new Error("You’re offline. Reconnect to the internet and try again. No changes have been sent.");
     let response;
     try { response = await fetch(`${window.CABC_API || ""}/api${route}`, {
       method, credentials: "same-origin", cache: "no-store", headers: {
         ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
-        ...(state.token ? { Authorization: `Bearer ${state.token}` } : {})
+        ...(state.token ? { Authorization: `Bearer ${state.token}` } : {}),
+        ...(state.csrfToken && method !== "GET" ? { "X-CSRF-Token": state.csrfToken } : {})
       }, body: body !== undefined ? JSON.stringify(body) : undefined
     }); } catch {
       throw new Error("Unable to connect to the club. Check your connection and try again. If you were saving a change, refresh the calendar to check whether it was saved.");
     }
     const result = response.ok && format === "blob" ? await response.blob() : await response.json();
     if (!response.ok) {
-      if (response.status === 401 && route !== "/login") {
-        state.token = null; state.user = null; state.calendar = null; state.actingMemberId = null;
+      if (response.status === 401 && route !== "/login" && !quietUnauthorized) {
+        clearIdentity();
         if (dialog.open) dialog.close();
         location.hash = "#login";
       }
@@ -89,6 +103,7 @@
   }
   const header = (controls, home = false, extraClass = "") => `<header class="site-header ${home ? "over-photo" : ""} ${extraClass}">${brand}<nav aria-label="Main navigation">${controls}</nav></header>`;
   function route() {
+    if (!initialRestoreStarted) { initialRestoreStarted = true; void restoreRememberedSession(); }
     state.generation++;
     clearInterval(slideTimer);
     if (dialog.open) dialog.close();
@@ -99,6 +114,7 @@
       document.title = "Email preferences | Chinese American Bridge Club";
       app.innerHTML = header(button("Home", "home", "quiet")) + '<main class="simple-page"><h1>Email notifications stopped</h1><p>You will no longer receive registration and cancellation emails. Your game registrations have not changed.</p><p>Sign in and open Email notifications to turn them back on.</p>' + button("Sign in", "login", "primary") + '</main>';
     }
+    else if (screen === "login" && state.user) { location.hash = "#calendar"; return; }
     else if (screen === "home") renderHome();
     else if (screen === "about") renderAbout();
     else if (screen === "calendar" && state.user) renderCalendar();
@@ -185,6 +201,8 @@
       ${state.loginNotice ? `<p class="login-notice" role="status">${esc(state.loginNotice)}</p>` : ""}
       <form id="login-form"><label>Email<input name="email" type="email" autocomplete="username" required maxlength="180"></label>
       <label>Password<input name="password" type="password" autocomplete="current-password" required maxlength="128"></label>
+      <label class="remember-device"><input name="rememberDevice" type="checkbox" value="true" aria-describedby="remember-help"${state.config?.rememberDevice ? "" : " disabled"}><span>Remember this device for 30 days</span></label>
+      <p class="small-note" id="remember-help">Use only on a personal device.</p>
       <p class="form-error" role="alert"></p><button class="primary wide" type="submit">Login</button></form>
       <p class="small-note">Need an account or a password reset? Contact your club administrator.</p>
       <div id="preview-access"></div>${installHelp()}</section></main>`;
@@ -196,6 +214,13 @@
     if (!container) return;
     try {
       if (!state.config) state.config = await api("/config");
+      if (container.isConnected) {
+        const remember = document.querySelector('#login-form [name="rememberDevice"]');
+        if (remember) remember.disabled = state.config.rememberDevice !== true;
+        const help = document.querySelector("#remember-help");
+        if (help && !state.config.rememberDevice)
+          help.textContent = state.config.preview ? "Remembered sign-in is available on the live club site, not shared preview accounts." : "Remembered sign-in requires the updated server.";
+      }
       if (state.config.preview && container.isConnected) container.innerHTML = `<div class="preview-access"><p>Private preview · sample members & dates</p><div>${button("Try member view", "preview-member", "text-button")}${button("Try administrator view", "preview-admin", "text-button")}</div></div>`;
     } catch { if (container.isConnected) container.innerHTML = '<p class="form-error" role="alert">The service is unavailable. Please try again later.</p>'; }
   }
@@ -400,9 +425,9 @@
   async function manageGame(mode) {
     const selected = state.calendar.games.find(game => game.date === state.selected);
     if (!selected || state.user.role !== "admin") return;
-    const token = state.token, generation = state.generation;
+    const token = sessionIdentity(), generation = state.generation;
     const plan = await api(`/games/${selected.id}/manage`);
-    if (state.token !== token || state.generation !== generation || state.selected !== selected.date) return;
+    if (sessionIdentity() !== token || state.generation !== generation || state.selected !== selected.date) return;
     const game = plan.game;
     const summary = `<div class="game-summary"><p><strong>${esc(game.name || "Unnamed game")}</strong></p><p>${dateLabel(game.date, { weekday: "long", month: "long", day: "numeric", year: "numeric" })} · ${timeLabel(game.time)} Pacific</p><p>${game.event_type === "teams" ? "Teams" : "Pairs"} · ${plan.registrationCount} registered member${plan.registrationCount === 1 ? "" : "s"} · ${plan.teamCount} team${plan.teamCount === 1 ? "" : "s"}</p></div>`;
     const attrs = `data-game="${game.id}" data-revision="${esc(plan.revision)}"`;
@@ -414,7 +439,7 @@
     }
   }
   async function enter(result) {
-    state.token = result.token; state.user = result.member; state.calendar = null; state.selected = null; state.month = null; state.showWildcard = null; state.actingMemberId = null;
+    acceptIdentity(result);
     if (location.hash === "#calendar") route(); else location.hash = "#calendar";
   }
   document.addEventListener("change", event => {
@@ -461,17 +486,17 @@
         control.disabled = true; await enter(await api("/preview", "POST", { role: action === "preview-admin" ? "admin" : "member" })); return;
       }
       if (action === "logout") {
-        try { await api("/logout", "POST", {}); }
-        finally { state.token = null; state.user = null; state.calendar = null; state.showWildcard = null; state.actingMemberId = null; location.hash = "#login"; }
+        await api("/logout", "POST", {});
+        clearIdentity(); location.hash = "#login";
         return;
       }
       if (action === "export-games") {
-        const token = state.token;
+        const token = sessionIdentity();
         if (!token) return;
         control.disabled = true; control.textContent = "Exporting…";
         try {
           const file = await api("/calendar/export.ics", "GET", undefined, "blob");
-          if (state.token !== token) return; // Do not download after a logout/account change.
+          if (sessionIdentity() !== token) return; // Do not download after a logout/account change.
           const url = URL.createObjectURL(file);
           const link = document.createElement("a");
           link.href = url; link.download = "cabc-my-games.ics";
@@ -482,8 +507,8 @@
         return;
       }
       if (action === "email-settings") {
-        const token = state.token, result = await api("/email/preferences");
-        if (state.token !== token) return;
+        const token = sessionIdentity(), result = await api("/email/preferences");
+        if (sessionIdentity() !== token) return;
         openDialog("Email notifications", `<form id="email-preferences-form"><p>These preferences belong to your signed-in account, ${esc(state.user.name)}, even when acting for another member.</p>
           <label>Registration and cancellation emails<select name="enabled" aria-label="Registration and cancellation emails"><option value="true"${result.enabled ? " selected" : ""}>On (default)</option><option value="false"${result.enabled ? "" : " selected"}>Off</option></select></label>
           <p class="small-note">Includes partner registrations, cancellations and cancelled games. Turning emails off does not change registrations. Messages already being delivered may still arrive.</p>
@@ -568,7 +593,12 @@
       if (dialog.open) dialog.querySelectorAll('[data-action="close-dialog"]').forEach(control => { control.disabled = true; });
     }
     try {
-      if (form.id === "login-form") { await enter(await api("/login", "POST", fields)); return; }
+      if (form.id === "login-form") {
+        await enter(await api("/login", "POST", {
+          email: fields.email, password: fields.password, rememberDevice: fields.rememberDevice === "true"
+        }));
+        return;
+      }
       if (form.id === "email-preferences-form") {
         dialog.dataset.memberPending = "true";
         dialog.querySelectorAll('[data-action="close-dialog"]').forEach(button => { button.disabled = true; });
@@ -590,7 +620,7 @@
         await api("/password", "POST", fields);
         form.reset();
         dialog.close();
-        state.token = null; state.user = null; state.calendar = null;
+        clearIdentity();
         state.month = null; state.selected = null; state.generation++;
         clearTimeout(toastTimer);
         document.querySelector("#toast").classList.remove("visible");
@@ -644,7 +674,7 @@
         const result = await api(`/members/${form.dataset.member}/deactivate`, "POST", { confirm: true, revision: form.dataset.revision });
         dialog.close();
         if (result.self) {
-          state.token = null; state.user = null; state.calendar = null;
+          clearIdentity();
           state.loginNotice = "Your account has been deactivated. Contact another club administrator if you need assistance.";
           location.hash = "#login";
         } else {
@@ -702,5 +732,20 @@
   document.addEventListener("visibilitychange", refreshVisibleCalendar);
   window.addEventListener("online", refreshVisibleCalendar);
   window.addEventListener("pageshow", event => { if (event.persisted) refreshVisibleCalendar(); });
+  async function restoreRememberedSession() {
+    const revision = authRevision;
+    try {
+      if (!state.config) state.config = await api("/config");
+      if (!state.config.rememberDevice) return;
+      const result = await api("/session", "GET", undefined, "json", true);
+      if (revision !== authRevision || state.user || !result.remembered) return;
+      acceptIdentity(result);
+      if (location.hash === "#calendar") route();
+      else if (!location.hash || location.hash === "#login") location.hash = "#calendar";
+    } catch {
+      // Missing/expired cookies and offline startup leave normal sign-in available.
+      // No credential is copied into browser storage or a URL.
+    }
+  }
   route();
 })();

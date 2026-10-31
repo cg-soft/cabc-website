@@ -1,5 +1,23 @@
 # Main flows and calendar layout checks
 
+## Remember this device
+- Login has an optional unchecked 30-day checkbox, with personal-device guidance.
+- Normal sign-in retains a 12-hour in-memory bearer session. Shared preview
+  accounts never enable remembered login and continue using their existing flows.
+- Remembered production login uses a host-only Secure HttpOnly SameSite=Strict
+  cookie and CSRF protection. No password/token goes into persistent JS storage.
+- Reload, a new tab/context with the same cookie, and standalone-style launch
+  restore the correct member without extending the original 30-day expiry.
+- Administrator restoration always starts at Myself, not the prior acting target.
+- Logout removes the cookie and revokes its session. Password change/reset and
+  deactivation revoke remembered sessions; expired/malformed cookies fail closed.
+- Cross-site or missing/incorrect-CSRF cookie writes are rejected. Explicit
+  invalid bearer credentials never fall back to an ambient cookie.
+- Account switch/unchecked login clear the old remembered session. Offline
+  logout does not falsely claim success while leaving a valid cookie behind.
+- Preserve all existing desktop/mobile navigation, account, calendar, game,
+  partner/team, wildcard, delegated scheduling, export/install and email flows.
+
 ## No notices for one's own actions
 - Own solo/placeholder registration and cancellation queue no self-notice.
 - Own pair changes notify the affected other member; later partner actions may
@@ -42,7 +60,9 @@
 - Keep ordinary browser Home/About/Login unchanged; a standalone launch opens the calendar, or sign-in when no in-memory session exists.
 - Supply the club's existing logo as opaque 180px Apple touch and 192/512px web-app icons; manifest uses relative scope/start URL and standalone display.
 - Show installation instructions on Login and beneath the calendar in a normal browser, and hide them in standalone mode.
-- Keep existing bearer-token sessions in memory only. No cookies, local storage, service worker, cached private calendar or offline mutation queue.
+- Keep ordinary bearer-token sessions in memory only. Only explicit remembered
+  sign-in may use the secure server cookie; no local storage, service worker,
+  cached private calendar or offline mutation queue.
 - Clearly signal an offline connection; failed offline actions do not claim success or change registrations. Reconnection reloads the current calendar.
 - Resume/online refresh keeps selected date/month and acting target, but does not replace open forms or interrupt pending writes.
 - Check phone portrait/landscape safe-area spacing, header alignment, dialog scrolling, ordinary desktop behavior, both roles, export and all existing game/member/team flows.
@@ -183,7 +203,8 @@
 - Dance card: select a date, see all pairs, select an available partner, register both, or register solo.
 - Cancellation: confirm cancellation; own entry is removed and partner remains looking.
 - Admin: same calendar, Add date and Add member dialogs; close buttons and validation work.
-- Log out invalidates session; reload requires login.
+- Log out invalidates the session; ordinary login requires sign-in after reload,
+  while an explicitly remembered live-site session may restore.
 
 ## Requested layout improvement
 - Desktop: readable month navigation, distinct playing/selected/today states, pair counts and own registration both visible.

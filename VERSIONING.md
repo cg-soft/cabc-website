@@ -5,8 +5,8 @@ identifier loaded by the backend module, and the time that backend module
 started (ISO UTC, with `Z`). The page is public; no sign-in is needed.
 An older backend that cannot report a version is labelled explicitly, and
 different identifiers produce a deployment-mismatch warning.
-The current self-notification suppression release reports
-**1.0.1+14ef89ea2853** for both frontend and backend.
+The current 30-day remembered-sign-in release reports
+**1.0.1+9778ae9ec3ad** for both frontend and backend.
 
 ## Deploy this update
 
@@ -16,18 +16,19 @@ While the application is stopped, upload:
 
 | Repository file | Production destination |
 | --- | --- |
-| `notifications.mjs` | `/home/cabc/src/cabc-minimal/notifications.mjs` |
+| `server.mjs` | `/home/cabc/src/cabc-minimal/server.mjs` |
 | `release.mjs` | `/home/cabc/src/cabc-minimal/release.mjs` |
 | `public/app.js` | `/home/cabc/public_html/app.js` |
+| `public/style.css` | `/home/cabc/public_html/style.css` |
 
-Upload all three from the same release, then start the application and open
+Upload all four from the same release, then start the application and open
 About. The private `release.mjs` is required by `server.mjs`; do not restart
 mid-upload. Keep `app.cjs`, `.htaccess`, the public symlink, `PUBLIC_DIR`,
 `DB_PATH` and `EMAIL_ENABLED` unchanged.
 
-These instructions assume About version diagnostics are already installed.
-If upgrading from a release before that feature, also upload the matching
-`server.mjs` and `public/style.css` from the current repository.
+These instructions assume the preceding self-notification suppression release
+is already installed. If it is not, also upload the matching `notifications.mjs`.
+See [REMEMBER-DEVICE.md](REMEMBER-DEVICE.md) for usage and acceptance checks.
 
 You can also open the public endpoint directly:
 

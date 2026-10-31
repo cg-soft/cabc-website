@@ -5,10 +5,11 @@ application files remain in `~/src/cabc-minimal`, while `public/...` files go
 directly into `~/public_html`. Set the managed process's `PUBLIC_DIR` to that
 directory's absolute path and restart Node.
 
-This release adds an online home-screen web app using the existing frontend
-and server. It does not create an App Store application or change the
-authentication model. Production deployment remains the owner's manual step;
-the preview and GitHub updates do not change Dathorn.
+The home-screen feature uses the existing frontend and server, not an App Store
+application. A subsequent update adds optional 30-day remembered sign-in; follow
+[REMEMBER-DEVICE.md](REMEMBER-DEVICE.md) for its current deployment instructions.
+Production deployment remains the owner's manual step; the preview and GitHub
+updates do not change Dathorn.
 
 ## Install on an iPhone
 
@@ -49,11 +50,13 @@ Apple documents icons and standalone configuration in
 
 ## Sign-in, privacy and connection limits
 
-The existing 12-hour server sessions and in-memory bearer tokens are unchanged.
-Credentials and member/calendar data are not persisted in local storage,
-IndexedDB, cookies or an application cache. A full reload, a fresh launch or
-iOS discarding the app's process may require signing in again. Password fields
-retain their password-manager autocomplete attributes.
+Ordinary sign-in retains the 12-hour server session and in-memory bearer token.
+The optional Remember this device for 30 days checkbox instead keeps a secure
+HttpOnly session cookie so reopening can restore the member until expiry or
+revocation. Check it when signing in inside the installed app; do not assume it
+shares Safari's sign-in state. Passwords and private calendar data are not saved
+in JavaScript storage or an offline cache. Password fields retain their
+password-manager autocomplete attributes.
 
 An internet connection is required to launch, load or change the calendar.
 There is deliberately no service worker, offline calendar copy, queued

@@ -1,5 +1,33 @@
 # New minimal website verification
 
+## Optional 30-day remembered sign-in
+
+Release `1.0.1+9778ae9ec3ad` passed all 273 tests on Node 22.23.2 and 24.22.2.
+Fourteen new tests cover ordinary 12-hour versus remembered 30-day expiry,
+cookie attributes and hashed-only persistence, restart restoration with current
+roles and non-sliding expiry, every unsafe-method CSRF guard, bearer precedence,
+logout, password change/operator reset, deactivation, invalid/expired/duplicate
+cookies, placeholder refusal, account switching, preview restrictions and
+startup/logout races. The existing 259 regression tests also pass.
+
+An isolated HTTPS fixture with fictional members exercised checked and unchecked
+login, reload, a fresh browser context carrying the persistent cookie, logout,
+revoked-session rejection, admin reset to Myself and offline logout failure.
+Desktop and 375px login/calendar views were inspected with no horizontal overflow
+or page exceptions. Existing controls exercised real cookie-authenticated partner
+registration/cancellation, delegated guest registration/cancellation, team
+formation/dissolution, calendar export, email preference off/on, game
+creation/edit/deletion, member creation/deactivation, password failure/success,
+wildcard filter/reset, public navigation, and matching About versions.
+The December Add date default remained December 1.
+
+No schema, dependency, SMTP, cron or production change was made. The shared
+preview intentionally disables remembered sign-in; HTTPS fixture checks, not
+that preview's sample accounts, verify persistence. Actual iPhone/Safari and
+Dathorn acceptance remain owner-operated checks. Earlier verification notes
+below describe historical releases; their blanket reload/sign-in notes are
+superseded by this optional feature.
+
 ## Suppress notices for the actor's own actions
 
 All 259 tests passed on Node 22.23.2 and 24.22.2. The notification suite now has

@@ -1,4 +1,6 @@
 @charset "UTF-8";
+.remember-device { display:flex; align-items:center; gap:.65rem; font-size:.875rem; line-height:1.45; cursor:pointer; }
+.remember-device input { width:1.1rem; height:1.1rem; min-height:0; padding:0; flex:0 0 auto; accent-color:var(--green); }
 :root {
   --paper:#f7f7f1; --white:#fffefa; --ink:#25362e; --muted:#636f66; --green:#234c3d;
   --tint:#edf1e9; --line:#d9ded4; --error:#9c342d;

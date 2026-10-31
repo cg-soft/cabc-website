@@ -3,6 +3,9 @@
 About includes frontend/backend release diagnostics. See [VERSIONING.md](VERSIONING.md)
 for the four-file upgrade and mandatory version-stamping step after application changes.
 
+For optional 30-day remembered sign-in, secure-cookie behavior and the current
+four-file Dathorn upgrade, see [REMEMBER-DEVICE.md](REMEMBER-DEVICE.md).
+
 For opt-out registration/cancellation emails and the separately enabled SMTP
 worker, see [EMAIL-NOTIFICATIONS.md](EMAIL-NOTIFICATIONS.md).
 
@@ -279,10 +282,13 @@ but is not guaranteed durable hosting or a backup.
 ## Accounts and sessions
 
 Passwords use salted scrypt; only password hashes and hashed session tokens are
-stored. Private endpoints enforce server-side roles. Tokens expire after 12 hours.
-The browser keeps its token only in memory, so reloading closes the browser
-session and requires signing in again. This avoids cookie/storage requirements
-in the private preview and is an intentional minimal implementation tradeoff.
+stored. Private endpoints enforce server-side roles. Ordinary sign-in keeps a
+12-hour bearer session in memory and requires sign-in after a full reload.
+On the HTTPS club site, the optional unchecked Remember this device for 30 days
+checkbox instead uses a Secure HttpOnly host-only cookie and CSRF-protected
+writes. Reloading restores that session without extending its absolute expiry.
+Logout revokes it; password changes/resets and deactivation revoke all account
+sessions. Shared preview accounts remain temporary. See [REMEMBER-DEVICE.md](REMEMBER-DEVICE.md).
 
 Signed-in members and administrators can select **Change password** beside the
 calendar controls. The form requires the current password, a different new
