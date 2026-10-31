@@ -1,5 +1,36 @@
 # New minimal website verification
 
+## Suppress notices for the actor's own actions
+
+All 259 tests passed on Node 22.23.2 and 24.22.2. The notification suite now has
+28 tests, including six additional regressions for reciprocal partner actions,
+all three placeholders, delegated target versus administrator identity,
+game cancellation with a registered administrator, same-name members and older
+pending self-notices. Existing registration/cancellation, opt-out, rollback and
+no-op tests now assert the actor-exclusion policy.
+
+The queue compares actual member IDs and never changes opt-out preferences.
+The worker skips legacy payloads whose per-recipient `delegated` flag is exactly
+false before creating a preference or contacting SMTP. Notices about actions
+performed by someone else remain eligible. No schema or dependency changes
+were made. Runtime release `1.0.1+14ef89ea2853` is stamped in both frontend and
+backend; frontend functionality and visual styles are unchanged.
+
+Browser verification exercised Home/About, both preview roles, calendar
+navigation, wildcard filter/reset, acting-for/reset, the account/admin dialogs,
+calendar download and iPhone installation help. A disposable 2099 team game was
+created, registered by its administrator with a partner, given a delegated pair,
+formed into a team, cancelled for the administrator, edited and finally deleted.
+Its seven queued notices were only for the three other affected members; none
+targeted the administrator. No live SMTP was used.
+
+After deleting that disposable game, original counts were unchanged: 18 members,
+15 games, 53 entries and 7 team-membership rows. The audit grew from 45 to 46 and
+the outbox from 18 to 25 solely for the fictional QA actions. Desktop/mobile
+viewport checks found no horizontal overflow and the browser recorded no page
+errors. Pending preview mail cannot be delivered because preview mode/data
+remain enabled.
+
 ## Public About-page version diagnostics
 
 All 253 tests passed on Node 22.23.2 and 24.20.0, including 12 new version tests.

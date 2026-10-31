@@ -5,7 +5,8 @@ identifier loaded by the backend module, and the time that backend module
 started (ISO UTC, with `Z`). The page is public; no sign-in is needed.
 An older backend that cannot report a version is labelled explicitly, and
 different identifiers produce a deployment-mismatch warning.
-This release reports **1.0.1+8cffa1806ab4** for both frontend and backend.
+The current self-notification suppression release reports
+**1.0.1+14ef89ea2853** for both frontend and backend.
 
 ## Deploy this update
 
@@ -15,15 +16,18 @@ While the application is stopped, upload:
 
 | Repository file | Production destination |
 | --- | --- |
-| `server.mjs` | `/home/cabc/src/cabc-minimal/server.mjs` |
+| `notifications.mjs` | `/home/cabc/src/cabc-minimal/notifications.mjs` |
 | `release.mjs` | `/home/cabc/src/cabc-minimal/release.mjs` |
 | `public/app.js` | `/home/cabc/public_html/app.js` |
-| `public/style.css` | `/home/cabc/public_html/style.css` |
 
-Upload all four from the same release, then start the application and open
-About. The new private `release.mjs` is required by `server.mjs`; do not restart
+Upload all three from the same release, then start the application and open
+About. The private `release.mjs` is required by `server.mjs`; do not restart
 mid-upload. Keep `app.cjs`, `.htaccess`, the public symlink, `PUBLIC_DIR`,
 `DB_PATH` and `EMAIL_ENABLED` unchanged.
+
+These instructions assume About version diagnostics are already installed.
+If upgrading from a release before that feature, also upload the matching
+`server.mjs` and `public/style.css` from the current repository.
 
 You can also open the public endpoint directly:
 

@@ -1,5 +1,16 @@
 # Main flows and calendar layout checks
 
+## No notices for one's own actions
+- Own solo/placeholder registration and cancellation queue no self-notice.
+- Own pair changes notify the affected other member; later partner actions may
+  notify the original actor without changing their opt-out preference.
+- Compare the actual actor's member ID, never display names or acting-for target.
+- Delegated registration/cancellation still notifies the affected target, excluding
+  the actual administrator even when that administrator is a partner/registrant.
+- Whole-game cancellation excludes its actor and notifies all other real registrants.
+- Worker skips older queued self-notices before contacting SMTP.
+- Preserve no-op/rejection behavior, atomic rollback and opt-out suppression.
+
 ## About version diagnostics
 - Preserve public About, club copy, photo note, logo, Home and Login.
 - Show loaded frontend/backend versions and backend start time.
@@ -12,8 +23,8 @@
 
 ## Opt-out registration/cancellation emails
 - Notifications default on for real members; self-only Email notifications preferences persist and do not follow the acting target.
-- Registration notifies each changed real participant once; no-op/rejected requests and standalone team changes enqueue nothing.
-- Cancellation tells the cancelling member they are removed and the partner they remain registered/unpaired; game cancellation snapshots all real registrants before deletion.
+- Registration notifies each changed real participant other than the actual actor once; no-op/rejected requests and standalone team changes enqueue nothing.
+- Cancellation notifies affected members other than the actual actor; a former partner is told they remain registered/unpaired. Game cancellation snapshots all other real registrants before deletion.
 - Queue inserts share the calendar transaction; opt-outs, inactive accounts, placeholders and changed addresses are suppressed, including at send time.
 - Email opt-out links show a confirmation page without sign-in; GET/scanners cannot change preferences, and re-enabling revokes earlier links.
 - Separate bounded worker uses authenticated implicit TLS to mail.cabc.club:465; sender calendar@cabc.club; disabled by default, always refuses preview data, no SMTP in request handlers/startup.

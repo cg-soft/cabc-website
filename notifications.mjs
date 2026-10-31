@@ -26,6 +26,8 @@ export function queueChanges(db, { game, before, after, actor, cancelledGame = f
   const current = new Map(after.map(e => [e.member_id, e]));
   const event = randomBytes(16).toString("hex");
   for (const id of new Set([...previous.keys(), ...current.keys()])) {
+    // Suppress only the actual actor, not a delegated member or their partner.
+    if (id === actor.id) continue;
     const old = previous.get(id), next = current.get(id);
     if (!cancelledGame && !!old === !!next && old?.partner_id === next?.partner_id) continue;
     const member = db.prepare("SELECT id,name,email,active FROM members WHERE id=?").get(id);
@@ -118,8 +120,14 @@ export async function processQueue(db, { transport, batch = 5, site = "https://c
       if (!row) break;
       processed++;
       const member = db.prepare("SELECT name,email,active FROM members WHERE id=?").get(row.member_id);
-      const pref = preference(db, row.member_id);
       const payload = JSON.parse(row.payload_json);
+      // Older releases queued self-notices too. Their per-recipient flag is
+      // false exactly when this recipient performed the action themselves.
+      if (payload.delegated === false) {
+        db.prepare("UPDATE notification_outbox SET state='skipped',locked_until=NULL,last_error='Recipient performed this action; self-notification suppressed.' WHERE id=?").run(row.id);
+        continue;
+      }
+      const pref = preference(db, row.member_id);
       const currentGame = db.prepare("SELECT date,time,name FROM games WHERE id=?").get(payload.game.id);
       const currentEntry = db.prepare("SELECT e.partner_id,m.name AS partner FROM entries e LEFT JOIN members m ON m.id=e.partner_id WHERE e.game_id=? AND e.member_id=?")
         .get(payload.game.id, row.member_id);

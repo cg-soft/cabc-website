@@ -89,17 +89,19 @@ test("email migration is explicit, additive, repeatable and preserves all origin
   assert.equal(f.db.prepare("PRAGMA user_version").get().user_version, 1);
   assert.throws(() => migrateNotifications(path.join(f.directory, "missing.sqlite")), /not found/);
 });
-test("registration/cancellation emails snapshot both real members and accurate partner status", async t => {
+test("own registration/cancellation notifies the affected partner but never the actor", async t => {
   const f = await apiFixture(t);
   let r = await f.request("/games/1/entry", { method: "POST", token: f.one, body: { partnerId: f.ids["Member Two"] } });
   assert.equal(r.status, 200);
   let rows = f.db.prepare("SELECT * FROM notification_outbox").all();
-  assert.equal(rows.length, 2); assert.equal(new Set(rows.map(r => r.event_id)).size, 1);
+  assert.equal(rows.length, 1); assert.equal(rows[0].member_id, f.ids["Member Two"]);
   assert.ok(rows.every(r => JSON.parse(r.payload_json).kind === "registered"));
+  assert.equal(JSON.parse(rows[0].payload_json).actorName, "Member One");
   r = await f.request("/games/1/entry", { method: "DELETE", token: f.one, body: {} });
   assert.equal(r.status, 200);
-  rows = f.db.prepare("SELECT * FROM notification_outbox").all().slice(2);
-  assert.deepEqual(rows.map(r => JSON.parse(r.payload_json).kind).sort(), ["cancelled", "partner-cancelled"]);
+  rows = f.db.prepare("SELECT * FROM notification_outbox").all().slice(1);
+  assert.deepEqual(rows.map(r => JSON.parse(r.payload_json).kind), ["partner-cancelled"]);
+  assert.equal(rows[0].member_id, f.ids["Member Two"]);
   const partner = rows.find(r => JSON.parse(r.payload_json).kind === "partner-cancelled");
   assert.match(renderMail(JSON.parse(partner.payload_json), "a".repeat(64)).text, /remain registered/);
   assert.equal(f.db.prepare("SELECT partner_id FROM entries WHERE game_id=1 AND member_id=?").get(f.ids["Member Two"]).partner_id, null);
@@ -107,15 +109,15 @@ test("registration/cancellation emails snapshot both real members and accurate p
 test("duplicate no-op registration/cancellation and rejected requests enqueue nothing", async t => {
   const f = await apiFixture(t);
   for (let i = 0; i < 2; i++) assert.equal((await f.request("/games/1/entry", { method: "POST", token: f.one, body: { partnerId: null } })).status, 200);
-  assert.equal(f.db.prepare("SELECT count(*) n FROM notification_outbox").get().n, 1);
+  assert.equal(f.db.prepare("SELECT count(*) n FROM notification_outbox").get().n, 0);
   assert.equal((await f.request("/games/1/entry", { method: "POST", token: f.one, body: { partnerId: f.ids["Member One"] } })).status, 400);
   for (let i = 0; i < 2; i++) await f.request("/games/1/entry", { method: "DELETE", token: f.one, body: {} });
-  assert.equal(f.db.prepare("SELECT count(*) n FROM notification_outbox").get().n, 2);
+  assert.equal(f.db.prepare("SELECT count(*) n FROM notification_outbox").get().n, 0);
 });
 test("outbox and calendar writes roll back together on failure", async t => {
   const f = await apiFixture(t);
   f.db.exec("CREATE TRIGGER fail_mail BEFORE INSERT ON notification_outbox BEGIN SELECT RAISE(ABORT,'fixture failure'); END;");
-  assert.equal((await f.request("/games/1/entry", { method: "POST", token: f.one, body: { partnerId: null } })).status, 500);
+  assert.equal((await f.request("/games/1/entry", { method: "POST", token: f.one, body: { partnerId: f.ids["Member Two"] } })).status, 500);
   assert.equal(f.db.prepare("SELECT count(*) n FROM entries").get().n, 0);
   assert.equal(f.db.prepare("SELECT count(*) n FROM notification_preferences").get().n, 0);
 });
@@ -126,7 +128,7 @@ test("opt-out defaults on, is self-only, persists and suppresses new queued mail
   assert.equal((await f.request("/email/preferences", { method: "PATCH", token: f.one, body: { enabled: "false" } })).status, 400);
   assert.equal((await f.request("/email/preferences", { method: "PATCH", token: f.one, body: { enabled: false } })).status, 200);
   await f.request("/games/1/entry", { method: "POST", token: f.two, body: { partnerId: f.ids["Member One"] } });
-  assert.deepEqual(f.db.prepare("SELECT member_id FROM notification_outbox").all().map(r => r.member_id), [f.ids["Member Two"]]);
+  assert.deepEqual(f.db.prepare("SELECT member_id FROM notification_outbox").all(), []);
   assert.equal((await f.request("/email/preferences", { token: f.one })).body.enabled, false);
   assert.equal((await f.request("/email/preferences")).status, 401);
 });
@@ -166,6 +168,82 @@ test("delegated registration identifies the actor but respects the recipient's o
   const payload = JSON.parse(f.db.prepare("SELECT payload_json FROM notification_outbox").get().payload_json);
   assert.equal(payload.delegated, true); assert.equal(payload.actorName, "Administrator");
   assert.equal(f.db.prepare("SELECT count(*) n FROM registration_audit").get().n, 1);
+});
+test("a member still receives notices when their partner performs the later action", async t => {
+  const f = await apiFixture(t);
+  assert.equal((await f.request("/games/1/entry", { method: "POST", token: f.one,
+    body: { partnerId: f.ids["Member Two"] } })).status, 200);
+  assert.equal((await f.request("/games/1/entry", { method: "DELETE", token: f.two, body: {} })).status, 200);
+  const rows = f.db.prepare("SELECT member_id,payload_json FROM notification_outbox ORDER BY rowid").all();
+  assert.deepEqual(rows.map(row => row.member_id), [f.ids["Member Two"], f.ids["Member One"]]);
+  assert.equal(JSON.parse(rows[1].payload_json).kind, "partner-cancelled");
+  assert.equal(preference(f.db, f.ids["Member One"]).enabled, 1);
+});
+test("self registration with any placeholder and its cancellation queue no self-notice", async t => {
+  const f = await apiFixture(t);
+  for (const name of ["-Guest-", "-Standby-", "-Unavailable-"]) {
+    let id = f.ids[name];
+    if (!id) id = addMember(f.db, { name, email: `${name}@example.test`, password: "Fictional-Password-12345" });
+    assert.equal((await f.request("/games/1/entry", { method: "POST", token: f.one, body: { partnerId: id } })).status, 200);
+    assert.equal((await f.request("/games/1/entry", { method: "DELETE", token: f.one, body: {} })).status, 200);
+  }
+  assert.equal(f.db.prepare("SELECT count(*) AS n FROM notification_outbox").get().n, 0);
+});
+test("delegated changes notify the target, excluding the actual administrator even when partnered", async t => {
+  const f = await apiFixture(t);
+  const plan = await f.request("/games/1/manage", { token: f.admin });
+  assert.equal((await f.request("/games/1/entry", { method: "POST", token: f.admin, body: {
+    memberId: f.ids["Member One"], partnerId: f.ids.Administrator,
+    confirm: true, revision: plan.body.revision
+  } })).status, 200);
+  let rows = f.db.prepare("SELECT member_id,payload_json FROM notification_outbox ORDER BY rowid").all();
+  assert.deepEqual(rows.map(row => row.member_id), [f.ids["Member One"]]);
+  assert.equal(JSON.parse(rows[0].payload_json).delegated, true);
+  const cancel = await f.request("/games/1/manage", { token: f.admin });
+  assert.equal((await f.request("/games/1/entry", { method: "DELETE", token: f.admin, body: {
+    memberId: f.ids["Member One"], confirm: true, revision: cancel.body.revision
+  } })).status, 200);
+  rows = f.db.prepare("SELECT member_id,payload_json FROM notification_outbox ORDER BY rowid").all();
+  assert.deepEqual(rows.map(row => row.member_id), [f.ids["Member One"], f.ids["Member One"]]);
+  assert.equal(JSON.parse(rows[1].payload_json).kind, "cancelled");
+});
+test("game cancellation notifies all other registrants but excludes the cancelling administrator", async t => {
+  const f = await apiFixture(t);
+  assert.equal((await f.request("/games/1/entry", { method: "POST", token: f.admin,
+    body: { partnerId: f.ids["Member One"] } })).status, 200);
+  assert.equal((await f.request("/games/1/entry", { method: "POST", token: f.two, body: { partnerId: null } })).status, 200);
+  f.db.exec("DELETE FROM notification_outbox");
+  const plan = await f.request("/games/1/manage", { token: f.admin });
+  assert.equal((await f.request("/games/1/manage", { method: "DELETE", token: f.admin,
+    body: { confirm: true, revision: plan.body.revision } })).status, 200);
+  const rows = f.db.prepare("SELECT member_id,payload_json FROM notification_outbox").all();
+  assert.deepEqual(rows.map(row => row.member_id).sort((a, b) => a - b),
+    [f.ids["Member One"], f.ids["Member Two"]]);
+  assert.ok(rows.every(row => JSON.parse(row.payload_json).kind === "game-cancelled"));
+});
+test("self-notification suppression uses actor IDs, not matching display names", async t => {
+  const f = await apiFixture(t);
+  f.db.prepare("UPDATE members SET name='Member One' WHERE id=?").run(f.ids["Member Two"]);
+  assert.equal((await f.request("/games/1/entry", { method: "POST", token: f.one,
+    body: { partnerId: f.ids["Member Two"] } })).status, 200);
+  const rows = f.db.prepare("SELECT member_id,payload_json FROM notification_outbox").all();
+  assert.deepEqual(rows.map(row => row.member_id), [f.ids["Member Two"]]);
+  assert.equal(JSON.parse(rows[0].payload_json).delegated, true);
+  const sent = [];
+  await processQueue(f.db, { transport: { async sendMail(message) { sent.push(message); } } });
+  assert.equal(sent.length, 1);
+});
+test("worker skips pending self-notices from older code before contacting SMTP", async t => {
+  const f = fixture(t); queueOne(f);
+  f.db.prepare("UPDATE notification_outbox SET payload_json=json_set(payload_json,'$.delegated',json('false'),'$.actorName','Member One')").run();
+  const result = await processQueue(f.db, { transport: {
+    verify() { assert.fail("Self-notices must not connect to SMTP"); },
+    sendMail() { assert.fail("Self-notices must not be sent"); }
+  } });
+  assert.equal(result.processed, 1);
+  const row = f.db.prepare("SELECT state,last_error FROM notification_outbox").get();
+  assert.equal(row.state, "skipped");
+  assert.match(row.last_error, /self-notification suppressed/);
 });
 test("old-schema applications still register, expose no preference capability and require explicit migration", async t => {
   const f = await apiFixture(t);

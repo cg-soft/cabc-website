@@ -1,5 +1,5 @@
 (() => {
-  const FRONTEND_VERSION = "1.0.1+8cffa1806ab4";
+  const FRONTEND_VERSION = "1.0.1+14ef89ea2853";
   const app = document.querySelector("#app"), dialog = document.querySelector("#dialog");
   const state = { token: null, user: null, config: null, month: null, selected: null, calendar: null, generation: 0, loginNotice: null, showWildcard: null, actingMemberId: null, schedulingPending: false };
   dialog.addEventListener("close", () => { if (!dialog.open) dialog.replaceChildren(); });

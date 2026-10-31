@@ -11,14 +11,19 @@ queues messages and a separate, explicitly enabled worker delivers them.
 
 ## Notification rules
 
-- Registration notifies each changed real participant, including a partner
+- Registration notifies each changed real participant other than the person
+  performing the action, including a partner
   registered by someone else. Identical no-op and rejected requests send nothing.
-- Cancellation tells the removed member they are cancelled, and an affected
-  real partner that they remain registered and are now looking for a partner.
+- Cancellation notifies a removed member when someone else cancels for them,
+  and an affected real partner that they remain registered and are now looking
+  for a partner. No notice is sent to the person performing the cancellation.
 - Game cancellation/deletion considers all real registrants once, using game
-  details saved before deletion. Every member's opt-out still applies.
+  details saved before deletion, except the person cancelling the game.
+  Every member's opt-out still applies.
 - Administrator changes notify the affected members, not automatically the
-  administrator, and identify the actor where appropriate. Deactivation may
+  administrator, and identify the actor where appropriate. The actual signed-in
+  administrator is excluded even when registered in the game; an acting-for
+  member is not excluded merely because they are the scheduling target. Deactivation may
   notify affected active partners; inactive accounts receive no further mail.
 - Placeholders never receive mail. Guest, standby and unavailable assignments
   have wording appropriate to their actual status.
@@ -40,11 +45,33 @@ change preferences. Re-enabling mail invalidates links in older messages.
 Tokens are private capabilities, not session tokens, and cannot sign anyone in.
 
 Before delivery, the worker rechecks preferences, account status and address.
+Older pending messages explicitly marked as the recipient's own action are
+skipped without contacting SMTP; already sent messages cannot be recalled.
 Messages already being transmitted cannot be recalled. Messages over 48 hours
 old, for past game dates, or superseded by registration/partnership/schedule
 changes are skipped rather than delivering obsolete information.
 
 ## Deploy on Dathorn
+
+### Self-notification suppression update
+
+For an installation where notifications are already working, this update needs
+no migration, dependency changes, SMTP changes or cron changes. Preserve the
+working private mail file and scheduled worker. While the application is stopped
+and no mail-worker run is in progress, upload these matching release files:
+
+| Repository file | Production destination |
+| --- | --- |
+| `notifications.mjs` | `/home/cabc/src/cabc-minimal/notifications.mjs` |
+| `release.mjs` | `/home/cabc/src/cabc-minimal/release.mjs` |
+| `public/app.js` | `/home/cabc/public_html/app.js` |
+
+Restart the application so request handlers load the new queue policy. The next
+worker process automatically loads the updated delivery policy. Check matching
+frontend/backend version `1.0.1+14ef89ea2853` on About. The public script changes only its release
+stamp; the visual design and controls are unchanged.
+
+### Initial email installation
 
 Production remains owner-operated. Back up the existing private database first.
 Keep the existing `DB_PATH`, `PUBLIC_DIR`, public symlink, `.htaccess` and
@@ -112,6 +139,12 @@ MAIL_BATCH_SIZE=5
 ```
 
 Replace the DB_PATH placeholder with the existing absolute database path.
+The owner verified the live database by inspecting the running LiteSpeed process's
+open files. Its actual path is `/home/cabc/src/cabc-minimal/private/cabc-minimal`
+(a database file with no extension), and cPanel's website `DB_PATH` is the relative
+value `private/cabc-minimal`. The private mail file must use the full absolute
+path. `/home/cabc/private/cabc-minimal/club.sqlite` is a different database;
+do not migrate, replace or copy it over the live website database.
 Quote the password appropriately if it contains special characters. Node's
 `--env-file` loads this private file
 ([Node documentation](https://nodejs.org/api/cli.html#--env-filefile)).
@@ -119,7 +152,10 @@ Quote the password appropriately if it contains special characters. Node's
 Confirm the mailbox exists, SPF/DKIM is correct and Dathorn's sending limits
 permit the chosen rate. Exact mailbox settings appear in cPanel > Email Accounts
 > Connect Devices ([cPanel instructions](https://docs.cpanel.net/cpanel/email/set-up-mail-client/96/)).
-Actual Dathorn authentication and inbox delivery were not exercised during QA.
+Sandbox QA uses only fictional data and an isolated SMTP fixture. The owner
+subsequently verified Dathorn authentication and real inbox delivery, including
+the five-minute cron processing the remaining four items after a manual batch of
+five. This update did not send live mail or change production.
 
 ## Check, then enable
 
@@ -132,10 +168,15 @@ This command reports counts without sending:
 ```
 
 Review the queue and arrange an explicitly approved live test before enabling
-member-wide mail. Then set `EMAIL_ENABLED=1` and add the host cron job:
+member-wide mail on a new installation. Native `--env-file` does not override
+inherited environment variables; in this deployment, that caused a relative
+`DB_PATH` to override the correct mail-file setting. The owner's working cron
+therefore reads the file directly and gives it precedence, while preserving
+other inherited settings. With delivery approved, use `EMAIL_ENABLED=1` and
+replace the existing job rather than adding a second schedule:
 
 ```cron
-*/5 * * * * umask 077; /ABSOLUTE/PATH/TO/node --env-file=/home/cabc/private/cabc-mail.env /home/cabc/src/cabc-minimal/mail-worker.mjs run >> /home/cabc/private/cabc-mail.log 2>&1
+*/5 * * * * umask 077; '/opt/alt/alt-nodejs24/root/usr/bin/node' --input-type=module -e 'import { readFileSync } from "node:fs"; import { parseEnv } from "node:util"; import { runWorker } from "/home/cabc/src/cabc-minimal/mail-worker.mjs"; try { const env = { ...process.env, ...parseEnv(readFileSync("/home/cabc/private/cabc-mail.env", "utf8")) }; console.log(new Date().toISOString(), await runWorker({ env })); } catch (error) { console.error(new Date().toISOString(), "Mail worker failed:", error.code || error.name); process.exitCode = 1; }' >> /home/cabc/private/cabc-mail.log 2>&1
 ```
 
 The default is at most five eligible messages per five minutes, not unlimited
