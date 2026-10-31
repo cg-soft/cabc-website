@@ -1,4 +1,5 @@
 (() => {
+  const FRONTEND_VERSION = "1.0.1+8cffa1806ab4";
   const app = document.querySelector("#app"), dialog = document.querySelector("#dialog");
   const state = { token: null, user: null, config: null, month: null, selected: null, calendar: null, generation: 0, loginNotice: null, showWildcard: null, actingMemberId: null, schedulingPending: false };
   dialog.addEventListener("close", () => { if (!dialog.open) dialog.replaceChildren(); });
@@ -129,7 +130,44 @@
   function renderAbout() {
     document.title = "About | Chinese American Bridge Club";
     app.innerHTML = header(button("Home", "home", "quiet") + button("Login", "login", "primary")) +
-      `<main class="simple-page"><p class="eyebrow">Chinese American Bridge Club</p><h1>About the club</h1><p>We’re making a new home for our bridge community.</p><p class="muted">More about the club will be added here soon.</p><div class="small-note">The homepage currently uses illustrative photographs, not photographs of the club’s venue.</div></main>`;
+      `<main class="simple-page"><p class="eyebrow">Chinese American Bridge Club</p><h1>About the club</h1><p>We’re making a new home for our bridge community.</p><p class="muted">More about the club will be added here soon.</p>
+      <section class="version-panel" aria-labelledby="version-heading"><h2 id="version-heading">Website version</h2>
+      <dl><div><dt>Frontend</dt><dd>${esc(FRONTEND_VERSION)}</dd></div>
+      <div><dt>Backend</dt><dd data-backend-version>Checking…</dd></div>
+      <div><dt>Backend started</dt><dd data-backend-started>Checking…</dd></div></dl>
+      <p class="version-status" data-version-status role="status">Checking the running backend.</p></section>
+      <div class="small-note">The homepage currently uses illustrative photographs, not photographs of the club’s venue.</div></main>`;
+    void loadBackendVersion(app.querySelector(".version-panel"));
+  }
+  async function loadBackendVersion(panel) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
+    const show = (version, started, message) => {
+      if (!panel.isConnected) return;
+      panel.querySelector("[data-backend-version]").textContent = version;
+      panel.querySelector("[data-backend-started]").textContent = started;
+      panel.querySelector("[data-version-status]").textContent = message;
+    };
+    try {
+      const response = await fetch(`${window.CABC_API || ""}/api/version`, { cache: "no-store", signal: controller.signal });
+      if (!response.ok) {
+        show("Not reported", "Not reported", [401, 404].includes(response.status) ?
+          "The backend did not report a version. It may be an older release." : "The backend version is unavailable.");
+        return;
+      }
+      const data = await response.json();
+      if (typeof data.version !== "string" || !/^[A-Za-z0-9.+_-]{1,80}$/.test(data.version)) {
+        show("Not reported", "Not reported", "The backend did not report a valid version.");
+        return;
+      }
+      const started = typeof data.startedAt === "string" && /^\d{4}-\d{2}-\d{2}T[\d:.]+Z$/.test(data.startedAt) &&
+        Number.isFinite(Date.parse(data.startedAt)) ? data.startedAt : "Not reported";
+      show(data.version, started, data.version === FRONTEND_VERSION ?
+        "Frontend and backend versions match." :
+        "Different frontend and backend versions are loaded. Check for a partial deployment, an older running server or a cached frontend.");
+    } catch {
+      show("Unavailable", "Not reported", "Unable to check the backend version. The frontend version is shown above.");
+    } finally { clearTimeout(timeout); }
   }
   function renderEmailOptOut(token) {
     document.title = "Stop email notifications | Chinese American Bridge Club";

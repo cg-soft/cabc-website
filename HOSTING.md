@@ -1,5 +1,8 @@
 # CABC Minimal Website: Hosting Instructions
 
+For public About-page frontend/backend versions and backend start time, follow
+[VERSIONING.md](VERSIONING.md). This update needs four files and no migration.
+
 For registration/cancellation emails, follow [EMAIL-NOTIFICATIONS.md](EMAIL-NOTIFICATIONS.md).
 It covers the additive migration, off-server dependency preparation, private SMTP
 settings and separate worker enable/rollback steps.

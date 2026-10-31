@@ -3,9 +3,12 @@ import { readFile } from "node:fs/promises";
 import { randomBytes } from "node:crypto";
 import { pathToFileURL } from "node:url";
 import path from "node:path";
+import { VERSION } from "./release.mjs";
 import { registeredGamesCalendar } from "./icalendar.mjs";
 import { notificationsAvailable, preference, setPreference, entrySnapshot, queueChanges } from "./notifications.mjs";
 import { ROOT, openDatabase, passwordHash, passwordMatches, hashToken, transaction, addMember, clubToday, HttpError, requireMemberStatus, wildcardType, WILDCARD_TYPES } from "./db.mjs";
+
+const SERVER_STARTED_AT = new Date().toISOString();
 
 export function createApp({ db = openDatabase(), preview = false, previewToday,
   publicDir = process.env.PUBLIC_DIR || path.join(ROOT, "public") } = {}) {
@@ -211,7 +214,9 @@ export function createApp({ db = openDatabase(), preview = false, previewToday,
         catch { throw new HttpError(400, "Invalid request."); }
         if (!body || typeof body !== "object" || Array.isArray(body)) throw new HttpError(400, "Invalid request.");
       }
-      if (route === "/api/config" && req.method === "GET") return reply(200, { preview, today: today() });
+      if (route === "/api/version" && req.method === "GET")
+        return reply(200, { version: VERSION, startedAt: SERVER_STARTED_AT });
+      if (route === "/api/config" && req.method === "GET") return reply(200, { preview, today: today(), version: VERSION });
       if (route === "/api/login" && req.method === "POST") {
         limit(req);
         const email = String(body.email || "").trim().toLowerCase();

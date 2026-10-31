@@ -1,5 +1,35 @@
 # New minimal website verification
 
+## Public About-page version diagnostics
+
+All 253 tests passed on Node 22.23.2 and 24.20.0, including 12 new version tests.
+Release `1.0.1+8cffa1806ab4` is stamped into the frontend and private backend
+module. Tests recalculate the runtime fingerprint and fail on an unstamped
+application change; fixture checks cover backend, frontend and CSS changes,
+deterministic restamping and exclusion of documentation/deployment config.
+
+The unauthenticated version endpoint returns only version/start time, uses
+no-store, preserves authenticated calendar access and serves no private release
+source files. About model tests cover matching/mismatched releases, legacy
+401/404 endpoints, server/network errors, missing/untrusted data and detached
+pages. The running backend keeps its loaded release and startup timestamp,
+rather than reading mutable release files on every request.
+
+Chromium browser checks preserved the existing public About copy/navigation,
+showed matching releases and start time at 1440px and 375px, and separately
+exercised a real old-backend fallback before preview restart, a simulated
+mismatch and a failed network request. No horizontal overflow or page errors
+were observed; the approved design/logo and unversioned asset URLs remain intact.
+
+Calendar checks used only disposable fictional preview data: game creation,
+date default, pair registration, delegated second-pair registration, team
+formation/review, member cancellation with partner preserved, game edit/delete,
+wildcard Show/reset, acting reset, password/member/deactivation dialogs,
+notification preferences, .ics download, installation help and member-role
+permissions. No original seeded game/account was edited or deleted, no mail was
+sent and production was not changed. The four-file owner-operated upgrade
+requires no database migration, dependency update or email enablement.
+
 ## Opt-out registration and cancellation emails
 
 All **241 tests passed on Node 22.23.2 and 24.20.0** after the final dialog

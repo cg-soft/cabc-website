@@ -1,5 +1,8 @@
 # Chinese American Bridge Club: minimal new website
 
+About includes frontend/backend release diagnostics. See [VERSIONING.md](VERSIONING.md)
+for the four-file upgrade and mandatory version-stamping step after application changes.
+
 For opt-out registration/cancellation emails and the separately enabled SMTP
 worker, see [EMAIL-NOTIFICATIONS.md](EMAIL-NOTIFICATIONS.md).
 

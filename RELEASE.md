@@ -1,10 +1,17 @@
 # CABC Minimal Website: Hosting Source
 
+This release adds public About-page version diagnostics. Follow `VERSIONING.md`
+to upload `server.mjs`, the new private `release.mjs`, `public/app.js` and
+`public/style.css` together. No migration or new dependency installation is
+required for this change. Development tests enforce refreshed version stamps.
+
 Updated October 30, 2026. This is the separate minimal website, including
 opt-out registration/cancellation email notifications and a separately enabled
 SMTP worker. Follow `EMAIL-NOTIFICATIONS.md` for dependency upload, the explicit
 `notifications` migration, private mailbox configuration and cron setup.
-Delivery is disabled by default; live Dathorn delivery has not been tested.
+The owner subsequently verified SMTP TLS/authentication and one controlled
+message arriving in a Gmail inbox. This update does not enable or schedule
+member notification delivery.
 
 The existing features include
 an online iPhone home-screen calendar and installation help, as well as
@@ -26,7 +33,9 @@ the prerequisite feature migrations described in `HOSTING.md`.
 3. Use `app.cjs` as the hosting startup file, or run `npm start`.
 4. Keep the database outside the application and public upload folders.
 
-No build or npm dependency installation is needed. The ZIP contains readable
+No frontend build is needed. The email feature requires its pinned Nodemailer
+dependency, prepared off-server as described in `EMAIL-NOTIFICATIONS.md`.
+The source package contains readable
 source, public assets, tests, documentation and a generated `SHA256SUMS` manifest.
 Tests run with `npm test`, covering the application, hosting, backups, calendar
 selection and migration safety.

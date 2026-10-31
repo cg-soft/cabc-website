@@ -1,5 +1,15 @@
 # Main flows and calendar layout checks
 
+## About version diagnostics
+- Preserve public About, club copy, photo note, logo, Home and Login.
+- Show loaded frontend/backend versions and backend start time.
+- Check matching/mismatched versions, old backend, network failure, invalid
+  responses and navigating away during a slow request; no secrets in output.
+- Public version API needs no login, uses no-store and does not mutate data.
+- Release stamping updates both identifiers; tests detect unstamped code changes.
+- Recheck desktop/375px, navigation, login/calendar, wildcard/acting controls,
+  games/registration/teams, email preferences, account dialogs and export/install.
+
 ## Opt-out registration/cancellation emails
 - Notifications default on for real members; self-only Email notifications preferences persist and do not follow the acting target.
 - Registration notifies each changed real participant once; no-op/rejected requests and standalone team changes enqueue nothing.
