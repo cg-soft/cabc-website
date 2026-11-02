@@ -27,6 +27,8 @@ function aboutMarkup() {
 
 test("About preserves the supplied club description and contact details", () => {
   const html = aboutMarkup();
+  assert.match(html, /<main class="simple-page about-page"><h1>About the club<\/h1>/);
+  assert.doesNotMatch(html, /<p class="eyebrow">Chinese American Bridge Club<\/p>/);
   const description = "The Chinese American Bridge Club is an invitational club offering sanctioned ACBL games every Monday at 11:30 AM. It is the oldest club in San Francisco, founded more than 65 years ago. Its uniqueness lies in the fact that it was founded as a social club to promote friendships throughout the community. Visitors are welcome but must be a guest of a member. If you are interested in playing or need more information, please email the club.";
   assert.ok(html.includes(`<p>${description}</p>`));
   for (const text of ["855 Brotherhood Way", "San Francisco, Ca 94132", "C/O Masonic Brotherhood Center", "Sue Papilion", "Art Quey"])

@@ -8,7 +8,9 @@ started (ISO UTC, with `Z`). The page is public; no sign-in is needed.
 An older backend that cannot report a version is labelled explicitly, and
 different identifiers produce a deployment-mismatch warning.
 The current About-page release reports
-**1.0.1+f37a28fddde5** for both frontend and backend.
+**1.0.1+c9f7d81dda20** for both frontend and backend.
+The duplicate club-name line above About the club has been removed; the page
+header, supplied description and contact details are unchanged.
 
 ## Deploy this update
 
@@ -20,15 +22,16 @@ While the application is stopped, upload:
 | --- | --- |
 | `release.mjs` | `/home/cabc/src/cabc-minimal/release.mjs` |
 | `public/app.js` | `/home/cabc/public_html/app.js` |
-| `public/style.css` | `/home/cabc/public_html/style.css` |
 
-Upload all three from the same release, then start the application, open
+Upload both from the same release, then start the application, open
 About and expand Website version. The private `release.mjs` is required by `server.mjs`; do not restart
 mid-upload. Keep `app.cjs`, `.htaccess`, the public symlink, `PUBLIC_DIR`,
 `DB_PATH` and `EMAIL_ENABLED` unchanged.
 
-These instructions assume the preceding remembered-sign-in release is already
-installed. The backend implementation is unchanged in this About-only update.
+These instructions assume the preceding About-page release is already
+installed. No stylesheet or backend implementation change is needed for this
+heading-only correction. If the preceding About-page update is not installed,
+also upload the current `public/style.css` to `public_html/style.css`.
 If the remembered-sign-in feature is not installed, also upload the matching
 `server.mjs`; see [REMEMBER-DEVICE.md](REMEMBER-DEVICE.md) for its full upgrade.
 After opening and closing version details, navigate away and return to About:

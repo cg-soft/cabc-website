@@ -1,5 +1,16 @@
 # New minimal website verification
 
+## Remove the duplicate About eyebrow
+
+Release `1.0.1+c9f7d81dda20` removes only the club-name eyebrow above About the
+club. The existing About content test now requires the heading to be the first
+main-content element and rejects the old eyebrow markup. Desktop and 375px
+screenshots show the header logo/wordmark, description and contact details
+unchanged, with no horizontal overflow. Version expand/collapse and member/admin
+navigation passed without page exceptions. No CSS, database or backend logic
+change is included.
+All 276 automated tests passed on Node 24.22.2.
+
 ## Supplied About copy and collapsed diagnostics
 
 Release `1.0.1+f37a28fddde5` replaces the placeholder with the description and

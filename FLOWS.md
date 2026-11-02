@@ -1,6 +1,8 @@
 # Main flows and calendar layout checks
 
 ## Supplied About text and collapsed version details
+- Start the About content with About the club; remove only the duplicate
+  club-name eyebrow while preserving the page header, address and description.
 - Replace the placeholder with the supplied club description, complete address,
   contact name/email and director name. Preserve all supplied names and text.
 - Version details are collapsed on every About visit. Website version opens and

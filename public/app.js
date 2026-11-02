@@ -1,5 +1,5 @@
 (() => {
-  const FRONTEND_VERSION = "1.0.1+f37a28fddde5";
+  const FRONTEND_VERSION = "1.0.1+c9f7d81dda20";
   const app = document.querySelector("#app"), dialog = document.querySelector("#dialog");
   const state = { token: null, csrfToken: null, user: null, config: null, month: null, selected: null, calendar: null, generation: 0, loginNotice: null, showWildcard: null, actingMemberId: null, schedulingPending: false };
   let authRevision = 0, initialRestoreStarted = false;
@@ -146,7 +146,7 @@
   function renderAbout() {
     document.title = "About | Chinese American Bridge Club";
     app.innerHTML = header(button("Home", "home", "quiet") + button("Login", "login", "primary")) +
-      `<main class="simple-page about-page"><p class="eyebrow">Chinese American Bridge Club</p><h1>About the club</h1>
+      `<main class="simple-page about-page"><h1>About the club</h1>
       <p>The Chinese American Bridge Club is an invitational club offering sanctioned ACBL games every Monday at 11:30 AM. It is the oldest club in San Francisco, founded more than 65 years ago. Its uniqueness lies in the fact that it was founded as a social club to promote friendships throughout the community. Visitors are welcome but must be a guest of a member. If you are interested in playing or need more information, please email the club.</p>
       <section class="about-contact" aria-labelledby="about-contact-heading"><h2 id="about-contact-heading">Visit &amp; contact</h2>
       <address>Chinese American Bridge Club<br>855 Brotherhood Way<br>San Francisco, Ca 94132<br>C/O Masonic Brotherhood Center</address>
