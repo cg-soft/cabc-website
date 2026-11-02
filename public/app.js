@@ -1,5 +1,5 @@
 (() => {
-  const FRONTEND_VERSION = "1.0.1+469426ea5f1d";
+  const FRONTEND_VERSION = "1.0.1+0ddb312b2715";
   const EXPECTED_BACKEND_VERSION = "1.0.1+1813e9585361";
   const app = document.querySelector("#app"), dialog = document.querySelector("#dialog");
   const state = { token: null, csrfToken: null, user: null, config: null, month: null, selected: null, calendar: null, generation: 0, loginNotice: null, showWildcard: null, actingMemberId: null, schedulingPending: false };
@@ -150,7 +150,7 @@
       `<main class="simple-page about-page"><h1>About the club</h1>
       <p>The Chinese American Bridge Club is an invitational club offering sanctioned ACBL games every Monday at 11:30 AM. It is the oldest club in San Francisco, founded more than 65 years ago. Its uniqueness lies in the fact that it was founded as a social club to promote friendships throughout the community. Visitors are welcome but must be a guest of a member. If you are interested in playing or need more information, please email the club.</p>
       <section class="about-contact" aria-labelledby="about-contact-heading"><h2 id="about-contact-heading">Visit &amp; contact</h2>
-      <address>Chinese American Bridge Club<br>855 Brotherhood Way<br>San Francisco, Ca 94132<br>C/O Masonic Brotherhood Center</address>
+      <address>Chinese American Bridge Club<br>855 Brotherhood Way<br>San Francisco, CA 94132<br>C/O Masonic Brotherhood Center</address>
       <dl><div><dt>Contact</dt><dd>Sue Papilion<br><a href="mailto:Suepapilion@icloud.com">Suepapilion@icloud.com</a></dd></div>
       <div><dt>Director</dt><dd>Art Quey</dd></div></dl></section>
       <details class="version-panel" aria-labelledby="version-heading"><summary id="version-heading">Website version</summary><div class="version-content">
