@@ -1,5 +1,16 @@
 # Main flows and calendar layout checks
 
+## Independent frontend and backend stamps
+- Public-only edits change the frontend stamp, not release.mjs or its mtime.
+  The current server serves uploaded assets without a restart; backend version
+  and start time remain unchanged.
+- Backend edits change the backend stamp and the frontend's expected-backend
+  marker. About compares that expectation with the running backend, never
+  assumes frontend and backend hashes should be identical.
+- Keep diagnostics collapsed; check expected/mismatched/missing backend, cache
+  and late-response handling, source stamping and all existing main UI flows.
+- Document the one-time transition restart and future public-only uploads.
+
 ## Supplied About text and collapsed version details
 - Start the About content with About the club; remove only the duplicate
   club-name eyebrow while preserving the page header, address and description.

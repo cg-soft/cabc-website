@@ -1,41 +1,67 @@
 # CABC About-page version diagnostics
 
-About now displays the supplied club description, address, contact and director.
-Version diagnostics are hidden by default inside the **Website version**
-disclosure. Click or keyboard-activate it to show the release identifier embedded in the loaded frontend, the
-identifier loaded by the backend module, and the time that backend module
-started (ISO UTC, with `Z`). The page is public; no sign-in is needed.
-An older backend that cannot report a version is labelled explicitly, and
-different identifiers produce a deployment-mismatch warning.
-The current About-page release reports
-**1.0.1+c9f7d81dda20** for both frontend and backend.
-The duplicate club-name line above About the club has been removed; the page
-header, supplied description and contact details are unchanged.
+Frontend and backend now have independent version stamps. About keeps its
+supplied club text and collapsed **Website version** disclosure, which shows:
 
-## Deploy this update
+- **Frontend:** The loaded website's public-assets version.
+- **Backend:** The version loaded by the running Node worker.
+- **Expected backend:** The backend stamp embedded in this frontend release.
+- **Backend started:** The worker's module-initialization time (ISO UTC).
 
-No database migration, new dependency installation or frontend build is needed
-for this change. Keep your production database and private mail settings.
-While the application is stopped, upload:
+Different frontend and backend stamps are normal. About checks whether the
+running backend equals Expected backend, not whether its stamp equals Frontend.
+This preserves a useful stale-worker or partial-deployment warning without
+requiring a backend restart for a website-only edit.
+
+Current frontend: **1.0.1+469426ea5f1d**.
+Current backend and expected backend: **1.0.1+1813e9585361**.
+
+## One-time transition
+
+This transition changes the meaning of the backend stamp, so it requires one
+restart. Stop the managed app and upload these two files from the same release:
 
 | Repository file | Production destination |
 | --- | --- |
 | `release.mjs` | `/home/cabc/src/cabc-minimal/release.mjs` |
 | `public/app.js` | `/home/cabc/public_html/app.js` |
 
-Upload both from the same release, then start the application, open
-About and expand Website version. The private `release.mjs` is required by `server.mjs`; do not restart
-mid-upload. Keep `app.cjs`, `.htaccess`, the public symlink, `PUBLIC_DIR`,
-`DB_PATH` and `EMAIL_ENABLED` unchanged.
+Start the app, open About and expand Website version. Frontend should show
+`1.0.1+469426ea5f1d`; Backend and Expected backend should both show
+`1.0.1+1813e9585361`, with “Backend matches the version expected by this frontend.”
 
-These instructions assume the preceding About-page release is already
-installed. No stylesheet or backend implementation change is needed for this
-heading-only correction. If the preceding About-page update is not installed,
-also upload the current `public/style.css` to `public_html/style.css`.
-If the remembered-sign-in feature is not installed, also upload the matching
-`server.mjs`; see [REMEMBER-DEVICE.md](REMEMBER-DEVICE.md) for its full upgrade.
-After opening and closing version details, navigate away and return to About:
-the details should be collapsed again.
+This assumes the preceding About/remembered-sign-in releases are installed.
+There is no server.mjs, CSS, migration, dependency, environment-variable, SMTP
+or cron change. Keep app.cjs, .htaccess, the public symlink, PUBLIC_DIR and the
+live DB_PATH unchanged. The release-generation helper is a development tool;
+it is not required by the production Node process.
+
+## Future website-only updates
+
+After editing only files under `public/`, run the release command in the
+development checkout as usual. Upload the changed public files to
+`/home/cabc/public_html`, including the newly stamped `app.js`.
+
+- **Text/JavaScript change:** Usually upload only `public/app.js`.
+- **CSS/image/HTML/icon change:** Upload those changed assets plus `public/app.js`,
+  because it carries the new frontend stamp.
+- **Do not upload release.mjs or stop/restart Node:** The backend metadata is
+  unchanged, including its modification time.
+- **Reload the browser:** Existing tabs do not replace their loaded JavaScript
+  automatically. The new frontend stamp should appear, while Backend and
+  Backend started remain unchanged and the expectation check succeeds.
+
+For shared-host caches, check the loaded frontend stamp before troubleshooting
+the backend. Refreshing static assets is separate from restarting Node; this
+change does not add an offline cache or automatic client updates.
+
+## Backend changes
+
+Upload the changed private application files, the newly stamped `release.mjs`
+and matching `public/app.js`, then restart Node. The app.js upload carries the
+new expected-backend marker even if its frontend version itself is unchanged.
+Package/runtime/schema changes conservatively count as backend changes; any
+required database migration remains a separate, explicit operator action.
 
 You can also open the public endpoint directly:
 
@@ -46,13 +72,16 @@ https://cabc.club/api/version
 It returns only `version` and `startedAt`, with `Cache-Control: no-store`.
 Unlike `/api/calendar`, it does not need an Authorization header. It exposes
 no process ID, filesystem path, member data, credentials or database details.
-The same release identifier is also included in `/api/config`.
+The same backend identifier is also included in `/api/config`; the API shape
+is unchanged, so existing clients and mail workers continue to work.
 
 ## Read the result
 
-- **Versions match:** The loaded frontend and backend report the same release.
-- **Versions differ:** A partial deployment, older running backend or cached
-  frontend may be involved. Compare against the release's `release.mjs`.
+- **Backend matches expected:** The running backend agrees with the frontend's
+  expectation, even when Frontend has a different hash.
+- **Backend differs from expected:** A partial deployment, older running worker
+  or cached frontend may be involved. Compare against the release's `release.mjs`
+  and the Expected backend field; different component hashes alone are normal.
 - **Backend not reported:** An older backend may still be serving requests.
 - **Backend unavailable:** The version request failed; the frontend identifier
   remains visible. This is not proof that a particular server version is running.
@@ -74,15 +103,16 @@ npm run release:version
 npm test
 ```
 
-The command stamps both the frontend and backend from the package's numeric
-version plus the first 12 digits of a SHA-256 source fingerprint. Any runtime
-source/schema/package/public-asset change changes that fingerprint, even if the
-numeric package version stays the same. Stamping twice without changes is
-deterministic. Tests fail when source changes have not been stamped or the
-frontend/backend identifiers disagree.
+The command prints separate frontend and backend versions, each using the
+numeric package version plus the first 12 digits of its SHA-256 fingerprint.
+The frontend fingerprint covers public assets, normalizing both generated
+version markers. The backend fingerprint covers private application/runtime,
+schema and package inputs, not public assets. Both remain deterministic.
+Tests fail when either source scope is unstamped or the embedded expected
+backend is incorrect. Generated files are written only when their bytes change.
 
 The release helper does not run on application startup or production deployment.
-Tests, documentation, generated release metadata and host-specific
+Tests, documentation, the release-generation helper, generated metadata and host-specific
 `public/config.js` are excluded from the runtime fingerprint. Private databases,
 password files, queues and other operational data are never inputs.
 After final changes, regenerate `SHA256SUMS` separately as usual.

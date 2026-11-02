@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync } from "node:fs";
+import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { once } from "node:events";
@@ -11,6 +11,7 @@ import { VERSION, SOURCE_FINGERPRINT } from "./release.mjs";
 import { releaseFingerprint, stampRelease } from "./release-version.mjs";
 
 const frontend = readFileSync(new URL("./public/app.js", import.meta.url), "utf8");
+const frontendVersion = /const FRONTEND_VERSION = "([^"]+)";/.exec(frontend)[1];
 
 function aboutMarkup() {
   const root = { innerHTML: "", querySelector: () => ({ isConnected: false }) };
@@ -49,32 +50,88 @@ test("About version diagnostics are inside a closed native disclosure on every r
   }
 });
 
-test("release identifiers match and runtime changes cannot silently keep an old stamp", () => {
+test("each component is stamped and frontend records its expected backend", () => {
   assert.equal(SOURCE_FINGERPRINT, releaseFingerprint(), "Run npm run release:version after changing application code/assets.");
   const base = JSON.parse(readFileSync(new URL("./package.json", import.meta.url))).version;
   assert.equal(VERSION, `${base}+${SOURCE_FINGERPRINT.slice(0, 12)}`);
-  assert.ok(frontend.includes(`const FRONTEND_VERSION = "${VERSION}";`));
+  assert.equal(frontendVersion, `${base}+${releaseFingerprint(undefined, "frontend").slice(0, 12)}`);
+  assert.ok(frontend.includes(`const EXPECTED_BACKEND_VERSION = "${VERSION}";`));
+  assert.throws(() => releaseFingerprint(undefined, "invalid"), /Unknown release scope/);
 });
 
-test("release stamping is deterministic and updates for backend, frontend and asset changes", t => {
+function releaseFixture(t) {
   const root = mkdtempSync(path.join(tmpdir(), "cabc-stamp-"));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   mkdirSync(path.join(root, "public"));
   writeFileSync(path.join(root, "package.json"), '{"version":"1.0.1"}');
   writeFileSync(path.join(root, "server.mjs"), "// backend\n");
-  writeFileSync(path.join(root, "public/app.js"), 'const FRONTEND_VERSION = "initial";\n');
+  writeFileSync(path.join(root, "public/app.js"),
+    'const FRONTEND_VERSION = "initial";\nconst EXPECTED_BACKEND_VERSION = "initial";\n');
   writeFileSync(path.join(root, "public/style.css"), "body{}\n");
+  return root;
+}
+
+test("public-only stamping changes frontend, never backend metadata or its mtime", t => {
+  const root = releaseFixture(t);
   const initial = stampRelease(root);
-  assert.equal(stampRelease(root), initial, "stamping alone never changes the fingerprint");
-  for (const file of ["server.mjs", "public/app.js", "public/style.css"]) {
+  assert.deepEqual(stampRelease(root), initial, "stamping alone never changes either fingerprint");
+  const metadata = path.join(root, "release.mjs"), contents = readFileSync(metadata, "utf8");
+  const modified = statSync(metadata, { bigint: true }).mtimeNs;
+  for (const file of ["public/app.js", "public/style.css"]) {
     const previous = stampRelease(root);
     writeFileSync(path.join(root, file), readFileSync(path.join(root, file), "utf8") + "\n");
-    assert.notEqual(stampRelease(root), previous, file);
+    const next = stampRelease(root);
+    assert.notEqual(next.frontend, previous.frontend, file);
+    assert.equal(next.backend, initial.backend, file);
+    assert.equal(readFileSync(metadata, "utf8"), contents);
+    assert.equal(statSync(metadata, { bigint: true }).mtimeNs, modified);
   }
   const current = stampRelease(root);
   writeFileSync(path.join(root, "notes.md"), "documentation only");
   writeFileSync(path.join(root, "public/config.js"), "deployment settings");
-  assert.equal(stampRelease(root), current);
+  writeFileSync(path.join(root, "release-version.mjs"), "// development tool only\n");
+  assert.deepEqual(stampRelease(root), current);
+});
+
+test("backend edits change only the backend stamp and embedded backend expectation", t => {
+  const root = releaseFixture(t), before = stampRelease(root);
+  writeFileSync(path.join(root, "server.mjs"), "// changed backend\n");
+  const after = stampRelease(root);
+  assert.notEqual(after.backend, before.backend);
+  assert.equal(after.frontend, before.frontend, "backend metadata is not frontend source code");
+  assert.ok(readFileSync(path.join(root, "public/app.js"), "utf8")
+    .includes(`const EXPECTED_BACKEND_VERSION = "${after.backend}";`));
+  const repeated = stampRelease(root);
+  assert.deepEqual(repeated, after);
+});
+
+test("new nested public assets change only the frontend stamp", t => {
+  const root = releaseFixture(t), before = stampRelease(root);
+  mkdirSync(path.join(root, "public/images"));
+  writeFileSync(path.join(root, "public/images/example.svg"), "<svg/>");
+  const after = stampRelease(root);
+  assert.notEqual(after.frontend, before.frontend);
+  assert.equal(after.backend, before.backend);
+});
+
+test("a running server serves a frontend-only update without changing backend version/start time", async t => {
+  const root = releaseFixture(t), before = stampRelease(root);
+  const dbDir = mkdtempSync(path.join(tmpdir(), "cabc-running-version-"));
+  const db = openDatabase(path.join(dbDir, "club.sqlite"), true);
+  const server = createApp({ db, publicDir: path.join(root, "public") });
+  server.listen(0, "127.0.0.1"); await once(server, "listening");
+  t.after(async () => {
+    server.closeAllConnections(); await new Promise(resolve => server.close(resolve));
+    db.close(); rmSync(dbDir, { recursive: true, force: true });
+  });
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const backendBefore = await (await fetch(`${base}/api/version`)).json();
+  assert.ok((await (await fetch(`${base}/app.js`)).text()).includes(before.frontend));
+  writeFileSync(path.join(root, "public/app.js"), readFileSync(path.join(root, "public/app.js"), "utf8") + "// website-only edit\n");
+  const after = stampRelease(root);
+  assert.notEqual(after.frontend, before.frontend); assert.equal(after.backend, before.backend);
+  assert.ok((await (await fetch(`${base}/app.js`)).text()).includes(after.frontend));
+  assert.deepEqual(await (await fetch(`${base}/api/version`)).json(), backendBefore);
 });
 
 test("version API is public, stable, uncached and exposes only version/start time", async t => {
@@ -123,8 +180,9 @@ async function versionPanel(response, connected = true) {
 }
 
 for (const [name, response, expected] of [
-  ["matching", { ok: true, json: async () => ({ version: VERSION, startedAt: "2026-10-30T12:00:00.000Z" }) }, /versions match/],
-  ["mismatched", { ok: true, json: async () => ({ version: "1.0.0+aaaaaaaaaaaa" }) }, /Different frontend and backend/],
+  ["expected independent", { ok: true, json: async () => ({ version: VERSION, startedAt: "2026-10-30T12:00:00.000Z" }) }, /Backend matches/],
+  ["mismatched", { ok: true, json: async () => ({ version: "1.0.0+aaaaaaaaaaaa" }) }, /differs from the version expected/],
+  ["frontend stamp incorrectly reported as backend", { ok: true, json: async () => ({ version: frontendVersion }) }, /differs from the version expected/],
   ["legacy 404", { ok: false, status: 404 }, /older release/],
   ["legacy 401", { ok: false, status: 401 }, /older release/],
   ["server error", { ok: false, status: 500 }, /unavailable/],

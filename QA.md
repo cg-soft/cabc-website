@@ -1,5 +1,34 @@
 # New minimal website verification
 
+## Independent component versioning
+
+Frontend `1.0.1+469426ea5f1d` expects backend `1.0.1+1813e9585361`. The backend
+API contract and implementation are unchanged; About now compares the running
+backend with its expected-backend marker instead of comparing independent
+component hashes.
+
+New tests check independent stamp freshness, deterministic generation,
+frontend-only changes with identical backend metadata bytes/mtime, backend-only
+changes updating the expectation without changing frontend source identity,
+nested public assets, ignored development/config files, a live server serving
+new frontend bytes without restart, and a false backend report using the
+frontend's stamp. Existing diagnostics still cover legacy/error/late responses.
+
+An isolated browser fixture changed CSS while its Node server kept running.
+The heading visibly changed color and the frontend stamp changed from
+`1.0.1+469426ea5f1d` to `1.0.1+d24a67afd137`. Backend
+`1.0.1+1813e9585361`, its exact start time and release.mjs modification time
+remained unchanged, and About correctly accepted the expected backend.
+The color change exists only in the disposable fixture, never in the real
+website source. Desktop/375px diagnostics had no horizontal overflow or page
+exceptions. The one-time transition still needs an owner-operated restart;
+future public-only uploads do not.
+All 280 tests passed on Node 22.23.2 and 24.22.2. The old running preview worker
+was correctly flagged before the transition restart; the new worker was accepted
+after it. Normal About styling stayed unchanged. Browser regression checks
+covered both roles, wildcard/month controls, acting/reset, export, remembered
+login layout and account/game dialogs without page exceptions.
+
 ## Remove the duplicate About eyebrow
 
 Release `1.0.1+c9f7d81dda20` removes only the club-name eyebrow above About the

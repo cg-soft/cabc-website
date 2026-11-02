@@ -1,7 +1,8 @@
 # Chinese American Bridge Club: minimal new website
 
 About includes frontend/backend release diagnostics. See [VERSIONING.md](VERSIONING.md)
-for deployment instructions and the mandatory version-stamping step after application changes.
+for independent component stamps, no-restart website-only updates and the
+mandatory development version-stamping step after application changes.
 
 For optional 30-day remembered sign-in, secure-cookie behavior and the current
 four-file Dathorn upgrade, see [REMEMBER-DEVICE.md](REMEMBER-DEVICE.md).

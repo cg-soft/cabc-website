@@ -1,5 +1,6 @@
 (() => {
-  const FRONTEND_VERSION = "1.0.1+c9f7d81dda20";
+  const FRONTEND_VERSION = "1.0.1+469426ea5f1d";
+  const EXPECTED_BACKEND_VERSION = "1.0.1+1813e9585361";
   const app = document.querySelector("#app"), dialog = document.querySelector("#dialog");
   const state = { token: null, csrfToken: null, user: null, config: null, month: null, selected: null, calendar: null, generation: 0, loginNotice: null, showWildcard: null, actingMemberId: null, schedulingPending: false };
   let authRevision = 0, initialRestoreStarted = false;
@@ -155,6 +156,7 @@
       <details class="version-panel" aria-labelledby="version-heading"><summary id="version-heading">Website version</summary><div class="version-content">
       <dl><div><dt>Frontend</dt><dd>${esc(FRONTEND_VERSION)}</dd></div>
       <div><dt>Backend</dt><dd data-backend-version>Checking…</dd></div>
+      <div><dt>Expected backend</dt><dd>${esc(EXPECTED_BACKEND_VERSION)}</dd></div>
       <div><dt>Backend started</dt><dd data-backend-started>Checking…</dd></div></dl>
       <p class="version-status" data-version-status role="status">Checking the running backend.</p></div></details>
       <div class="small-note">The homepage currently uses illustrative photographs, not photographs of the club’s venue.</div></main>`;
@@ -183,9 +185,9 @@
       }
       const started = typeof data.startedAt === "string" && /^\d{4}-\d{2}-\d{2}T[\d:.]+Z$/.test(data.startedAt) &&
         Number.isFinite(Date.parse(data.startedAt)) ? data.startedAt : "Not reported";
-      show(data.version, started, data.version === FRONTEND_VERSION ?
-        "Frontend and backend versions match." :
-        "Different frontend and backend versions are loaded. Check for a partial deployment, an older running server or a cached frontend.");
+      show(data.version, started, data.version === EXPECTED_BACKEND_VERSION ?
+        "Backend matches the version expected by this frontend." :
+        "The running backend differs from the version expected by this frontend. Check uploaded backend files, the running worker and cached browser assets.");
     } catch {
       show("Unavailable", "Not reported", "Unable to check the backend version. The frontend version is shown above.");
     } finally { clearTimeout(timeout); }
