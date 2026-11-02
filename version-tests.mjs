@@ -12,6 +12,41 @@ import { releaseFingerprint, stampRelease } from "./release-version.mjs";
 
 const frontend = readFileSync(new URL("./public/app.js", import.meta.url), "utf8");
 
+function aboutMarkup() {
+  const root = { innerHTML: "", querySelector: () => ({ isConnected: false }) };
+  const sandbox = {
+    window: { addEventListener() {}, CABC_API: "" },
+    document: { querySelector: selector => selector === "#dialog" ? { addEventListener() {} } : root, addEventListener() {} },
+    AbortController, setTimeout, clearTimeout,
+    fetch: async () => ({ ok: true, json: async () => ({ version: VERSION }) })
+  };
+  vm.runInNewContext(frontend.replace("  route();\n})();", "  window.renderAbout = renderAbout;\n})();"), sandbox);
+  sandbox.window.renderAbout();
+  return root.innerHTML;
+}
+
+test("About preserves the supplied club description and contact details", () => {
+  const html = aboutMarkup();
+  const description = "The Chinese American Bridge Club is an invitational club offering sanctioned ACBL games every Monday at 11:30 AM. It is the oldest club in San Francisco, founded more than 65 years ago. Its uniqueness lies in the fact that it was founded as a social club to promote friendships throughout the community. Visitors are welcome but must be a guest of a member. If you are interested in playing or need more information, please email the club.";
+  assert.ok(html.includes(`<p>${description}</p>`));
+  for (const text of ["855 Brotherhood Way", "San Francisco, Ca 94132", "C/O Masonic Brotherhood Center", "Sue Papilion", "Art Quey"])
+    assert.ok(html.includes(text), text);
+  assert.ok(html.includes('href="mailto:Suepapilion@icloud.com">Suepapilion@icloud.com</a>'));
+  assert.doesNotMatch(html, /More about the club will be added|We’re making a new home/);
+});
+
+test("About version diagnostics are inside a closed native disclosure on every render", () => {
+  for (let visit = 0; visit < 2; visit++) {
+    const html = aboutMarkup();
+    const details = /<details([^>]*)>([\s\S]*?)<\/details>/.exec(html);
+    assert.ok(details);
+    assert.doesNotMatch(details[1], /\bopen\b/);
+    assert.match(details[2], /<summary id="version-heading">Website version<\/summary>/);
+    for (const attribute of ["data-backend-version", "data-backend-started", "data-version-status"])
+      assert.ok(details[2].includes(attribute));
+  }
+});
+
 test("release identifiers match and runtime changes cannot silently keep an old stamp", () => {
   assert.equal(SOURCE_FINGERPRINT, releaseFingerprint(), "Run npm run release:version after changing application code/assets.");
   const base = JSON.parse(readFileSync(new URL("./package.json", import.meta.url))).version;

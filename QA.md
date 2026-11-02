@@ -1,5 +1,25 @@
 # New minimal website verification
 
+## Supplied About copy and collapsed diagnostics
+
+Release `1.0.1+f37a28fddde5` replaces the placeholder with the description and
+contact details from the supplied Document-3.docx. The complete club paragraph,
+address, contact, email and director are covered by a new content regression
+test. Another test checks that every render puts diagnostics inside a closed
+native details/summary disclosure. The existing version-response tests remain
+unchanged and cover matching, mismatch, legacy, malformed and failed responses.
+
+Desktop and 375px screenshots were inspected with complete readable text and
+no horizontal overflow. Browser checks confirmed default hiding, click-open,
+Space-close, Enter-open and collapsed state after navigating away and back.
+The email link preserves the supplied address exactly. Authentication, database
+schema, scheduling and mail behavior are unchanged; production deployment is
+still the owner's manual step.
+All 276 automated tests passed on Node 22.23.2 and 24.22.2. Browser regression
+checks also covered both preview roles, wildcard/month navigation, acting/reset,
+calendar export, remember-helper layout and member/game/account dialogs, with
+no page exceptions.
+
 ## Remember-checkbox helper alignment
 
 Release `1.0.1+f1edbdc6b426` places the personal-device note below the option title,

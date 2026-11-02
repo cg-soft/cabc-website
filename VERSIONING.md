@@ -1,12 +1,14 @@
 # CABC About-page version diagnostics
 
-About now shows the release identifier embedded in the loaded frontend, the
+About now displays the supplied club description, address, contact and director.
+Version diagnostics are hidden by default inside the **Website version**
+disclosure. Click or keyboard-activate it to show the release identifier embedded in the loaded frontend, the
 identifier loaded by the backend module, and the time that backend module
 started (ISO UTC, with `Z`). The page is public; no sign-in is needed.
 An older backend that cannot report a version is labelled explicitly, and
 different identifiers produce a deployment-mismatch warning.
-The current 30-day remembered-sign-in release reports
-**1.0.1+f1edbdc6b426** for both frontend and backend.
+The current About-page release reports
+**1.0.1+f37a28fddde5** for both frontend and backend.
 
 ## Deploy this update
 
@@ -16,19 +18,21 @@ While the application is stopped, upload:
 
 | Repository file | Production destination |
 | --- | --- |
-| `server.mjs` | `/home/cabc/src/cabc-minimal/server.mjs` |
 | `release.mjs` | `/home/cabc/src/cabc-minimal/release.mjs` |
 | `public/app.js` | `/home/cabc/public_html/app.js` |
 | `public/style.css` | `/home/cabc/public_html/style.css` |
 
-Upload all four from the same release, then start the application and open
-About. The private `release.mjs` is required by `server.mjs`; do not restart
+Upload all three from the same release, then start the application, open
+About and expand Website version. The private `release.mjs` is required by `server.mjs`; do not restart
 mid-upload. Keep `app.cjs`, `.htaccess`, the public symlink, `PUBLIC_DIR`,
 `DB_PATH` and `EMAIL_ENABLED` unchanged.
 
-These instructions assume the preceding self-notification suppression release
-is already installed. If it is not, also upload the matching `notifications.mjs`.
-See [REMEMBER-DEVICE.md](REMEMBER-DEVICE.md) for usage and acceptance checks.
+These instructions assume the preceding remembered-sign-in release is already
+installed. The backend implementation is unchanged in this About-only update.
+If the remembered-sign-in feature is not installed, also upload the matching
+`server.mjs`; see [REMEMBER-DEVICE.md](REMEMBER-DEVICE.md) for its full upgrade.
+After opening and closing version details, navigate away and return to About:
+the details should be collapsed again.
 
 You can also open the public endpoint directly:
 

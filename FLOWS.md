@@ -1,5 +1,14 @@
 # Main flows and calendar layout checks
 
+## Supplied About text and collapsed version details
+- Replace the placeholder with the supplied club description, complete address,
+  contact name/email and director name. Preserve all supplied names and text.
+- Version details are collapsed on every About visit. Website version opens and
+  closes them using mouse, touch or keyboard; diagnostics keep their existing
+  matching/mismatch/error behavior inside the disclosure.
+- Check desktop/375px, email link, complete text, no overflow, Home/Login,
+  both roles, remember-checkbox layout and existing calendar/account controls.
+
 ## Remember this device
 - Keep the personal-device note directly beneath the remember label, in the
   same text column beside the checkbox. Check desktop/375px, wrapped preview

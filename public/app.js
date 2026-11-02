@@ -1,5 +1,5 @@
 (() => {
-  const FRONTEND_VERSION = "1.0.1+f1edbdc6b426";
+  const FRONTEND_VERSION = "1.0.1+f37a28fddde5";
   const app = document.querySelector("#app"), dialog = document.querySelector("#dialog");
   const state = { token: null, csrfToken: null, user: null, config: null, month: null, selected: null, calendar: null, generation: 0, loginNotice: null, showWildcard: null, actingMemberId: null, schedulingPending: false };
   let authRevision = 0, initialRestoreStarted = false;
@@ -146,12 +146,17 @@
   function renderAbout() {
     document.title = "About | Chinese American Bridge Club";
     app.innerHTML = header(button("Home", "home", "quiet") + button("Login", "login", "primary")) +
-      `<main class="simple-page"><p class="eyebrow">Chinese American Bridge Club</p><h1>About the club</h1><p>We’re making a new home for our bridge community.</p><p class="muted">More about the club will be added here soon.</p>
-      <section class="version-panel" aria-labelledby="version-heading"><h2 id="version-heading">Website version</h2>
+      `<main class="simple-page about-page"><p class="eyebrow">Chinese American Bridge Club</p><h1>About the club</h1>
+      <p>The Chinese American Bridge Club is an invitational club offering sanctioned ACBL games every Monday at 11:30 AM. It is the oldest club in San Francisco, founded more than 65 years ago. Its uniqueness lies in the fact that it was founded as a social club to promote friendships throughout the community. Visitors are welcome but must be a guest of a member. If you are interested in playing or need more information, please email the club.</p>
+      <section class="about-contact" aria-labelledby="about-contact-heading"><h2 id="about-contact-heading">Visit &amp; contact</h2>
+      <address>Chinese American Bridge Club<br>855 Brotherhood Way<br>San Francisco, Ca 94132<br>C/O Masonic Brotherhood Center</address>
+      <dl><div><dt>Contact</dt><dd>Sue Papilion<br><a href="mailto:Suepapilion@icloud.com">Suepapilion@icloud.com</a></dd></div>
+      <div><dt>Director</dt><dd>Art Quey</dd></div></dl></section>
+      <details class="version-panel" aria-labelledby="version-heading"><summary id="version-heading">Website version</summary><div class="version-content">
       <dl><div><dt>Frontend</dt><dd>${esc(FRONTEND_VERSION)}</dd></div>
       <div><dt>Backend</dt><dd data-backend-version>Checking…</dd></div>
       <div><dt>Backend started</dt><dd data-backend-started>Checking…</dd></div></dl>
-      <p class="version-status" data-version-status role="status">Checking the running backend.</p></section>
+      <p class="version-status" data-version-status role="status">Checking the running backend.</p></div></details>
       <div class="small-note">The homepage currently uses illustrative photographs, not photographs of the club’s venue.</div></main>`;
     void loadBackendVersion(app.querySelector(".version-panel"));
   }
