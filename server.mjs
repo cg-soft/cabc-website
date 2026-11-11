@@ -306,6 +306,43 @@ export function createApp({ db = openDatabase(), preview = false, previewToday,
         admin(user);
         return reply(200, { members: db.prepare("SELECT id,name,email,role,active FROM members ORDER BY active DESC,name,email").all() });
       }
+      const resetPasswordRoute = /^\/api\/members\/(\d+)\/password$/.exec(route);
+      if (resetPasswordRoute && req.method === "POST") {
+        admin(user);
+        const id = Number(resetPasswordRoute[1]);
+        if (!Number.isSafeInteger(id) || id <= 0) throw new HttpError(400, "Choose a valid member.");
+        if (id === user.id) throw new HttpError(400, "Use Change password for your own account.");
+        const target = db.prepare("SELECT id,name,active FROM members WHERE id=?").get(id);
+        if (!target) throw new HttpError(404, "Member not found.");
+        if (target.active !== 1 || wildcardType(target.name))
+          throw new HttpError(400, "Choose an active member, not a placeholder account.");
+        const { currentPassword, newPassword, confirmPassword } = body;
+        if (body.confirm !== true) throw new HttpError(400, "Confirm the selected member's password reset.");
+        if (typeof currentPassword !== "string" || currentPassword.length < 1 || currentPassword.length > 128)
+          throw new HttpError(400, "Enter your administrator password.");
+        if (typeof newPassword !== "string" || newPassword.length < 12 || newPassword.length > 128)
+          throw new HttpError(400, "Use a new password of 12 to 128 characters.");
+        if (typeof confirmPassword !== "string" || confirmPassword !== newPassword)
+          throw new HttpError(400, "The new passwords do not match.");
+        passwordLimit(user.id);
+        const actorPassword = db.prepare("SELECT password FROM members WHERE id=?").get(user.id)?.password;
+        if (!actorPassword || !passwordMatches(currentPassword, actorPassword))
+          throw new HttpError(400, "Your administrator password is incorrect.");
+        const replacement = passwordHash(newPassword);
+        transaction(db, () => {
+          // Recheck identity, role, credentials and target status under the lock.
+          const actor = auth(req); admin(actor);
+          if (db.prepare("SELECT password FROM members WHERE id=?").get(actor.id)?.password !== actorPassword)
+            throw new HttpError(409, "Your account changed. Please sign in again before retrying.");
+          const current = db.prepare("SELECT name,active FROM members WHERE id=?").get(id);
+          if (!current || current.active !== 1 || wildcardType(current.name))
+            throw new HttpError(409, "This member changed. Close the form and select the member again.");
+          db.prepare("UPDATE members SET password=? WHERE id=?").run(replacement, id);
+          db.prepare("DELETE FROM sessions WHERE member_id=?").run(id);
+        });
+        passwordAttempts.delete(user.id);
+        return reply(200, { ok: true });
+      }
       const deactivateRoute = /^\/api\/members\/(\d+)\/deactivate$/.exec(route);
       if (deactivateRoute && ["GET", "POST"].includes(req.method)) {
         admin(user);

@@ -1,6 +1,39 @@
 # New minimal website verification
 
-## Independent component versioning
+## Administrator-specified member password reset
+
+The administrator-only calendar control explicitly selects an active real member,
+requires the signed-in administrator's current password, accepts a 12–128 character
+new password with confirmation, and requires a checked reset confirmation. Acting
+for does not silently select the target. Change password now explicitly identifies
+the signed-in account, even when delegated scheduling is active.
+
+Ten new API subtests cover anonymous/member denial, self/missing/inactive/wildcard
+targets, required confirmation and credential validation, hashed storage and
+target-only bearer/remembered-session revocation, cookie CSRF, exact length
+boundaries, atomic rollback, resetting another administrator without changing
+roles, actor-scoped throttling, and expired/demoted/deactivated administrators.
+No migration, schema, dependency, email setting or mail-worker change is needed.
+The existing About-content test now preserves the owner's upstream CA correction.
+
+Browser checks cover mismatching new passwords, an incorrect administrator
+password, successful reset, the target's existing session being rejected, normal
+sign-in with the administrator-specified new password, the administrator staying
+signed in, no reset control for a regular member, no inherited Acting for target,
+own-account wording, and cancellation. Desktop and 375px reset forms fit without
+horizontal overflow; the phone dialog scrolls to its confirmation and buttons.
+Only seeded fictional preview accounts were used; no production accounts changed.
+An intercepted-but-forwarded reset request also confirmed disabled fields, disabled
+close/cancel controls, Escape protection, a single submission, and cleared password
+fields when reopening. An inactive newly created fixture account was absent from
+the selector. Browser regressions covered export, registration/cancellation,
+team dissolution/reformation, game creation/edit/deletion, member creation and
+deactivation, wildcard/month controls, email/install/account dialogs, navigation
+and collapsed About diagnostics with the preserved CA address correction.
+There were no page exceptions. All 291 tests pass on Node 22.23.2 and 24.22.2.
+Frontend `1.0.1+2eeac0e5d2dc` expects backend `1.0.1+5bec4c4ea660`.
+
+## Previous release: independent component versioning
 
 Frontend `1.0.1+469426ea5f1d` expects backend `1.0.1+1813e9585361`. The backend
 API contract and implementation are unchanged; About now compares the running

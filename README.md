@@ -10,6 +10,28 @@ four-file Dathorn upgrade, see [REMEMBER-DEVICE.md](REMEMBER-DEVICE.md).
 For opt-out registration/cancellation emails and the separately enabled SMTP
 worker, see [EMAIL-NOTIFICATIONS.md](EMAIL-NOTIFICATIONS.md).
 
+## Administrator password resets
+
+Administrators can use **Reset member password** in the calendar's member-management
+controls. Explicitly select the member by name and email, enter your own current
+administrator password, enter and confirm the member's new password (12–128
+characters), and confirm the reset. Share the new password privately; the site
+does not email it or display it again after saving.
+
+The target is never inherited from **Acting for**. Only active, non-placeholder
+accounts other than your own can be selected. Other administrators may be reset
+too, without changing their roles. **Change password** still changes only your own
+signed-in account. A reset immediately revokes all of the target's sessions,
+including remembered devices, but leaves the administrator signed in and keeps
+registrations and email preferences unchanged. The member can use Change password
+after signing in; a change on next login is not forced.
+
+This update needs `server.mjs` and `release.mjs` in the application directory,
+`public/app.js` at `~/public_html/app.js`, and a backend restart. No database
+migration, dependency install, environment-variable or mail-cron changes are needed.
+
+## Hosting and operation
+
 For application code in `~/src/cabc-minimal` and public files in `~/public_html`,
 follow [the split-directory correction](SPLIT-PUBLIC-DIRECTORY.md). Set the
 managed Node application's `PUBLIC_DIR` to the absolute public directory path.

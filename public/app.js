@@ -1,6 +1,6 @@
 (() => {
-  const FRONTEND_VERSION = "1.0.1+0ddb312b2715";
-  const EXPECTED_BACKEND_VERSION = "1.0.1+1813e9585361";
+  const FRONTEND_VERSION = "1.0.1+2eeac0e5d2dc";
+  const EXPECTED_BACKEND_VERSION = "1.0.1+5bec4c4ea660";
   const app = document.querySelector("#app"), dialog = document.querySelector("#dialog");
   const state = { token: null, csrfToken: null, user: null, config: null, month: null, selected: null, calendar: null, generation: 0, loginNotice: null, showWildcard: null, actingMemberId: null, schedulingPending: false };
   let authRevision = 0, initialRestoreStarted = false;
@@ -233,7 +233,7 @@
   function calendarShell() {
     return header(`${state.user.role === "admin" ? `<div id="acting-controls"><span class="identity">${esc(state.user.name)}</span></div>` : `<span class="identity">${esc(state.user.name)}</span>`}${button("Home", "home", "quiet")}${button("Log out", "logout", "quiet")}`, false, "calendar-header") +
       `<main class="calendar-page"><div class="calendar-heading"><div><p class="eyebrow">Members’ calendar</p><h1>Playing dates</h1></div>
-      <div class="admin-actions">${button("Export my games", "export-games", "quiet")}${button("Change password", "change-password", "quiet")}<span id="email-settings"></span>${state.user.role === "admin" ? `${button("Add member", "add-member", "quiet")}${button("Deactivate member", "deactivate-member", "quiet")}${button("+ Add date", "add-date", "primary")}` : ""}</div></div>
+      <div class="admin-actions">${button("Export my games", "export-games", "quiet")}${button("Change password", "change-password", "quiet")}<span id="email-settings"></span>${state.user.role === "admin" ? `${button("Add member", "add-member", "quiet")}${button("Reset member password", "reset-member-password", "quiet")}${button("Deactivate member", "deactivate-member", "quiet")}${button("+ Add date", "add-date", "primary")}` : ""}</div></div>
       ${state.config?.preview ? '<p class="preview-line">Private preview · fictional members and sample dates</p>' : ""}
       ${state.user.role === "admin" ? '<div id="acting-status"></div>' : ""}
       <div id="calendar-content" aria-busy="true"><div class="loading-surface">Loading the calendar…</div></div>${installHelp()}</main>`;
@@ -524,6 +524,7 @@
       if (action === "change-password") {
         if (!state.user) return;
         openDialog("Change password", `<form id="password-form">
+          <p>This changes your signed-in account, ${esc(state.user.name)}, even when acting for another member.</p>
           <p class="small-note" id="password-help">Use 12 to 128 characters. After changing your password, you’ll be signed out on all devices, including this one.</p>
           <label>Current password<input name="currentPassword" type="password" autocomplete="current-password" required maxlength="128"></label>
           <label>New password<input name="newPassword" type="password" autocomplete="new-password" required minlength="12" maxlength="128" aria-describedby="password-help"></label>
@@ -551,6 +552,30 @@
       }
       if (action === "add-member") openDialog("Add a member", `<form id="member-form"><label>Full name<input name="name" required minlength="2" maxlength="80" autocomplete="off"></label><label>Email<input name="email" type="email" required maxlength="180" autocomplete="off"></label><label>Initial password<input name="password" type="password" required minlength="12" maxlength="128" autocomplete="new-password"></label><p class="small-note">Use at least 12 characters. Share the credentials privately with the member.</p><p class="form-error" role="alert"></p><button type="submit" class="primary wide">Create member</button></form>`);
       if (action === "deactivate-member") { control.disabled = true; await chooseDeactivation(); }
+      if (action === "reset-member-password") {
+        if (state.user?.role !== "admin") return;
+        const identity = sessionIdentity();
+        control.disabled = true;
+        try {
+          const result = await api("/members/manage");
+          if (sessionIdentity() !== identity || state.user?.role !== "admin") return;
+          const members = result.members.filter(member => member.active === 1 &&
+            member.id !== state.user.id && !["-Guest-", "-Standby-", "-Unavailable-"].includes(member.name.trim()));
+          if (!members.length) { toast("No other active members are available for password reset."); return; }
+          openDialog("Reset member password", `<form id="reset-member-password-form">
+            <p>Choose the member explicitly. This does not follow the Acting for selector or change your own password.</p>
+            <label>Member<select name="memberId" aria-label="Member" required><option value="">Choose a member…</option>${members.map(member => `<option value="${member.id}">${esc(member.name)} (${esc(member.email)})</option>`).join("")}</select></label>
+            <label>Your administrator password<input name="currentPassword" type="password" autocomplete="current-password" required maxlength="128"></label>
+            <label>Member’s new password<input name="newPassword" type="password" autocomplete="new-password" required minlength="12" maxlength="128" aria-describedby="reset-password-help"></label>
+            <label>Confirm member’s new password<input name="confirmPassword" type="password" autocomplete="new-password" required minlength="12" maxlength="128"></label>
+            <p class="small-note" id="reset-password-help">Use 12 to 128 characters. Share the new password privately with the member; it will not be emailed. Their registrations stay unchanged.</p>
+            <label class="remember-device"><input name="confirm" type="checkbox" value="true" required><span>Reset the selected member’s password and sign them out on every device.</span></label>
+            <p class="form-error" role="alert"></p><button type="submit" class="primary wide">Reset member password</button>${button("Cancel", "close-dialog", "quiet wide")}
+          </form>`);
+          dialog.querySelector('[name="memberId"]').focus();
+        } finally { if (control.isConnected) control.disabled = false; }
+        return;
+      }
       if (action === "acting-reset") {
         if (state.schedulingPending || dialog.open || document.querySelector("#calendar-content")?.getAttribute?.("aria-busy") === "true") return;
         state.actingMemberId = null; state.showWildcard = null; state.generation++; drawCalendar(); return;
@@ -633,6 +658,22 @@
         document.querySelector("#toast").textContent = "";
         state.loginNotice = "Password changed. Please sign in with your new password.";
         location.hash = "#login";
+        return;
+      }
+      if (form.id === "reset-member-password-form") {
+        if (fields.newPassword !== fields.confirmPassword) throw new Error("The new passwords do not match.");
+        const member = form.querySelector('[name="memberId"]');
+        const targetLabel = member.selectedOptions[0].textContent;
+        dialog.dataset.passwordPending = "true";
+        dialog.querySelectorAll('input, select, [data-action="close-dialog"]').forEach(control => { control.disabled = true; });
+        submit.textContent = "Resetting…";
+        await api(`/members/${Number(fields.memberId)}/password`, "POST", {
+          currentPassword: fields.currentPassword, newPassword: fields.newPassword,
+          confirmPassword: fields.confirmPassword, confirm: fields.confirm === "true"
+        });
+        form.reset();
+        dialog.close();
+        toast(`Password reset for ${targetLabel}. Share the new password privately; the member is signed out on all devices.`);
         return;
       }
       if (form.id === "register-form") {
@@ -722,10 +763,12 @@
         dialog.querySelectorAll('[data-action="close-dialog"]').forEach(button => { button.disabled = false; });
         if (submit.isConnected) submit.textContent = form.id === "email-preferences-form" ? "Save email preferences" : "Deactivate member";
       }
-      if (form.id === "password-form") {
+      if (form.id === "password-form" || form.id === "reset-member-password-form") {
         delete dialog.dataset.passwordPending;
+        if (form.id === "reset-member-password-form")
+          form.querySelectorAll("input, select").forEach(control => { control.disabled = false; });
         dialog.querySelectorAll('[data-action="close-dialog"]').forEach(button => { button.disabled = false; });
-        if (submit.isConnected) submit.textContent = "Update password";
+        if (submit.isConnected) submit.textContent = form.id === "password-form" ? "Update password" : "Reset member password";
       }
       if (submit.isConnected) submit.disabled = false;
     }

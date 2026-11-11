@@ -1,5 +1,20 @@
 # Main flows and calendar layout checks
 
+## Administrator member-password reset
+- Only administrators see Reset member password, beside the member-management
+  controls. Acting for never changes the meaning of Change password.
+- Select an active real member other than the signed-in administrator; names and
+  emails identify the target. No target is silently inherited from Acting for.
+- Enter the administrator's current password, the member's new 12–128 character
+  password twice, and explicitly confirm signing that member out on all devices.
+- Cancellation and invalid confirmation/passwords make no changes. Errors stay
+  inline; duplicate submissions and dialog dismissal are blocked while pending.
+- Success closes and clears the form, names the member, preserves the admin's
+  session and all registrations, and revokes only the target's sessions.
+- Check member/anonymous API denial, self/inactive/placeholder rejection, cookie
+  CSRF, expired/demoted admins, throttling and atomic rollback on DB failure.
+- Check desktop and 375px, hosted preview, and all existing main calendar flows.
+
 ## Independent frontend and backend stamps
 - Public-only edits change the frontend stamp, not release.mjs or its mtime.
   The current server serves uploaded assets without a restart; backend version
@@ -222,7 +237,7 @@
 
 ## Existing flows to preserve
 - Home: exactly About and Login buttons; slideshow advances and respects reduced motion.
-- About: About placeholder, Home and Login return correctly.
+- About: approved club copy and address, collapsed version details; Home and Login return correctly.
 - Login: invalid credentials show an error; member/admin preview login opens the calendar.
 - Calendar: previous/next skip to months with upcoming games; Upcoming returns to the earliest such month. No empty month is rendered; past dates within a displayed current month remain readable.
 - Dance card: select a date, see all pairs, select an available partner, register both, or register solo.
