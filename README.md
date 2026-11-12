@@ -4,6 +4,12 @@ About includes frontend/backend release diagnostics. See [VERSIONING.md](VERSION
 for independent component stamps, no-restart website-only updates and the
 mandatory development version-stamping step after application changes.
 
+For private PDF uploads, administrator-only/all-member visibility, and the
+nine-file upgrade with an additive database migration, see
+[CABC members-only documents](DOCUMENTS.md). Document contents and permissions are
+stored together in the private SQLite database and in encrypted backups that
+target that same live database.
+
 For optional 30-day remembered sign-in, secure-cookie behavior and the current
 four-file Dathorn upgrade, see [REMEMBER-DEVICE.md](REMEMBER-DEVICE.md).
 

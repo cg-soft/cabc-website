@@ -1,5 +1,62 @@
 # New minimal website verification
 
+## Members-only PDF documents
+
+Verified on 2026-11-12. All 309 tests pass on Node 22.23.2 and 24.22.2,
+including 18 new document checks. Frontend `1.0.1+9c4cdeda5e88` expects backend
+`1.0.1+4512be8e64e2`; the final hosted preview reports the matching running
+backend and both current stamps.
+
+The document tests cover administrator-default visibility, authenticated member
+listing and file access, hidden-ID denial, anonymous/member write denial,
+metadata validation, publication confirmation, atomic replacement and deletion,
+stale revisions, cookie CSRF, session/role revalidation after streaming, two-upload
+concurrency, exact 10 MiB size and total-storage/count quotas, audit rollback,
+explicit repeatable additive migration, and encrypted backup/restore with exact
+PDF bytes and visibility. The preview migration preserved all original counts:
+19 members, 1 session, 15 games, 53 entries, 7 team_members, 46 registration_audit,
+6 notification_preferences and 25 notification_outbox rows. Its metadata marker
+was intentionally added; subsequent fictional QA actions are separate.
+
+Browser checks exercised private upload, explicit publication, member visibility,
+restriction, title/description edits, replacement, cancelled and confirmed
+deletion, exact downloaded bytes/original filenames, malformed-PDF errors,
+concurrent stale edits, list-error/retry recovery, and pending-control/Escape
+protection. Acting for Alex Chen did not reduce Morgan Lee's administrator
+document access. Normal-origin PDFs visibly render their sample text in Chrome's
+native viewer; a deliberately blocked-popup path successfully opens the fallback.
+An initial native-PDF screenshot was taken before rendering completed; the final
+loaded screenshot, rather than the empty shell, is the viewing evidence.
+
+The hosted preview adds an opaque-origin security sandbox. Its PDF-tab attempt
+was blocked by Chromium, so Open explicitly downloads there instead, with an
+explanation. Final hosted checks verify an exact-byte download and no extra tab.
+Fresh hosted administrator/member contexts also verified protected lists, raw
+upload, publish/restrict/delete and exact member downloads through the proxy.
+This is intentionally not an in-page PDF viewer; that was discussed as a possible
+follow-up but has not been implemented in this release.
+
+Visual review covered populated administrator/member lists at desktop and 375px,
+the mobile upload form including scrolled Save/Cancel controls, and a short
+desktop window. No horizontal overflow, clipped controls or page exceptions were
+found in those checks. Measured small-text contrast ratios were 9.58 for visibility
+labels, 5.21 for document metadata and 4.89 for the preview note.
+Exploration included failed/stale/pending uploads and popup restrictions.
+
+Regression browser checks covered public navigation, collapsed About diagnostics,
+both preview roles, wildcard/month controls and the next-month Add date default,
+game creation/edit/deletion, pair registration/cancellation with a former partner
+remaining unpaired, team dissolution/reformation, calendar export, and
+member-management/password/email/install dialogs. Delegated Change password still
+names the signed-in administrator and Reset member password starts with no target.
+A hosted member cancellation/guest registration cycle also restored its original
+fictional registration. Only disposable fixtures were created or removed.
+
+No production database, hosting settings, actual member accounts or SMTP delivery
+were changed. Real iPhone Safari/home-screen behavior and the scheduled backup's
+actual live DB_PATH remain owner acceptance checks. See DOCUMENTS.md for the
+nine-file deployment, explicit migration and required backend restart.
+
 ## Administrator-specified member password reset
 
 The administrator-only calendar control explicitly selects an active real member,

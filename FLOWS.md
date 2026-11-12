@@ -1,5 +1,25 @@
 # Main flows and calendar layout checks
 
+## Private documents
+- Documents opens from the signed-in calendar; Calendar, Home and Log out remain
+  available. Active members see only all-member PDFs; admins also see admin-only
+  PDFs and upload, edit/replace and delete controls.
+- Upload defaults to Administrators only. All-member uploads, replacements and
+  newly published files require an explicit sharing confirmation.
+- Check title/description edits, file replacement, stale revisions, private/all-
+  member transitions, deletion confirmation and cancelled dialogs.
+- Open and Download authenticate before fetching bytes with no token in the URL.
+  Exercise the real PDF tab/download and normal-origin blocked-popup fallback.
+  The opaque hosted preview must explain and use a working download fallback
+  rather than opening a broken PDF tab.
+- Acting for never reduces or elevates the signed-in account's permissions.
+- Reject anonymous/inactive/member writes, hidden-document reads, bad CSRF,
+  wrong/oversized files and stale administrator sessions during upload.
+- Documents and permissions survive reopen and encrypted backup/restore together.
+  Migration is additive/idempotent; old tables retain identical row counts.
+- Check empty/loading/error states, 375px/desktop, pending controls, no overflow,
+  no runtime errors, ordinary/remembered sign-in, and existing calendar flows.
+
 ## Administrator member-password reset
 - Only administrators see Reset member password, beside the member-management
   controls. Acting for never changes the meaning of Change password.

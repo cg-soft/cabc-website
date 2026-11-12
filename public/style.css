@@ -2,6 +2,20 @@
 .remember-device { display:flex; align-items:flex-start; gap:.65rem; font-size:.875rem; line-height:1.45; cursor:pointer; }
 .remember-device input { width:1.1rem; height:1.1rem; min-height:0; margin:.1rem 0 0; padding:0; flex:0 0 auto; accent-color:var(--green); }
 .remember-device-copy { display:grid; gap:.2rem; min-width:0; }
+.documents-page{max-width:1080px;margin:0 auto;padding:var(--space-8) var(--space-6)}
+.documents-heading{display:flex;align-items:center;justify-content:space-between;gap:var(--space-6);margin-bottom:var(--space-8)}
+.documents-heading h1{margin-bottom:var(--space-3)}
+.document-list{list-style:none;padding:0;margin:var(--space-6) 0;display:grid;gap:var(--space-4)}
+.document-card{display:flex;justify-content:space-between;gap:var(--space-6);padding:var(--space-6);border:1px solid var(--line);border-radius:8px;background:var(--white)}
+.document-copy{min-width:0}.document-copy h2{font-size:var(--text-xl);margin:var(--space-3) 0;overflow-wrap:anywhere}
+.document-description{white-space:pre-wrap;overflow-wrap:anywhere}.document-copy .small-note{margin-top:var(--space-4)}
+.document-visibility{font-size:var(--text-xs);font-weight:600;color:var(--green)}
+.document-actions{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:var(--space-3);flex:0 0 240px}
+.documents-empty{padding:var(--space-8);margin:var(--space-6) 0;border:1px solid var(--line);border-radius:8px}
+.document-link{display:block;text-align:center;text-decoration:none}
+.documents-header nav{flex-wrap:wrap}#document-form textarea{width:100%;resize:vertical;font:inherit;border:1px solid var(--line);border-radius:4px;padding:.75rem;background:var(--white);color:var(--ink)}
+#document-form input[type=file]{max-width:100%;font-size:var(--text-sm);padding:.5rem}
+@media(max-width:640px){.documents-heading,.document-card{flex-direction:column;align-items:stretch}.document-actions{flex-basis:auto;justify-content:flex-start}.documents-page{padding:var(--space-6) var(--space-4)}.documents-header nav{gap:.5rem}.documents-header .identity{width:100%;text-align:right}}
 .remember-device .small-note { margin:0; font-weight:400; }
 :root {
   --paper:#f7f7f1; --white:#fffefa; --ink:#25362e; --muted:#636f66; --green:#234c3d;

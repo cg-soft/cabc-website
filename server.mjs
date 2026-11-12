@@ -4,6 +4,7 @@ import { randomBytes, timingSafeEqual } from "node:crypto";
 import { pathToFileURL } from "node:url";
 import path from "node:path";
 import { VERSION } from "./release.mjs";
+import { createDocumentHandler } from "./documents.mjs";
 import { registeredGamesCalendar } from "./icalendar.mjs";
 import { notificationsAvailable, preference, setPreference, entrySnapshot, queueChanges } from "./notifications.mjs";
 import { ROOT, openDatabase, passwordHash, passwordMatches, hashToken, transaction, addMember, clubToday, HttpError, requireMemberStatus, wildcardType, WILDCARD_TYPES } from "./db.mjs";
@@ -97,6 +98,7 @@ export function createApp({ db = openDatabase(), preview = false, previewToday,
     return user;
   }
   function admin(user) { if (user.role !== "admin") throw new HttpError(403, "Administrator access required."); }
+  const handleDocuments = createDocumentHandler({ db, authenticate: auth });
   function gameName(value = "") {
     if (typeof value !== "string" || value.trim().length > 80)
       throw new HttpError(400, "Game name must be text of at most 80 characters.");
@@ -203,7 +205,7 @@ export function createApp({ db = openDatabase(), preview = false, previewToday,
     res.setHeader("X-Content-Type-Options", "nosniff");
     res.setHeader("Referrer-Policy", "same-origin");
     res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
-    res.setHeader("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'");
+    res.setHeader("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self'; connect-src 'self'; object-src blob:; frame-src 'self' blob:; base-uri 'self'; form-action 'self'");
     try {
       const url = new URL(req.url, "http://localhost");
       const route = url.pathname;
@@ -225,6 +227,11 @@ export function createApp({ db = openDatabase(), preview = false, previewToday,
         const mime = file.endsWith(".html") ? "text/html" : file.endsWith(".css") ? "text/css" : file.endsWith(".js") ? "text/javascript" : file.endsWith(".webmanifest") ? "application/manifest+json" : file.endsWith(".png") ? "image/png" : "image/webp";
         res.writeHead(200, { "Content-Type": mime.startsWith("image/") ? mime : `${mime}; charset=utf-8`, "Cache-Control": "no-cache" });
         res.end(req.method === "HEAD" ? undefined : content);
+        return;
+      }
+      if (route === "/api/documents" || /^\/api\/documents\/\d+(\/file)?$/.test(route)) {
+        const actor = auth(req);
+        await handleDocuments(req, res, url, actor, reply);
         return;
       }
       let body = {};
@@ -620,7 +627,8 @@ export function createApp({ db = openDatabase(), preview = false, previewToday,
     }
   });
   server.headersTimeout = 15000;
-  server.requestTimeout = 20000;
+  // Bounded 10 MiB document uploads need more time on slower member connections.
+  server.requestTimeout = 120000;
   return server;
 }
 

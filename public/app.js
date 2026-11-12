@@ -1,16 +1,23 @@
 (() => {
-  const FRONTEND_VERSION = "1.0.1+2eeac0e5d2dc";
-  const EXPECTED_BACKEND_VERSION = "1.0.1+5bec4c4ea660";
+  const FRONTEND_VERSION = "1.0.1+9c4cdeda5e88";
+  const EXPECTED_BACKEND_VERSION = "1.0.1+4512be8e64e2";
   const app = document.querySelector("#app"), dialog = document.querySelector("#dialog");
   const state = { token: null, csrfToken: null, user: null, config: null, month: null, selected: null, calendar: null, generation: 0, loginNotice: null, showWildcard: null, actingMemberId: null, schedulingPending: false };
   let authRevision = 0, initialRestoreStarted = false;
+  const documentUrls = new Set();
+  function clearDocumentUrls() {
+    for (const url of documentUrls) URL.revokeObjectURL(url);
+    documentUrls.clear();
+  }
   const sessionIdentity = () => state.token || state.csrfToken;
   function clearIdentity() {
+    clearDocumentUrls(); state.documents = null;
     authRevision++;
     state.token = null; state.csrfToken = null; state.user = null;
     state.calendar = null; state.actingMemberId = null; state.showWildcard = null;
   }
   function acceptIdentity(result) {
+    clearDocumentUrls(); state.documents = null;
     authRevision++;
     state.token = result.token || null; state.csrfToken = result.csrfToken || null;
     state.user = result.member; state.calendar = null; state.selected = null;
@@ -79,15 +86,17 @@
     el.textContent = message; el.classList.add("visible");
     toastTimer = setTimeout(() => el.classList.remove("visible"), 5000);
   }
-  async function api(route, method = "GET", body, format = "json", quietUnauthorized = false) {
+  async function api(route, method = "GET", body, format = "json", quietUnauthorized = false, extraHeaders = {}) {
     if (window.navigator?.onLine === false) throw new Error("You’re offline. Reconnect to the internet and try again. No changes have been sent.");
+    const binary = typeof Blob !== "undefined" && body instanceof Blob;
     let response;
     try { response = await fetch(`${window.CABC_API || ""}/api${route}`, {
       method, credentials: "same-origin", cache: "no-store", headers: {
-        ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
+        ...(body !== undefined ? { "Content-Type": binary ? "application/pdf" : "application/json" } : {}),
+        ...extraHeaders,
         ...(state.token ? { Authorization: `Bearer ${state.token}` } : {}),
         ...(state.csrfToken && method !== "GET" ? { "X-CSRF-Token": state.csrfToken } : {})
-      }, body: body !== undefined ? JSON.stringify(body) : undefined
+      }, body: binary ? body : body !== undefined ? JSON.stringify(body) : undefined
     }); } catch {
       throw new Error("Unable to connect to the club. Check your connection and try again. If you were saving a change, refresh the calendar to check whether it was saved.");
     }
@@ -104,6 +113,7 @@
   }
   const header = (controls, home = false, extraClass = "") => `<header class="site-header ${home ? "over-photo" : ""} ${extraClass}">${brand}<nav aria-label="Main navigation">${controls}</nav></header>`;
   function route() {
+    clearDocumentUrls();
     if (!initialRestoreStarted) { initialRestoreStarted = true; void restoreRememberedSession(); }
     state.generation++;
     clearInterval(slideTimer);
@@ -119,6 +129,7 @@
     else if (screen === "home") renderHome();
     else if (screen === "about") renderAbout();
     else if (screen === "calendar" && state.user) renderCalendar();
+    else if (screen === "documents" && state.user) renderDocuments();
     else renderLogin();
     window.scrollTo(0, 0);
   }
@@ -233,7 +244,7 @@
   function calendarShell() {
     return header(`${state.user.role === "admin" ? `<div id="acting-controls"><span class="identity">${esc(state.user.name)}</span></div>` : `<span class="identity">${esc(state.user.name)}</span>`}${button("Home", "home", "quiet")}${button("Log out", "logout", "quiet")}`, false, "calendar-header") +
       `<main class="calendar-page"><div class="calendar-heading"><div><p class="eyebrow">Members’ calendar</p><h1>Playing dates</h1></div>
-      <div class="admin-actions">${button("Export my games", "export-games", "quiet")}${button("Change password", "change-password", "quiet")}<span id="email-settings"></span>${state.user.role === "admin" ? `${button("Add member", "add-member", "quiet")}${button("Reset member password", "reset-member-password", "quiet")}${button("Deactivate member", "deactivate-member", "quiet")}${button("+ Add date", "add-date", "primary")}` : ""}</div></div>
+      <div class="admin-actions">${button("Documents", "documents", "quiet")}${button("Export my games", "export-games", "quiet")}${button("Change password", "change-password", "quiet")}<span id="email-settings"></span>${state.user.role === "admin" ? `${button("Add member", "add-member", "quiet")}${button("Reset member password", "reset-member-password", "quiet")}${button("Deactivate member", "deactivate-member", "quiet")}${button("+ Add date", "add-date", "primary")}` : ""}</div></div>
       ${state.config?.preview ? '<p class="preview-line">Private preview · fictional members and sample dates</p>' : ""}
       ${state.user.role === "admin" ? '<div id="acting-status"></div>' : ""}
       <div id="calendar-content" aria-busy="true"><div class="loading-surface">Loading the calendar…</div></div>${installHelp()}</main>`;
@@ -479,7 +490,47 @@
     if (!control || control.disabled) return;
     const action = control.dataset.action;
     try {
-      if (["home", "about", "login"].includes(action)) { location.hash = `#${action}`; return; }
+      if (["home", "about", "login", "documents", "calendar"].includes(action)) { location.hash = `#${action}`; return; }
+      if (action === "documents-retry") { await loadDocuments(); return; }
+      if (["upload-document", "edit-document", "delete-document"].includes(action)) {
+        if (state.user?.role !== "admin") return;
+        const row = state.documents?.find(document => document.id === Number(control.dataset.document));
+        if (action !== "upload-document" && !row) return;
+        if (action === "delete-document") {
+          openDialog("Delete document?", `<p><strong>${esc(row.title)}</strong></p><p>This removes the document from the site for everyone. It cannot remove copies already downloaded or retained in backups.</p>
+            <form id="delete-document-form" data-document="${row.id}" data-revision="${row.revision}"><p class="form-error" role="alert"></p><button type="submit" class="danger-primary wide">Yes, delete document</button>${button("Cancel", "close-dialog", "quiet wide")}</form>`);
+          dialog.querySelector('[data-action="close-dialog"].wide').focus();
+        } else editDocument(row);
+        return;
+      }
+      if (["open-document", "download-document"].includes(action)) {
+        const row = state.documents?.find(document => document.id === Number(control.dataset.document));
+        if (!row) return;
+        const identity = sessionIdentity(), generation = state.generation;
+        let popup = null;
+        const sandboxedPdf = window.origin === "null";
+        if (action === "open-document" && !sandboxedPdf) {
+          try {
+            popup = window.open("about:blank", "_blank");
+            if (popup) { popup.document.body.textContent = "Loading document…"; popup.opener = null; }
+          } catch { popup?.close(); popup = null; }
+        }
+        control.disabled = true;
+        try {
+          const blob = await api(`/documents/${row.id}/file${action === "download-document" ? "?download=1" : ""}`, "GET", undefined, "blob");
+          if (sessionIdentity() !== identity || state.generation !== generation) { popup?.close(); return; }
+          const url = URL.createObjectURL(blob); documentUrls.add(url);
+          if (action === "download-document" || sandboxedPdf) {
+            const link = document.createElement("a"); link.href = url; link.download = row.filename;
+            document.body.append(link); link.click(); link.remove();
+            if (action === "open-document") toast("PDF downloaded. This sandboxed preview blocks PDF tabs; open the saved file.");
+          } else if (popup && !popup.closed) popup.location.replace(url);
+          else openDialog("Document ready", `<p>${esc(row.title)}</p><p>Your browser blocked the automatic new tab. Use Open PDF below.</p><a class="primary wide document-link" href="${url}" target="_blank" rel="noopener">Open PDF</a>${button("Done", "close-dialog", "quiet wide")}`);
+          setTimeout(() => { URL.revokeObjectURL(url); documentUrls.delete(url); }, 300000);
+        } catch (error) { popup?.close(); throw error; }
+        finally { if (control.isConnected) control.disabled = false; }
+        return;
+      }
       if (action === "install-app") {
         openDialog("Add CABC to your iPhone", `<ol class="install-steps"><li>Open the club website in <strong>Safari</strong> on your iPhone.</li><li>Open <strong>Share</strong>, then choose <strong>Add to Home Screen</strong>. You may need to scroll through the actions.</li><li>If offered, turn on <strong>Open as Web App</strong>, then tap <strong>Add</strong>.</li></ol><p class="small-note">Use the new CABC Calendar icon to open the calendar. Sign in when asked. An internet connection is required; registrations are never queued offline. A fresh launch may require signing in again.</p>${button("Done", "close-dialog", "primary wide")}`);
         return;
@@ -637,6 +688,32 @@
         dialog.close(); toast(fields.enabled === "true" ? "Email notifications are on." : "Email notifications are off.");
         return;
       }
+      if (form.id === "document-form" || form.id === "delete-document-form") {
+        const identity = sessionIdentity();
+        const rowId = Number(form.dataset.document);
+        const deleting = form.id === "delete-document-form";
+        const file = deleting ? null : form.querySelector('[name="file"]').files[0];
+        const publishing = !deleting && fields.visibility === "members" && (!!file || form.dataset.visibility !== "members");
+        if (publishing && fields.confirmPublish !== "true") throw new Error("Confirm that all active members may view and download this document.");
+        if (file && (file.size > 10 * 1024 * 1024 || !/\.pdf$/i.test(file.name)))
+          throw new Error("Choose a PDF file of 10 MB or smaller.");
+        if (!deleting && !rowId && !file) throw new Error("Choose a PDF file.");
+        const data = { title: fields.title, description: fields.description, visibility: fields.visibility,
+          revision: Number(form.dataset.revision), confirmPublish: fields.confirmPublish === "true" };
+        dialog.dataset.memberPending = "true";
+        form.querySelectorAll("input, textarea, select").forEach(control => { control.disabled = true; });
+        dialog.querySelectorAll('[data-action="close-dialog"]').forEach(control => { control.disabled = true; });
+        submit.textContent = deleting ? "Deleting…" : file ? "Uploading…" : "Saving…";
+        if (deleting) await api(`/documents/${rowId}`, "DELETE", { revision: Number(form.dataset.revision), confirm: true });
+        else if (file) await api(rowId ? `/documents/${rowId}/file` : "/documents", rowId ? "PUT" : "POST", file, "json", false,
+          { "X-Document-Metadata": encodeURIComponent(JSON.stringify({ ...data, filename: file.name })) });
+        else await api(`/documents/${rowId}`, "PATCH", data);
+        if (identity !== sessionIdentity()) return;
+        form.reset(); dialog.close();
+        await loadDocuments();
+        toast(deleting ? "Document deleted." : "Document saved.");
+        return;
+      }
       if (form.id === "email-opt-out-form") {
         await api("/email/opt-out", "POST", { token: form.dataset.token });
         location.hash = "#email-opted-out";
@@ -748,6 +825,12 @@
       } else if (error?.isConnected) error.textContent = err.message; else toast(err.message);
     }
     finally {
+      if (form.id === "document-form" || form.id === "delete-document-form") {
+        delete dialog.dataset.memberPending;
+        form.querySelectorAll("input, textarea, select").forEach(control => { control.disabled = false; });
+        dialog.querySelectorAll('[data-action="close-dialog"]').forEach(control => { control.disabled = false; });
+        if (submit.isConnected) submit.textContent = form.id === "delete-document-form" ? "Yes, delete document" : "Save document";
+      }
       if (scheduling) {
         state.schedulingPending = false;
         app.querySelectorAll('[data-acting], [data-action="acting-reset"]').forEach(control => { control.disabled = false; });
@@ -775,12 +858,16 @@
   });
   window.addEventListener("hashchange", route);
   function refreshVisibleCalendar() {
+    if (location.hash === "#documents") { refreshVisibleDocuments(); return; }
     if (!document.hidden && state.user && location.hash === "#calendar" &&
         !dialog.open && !state.schedulingPending) loadCalendar();
   }
   document.addEventListener("visibilitychange", refreshVisibleCalendar);
   window.addEventListener("online", refreshVisibleCalendar);
   window.addEventListener("pageshow", event => { if (event.persisted) refreshVisibleCalendar(); });
+  function refreshVisibleDocuments() {
+    if (!document.hidden && state.user && location.hash === "#documents" && !dialog.open) void loadDocuments();
+  }
   async function restoreRememberedSession() {
     const revision = authRevision;
     try {
@@ -789,12 +876,55 @@
       const result = await api("/session", "GET", undefined, "json", true);
       if (revision !== authRevision || state.user || !result.remembered) return;
       acceptIdentity(result);
-      if (location.hash === "#calendar") route();
+      if (["#calendar", "#documents"].includes(location.hash)) route();
       else if (!location.hash || location.hash === "#login") location.hash = "#calendar";
     } catch {
       // Missing/expired cookies and offline startup leave normal sign-in available.
       // No credential is copied into browser storage or a URL.
     }
   }
+  function renderDocuments() {
+    document.title = "Documents | Chinese American Bridge Club";
+    app.innerHTML = header(`<span class="identity">${esc(state.user.name)}</span>${button("Calendar", "calendar", "quiet")}${button("Home", "home", "quiet")}${button("Log out", "logout", "quiet")}`, false, "documents-header") +
+      `<main class="documents-page"><div class="documents-heading"><div><p class="eyebrow">Members’ library</p><h1>Documents</h1><p>${state.user.role === "admin" ? "Manage private club PDFs and choose who can view them." : "Club documents shared with all active members."}</p></div>${state.user.role === "admin" ? button("Upload document", "upload-document", "primary") : ""}</div>
+      ${state.config?.preview ? `<p class="preview-line">Fictional preview only. Do not upload private club documents here.${window.origin === "null" ? " Open saves the PDF here because this sandboxed preview blocks PDF tabs." : ""}</p>` : ""}
+      <div id="documents-content" aria-live="polite"><p>Loading documents…</p></div>
+      <p class="small-note">PDFs are available only while signed in. Downloaded copies cannot be recalled if access changes later.</p></main>`;
+    void loadDocuments();
+  }
+  async function loadDocuments() {
+    const identity = sessionIdentity(), generation = state.generation;
+    const container = document.querySelector("#documents-content");
+    if (!container) return;
+    container.setAttribute("aria-busy", "true");
+    try {
+      const result = await api("/documents");
+      if (sessionIdentity() !== identity || state.generation !== generation || !container.isConnected) return;
+      state.documents = result.documents;
+      const admin = state.user.role === "admin";
+      container.innerHTML = result.documents.length ? `<ul class="document-list">${result.documents.map(row => `<li class="document-card">
+        <div class="document-copy"><span class="document-visibility">${row.visibility === "admin" ? "Administrators only" : "All members"}</span><h2>${esc(row.title)}</h2>${row.description ? `<p class="document-description">${esc(row.description)}</p>` : ""}
+        <p class="small-note">PDF · ${row.size < 1048576 ? Math.max(1, Math.ceil(row.size / 1024)) + " KB" : (row.size / 1048576).toFixed(2) + " MB"} · Uploaded ${dateLabel(row.created_at.slice(0, 10), { year: "numeric", month: "short", day: "numeric" })}</p></div>
+        <div class="document-actions"><button class="quiet" type="button" data-action="open-document" data-document="${row.id}" aria-label="Open ${esc(row.title)}">Open</button><button class="quiet" type="button" data-action="download-document" data-document="${row.id}" aria-label="Download ${esc(row.title)}">Download</button>
+        ${admin ? `<button class="quiet" type="button" data-action="edit-document" data-document="${row.id}" aria-label="Edit ${esc(row.title)}">Edit / replace</button><button class="text-button danger" type="button" data-action="delete-document" data-document="${row.id}" aria-label="Delete ${esc(row.title)}">Delete</button>` : ""}</div></li>`).join("")}</ul>` :
+        `<div class="documents-empty"><h2>No documents yet</h2><p>${admin ? "Upload a PDF to start the club library. New documents are private to administrators by default." : "No documents have been shared with members yet."}</p></div>`;
+    } catch (error) {
+      if (sessionIdentity() === identity && state.generation === generation && container.isConnected)
+        container.innerHTML = `<p role="alert">${esc(error.message)}</p>${button("Try again", "documents-retry", "quiet")}`;
+    } finally { if (container.isConnected) container.removeAttribute("aria-busy"); }
+  }
+  function editDocument(row) {
+    openDialog(row ? "Edit or replace document" : "Upload document", `<form id="document-form" data-document="${row?.id || ""}" data-revision="${row?.revision || ""}" data-visibility="${row?.visibility || "admin"}">
+      <label>Title<input name="title" required maxlength="120" value="${esc(row?.title || "")}"></label>
+      <label>Description (optional)<textarea name="description" maxlength="1000" rows="3">${esc(row?.description || "")}</textarea></label>
+      <label>Visibility<select name="visibility" aria-label="Document visibility"><option value="admin"${row?.visibility !== "members" ? " selected" : ""}>Administrators only</option><option value="members"${row?.visibility === "members" ? " selected" : ""}>All members</option></select></label>
+      <label>${row ? "Replacement PDF (optional)" : "PDF file"}<input name="file" type="file" accept=".pdf,application/pdf"${row ? "" : " required"}></label>
+      <p class="small-note">PDF only, up to 10 MB. ${row ? "Leave the file empty to keep the existing PDF. " : ""}Use trusted files without scripts, attachments or automatic actions.</p>
+      <label class="remember-device"><input type="checkbox" name="confirmPublish" value="true"><span>I confirm this document may be viewed and downloaded by all active members. Required when publishing or replacing an all-member PDF.</span></label>
+      <p class="small-note">Administrators only is the default for new uploads. Restricting visibility later cannot recall downloaded copies.</p>
+      <p class="form-error" role="alert"></p><button class="primary wide" type="submit">Save document</button>${button("Cancel", "close-dialog", "quiet wide")}</form>`);
+    dialog.querySelector('[name="title"]').focus();
+  }
+  window.addEventListener("pagehide", clearDocumentUrls);
   route();
 })();
