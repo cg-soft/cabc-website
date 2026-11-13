@@ -1,6 +1,6 @@
 # New minimal website verification
 
-## Members-only PDF documents
+## Previous release: members-only PDF documents
 
 Verified on 2026-11-12. All 309 tests pass on Node 22.23.2 and 24.22.2,
 including 18 new document checks. Frontend `1.0.1+9c4cdeda5e88` expects backend

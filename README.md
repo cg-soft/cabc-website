@@ -4,11 +4,16 @@ About includes frontend/backend release diagnostics. See [VERSIONING.md](VERSION
 for independent component stamps, no-restart website-only updates and the
 mandatory development version-stamping step after application changes.
 
-For private PDF uploads, administrator-only/all-member visibility, and the
-nine-file upgrade with an additive database migration, see
+For private PDF uploads, administrator-only/all-member visibility, the in-page
+PDF reader, and complete or viewer-only upgrade instructions, see
 [CABC members-only documents](DOCUMENTS.md). Document contents and permissions are
 stored together in the private SQLite database and in encrypted backups that
 target that same live database.
+
+The reader needs three public files, the locally vendored PDF.js resources,
+the updated server/asset allowlist and a one-time restart. It adds no database
+migration to an already-installed Documents area; see the precise file lists
+in that guide rather than applying the older nine-file upload.
 
 For optional 30-day remembered sign-in, secure-cookie behavior and the current
 four-file Dathorn upgrade, see [REMEMBER-DEVICE.md](REMEMBER-DEVICE.md).

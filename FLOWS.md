@@ -9,9 +9,19 @@
 - Check title/description edits, file replacement, stale revisions, private/all-
   member transitions, deletion confirmation and cancelled dialogs.
 - Open and Download authenticate before fetching bytes with no token in the URL.
-  Exercise the real PDF tab/download and normal-origin blocked-popup fallback.
-  The opaque hosted preview must explain and use a working download fallback
-  rather than opening a broken PDF tab.
+  Open renders the PDF inside Documents, without a popup, tab or automatic
+  download, on both normal origin and the opaque hosted preview.
+- Check actual multipage canvas content, Previous/Next, page entry, first/last
+  bounds, fit-width/zoom, page-text disclosure, Back to documents and Download.
+  Resize desktop to 375px and back; zoom may scroll inside the reader, never
+  widen the page. Preserve both visibility levels and management controls.
+- Open/loading/render errors leave Back and Download available. Navigate away,
+  sign out or switch accounts during a slow open/render: no private bytes,
+  canvas, extracted text or late response may reappear. Resume/online refresh
+  must not replace an open reader. Test missing viewer assets and invalid PDFs.
+- Serve only enumerated vendor assets with correct module/binary MIME types;
+  no CDN, document URLs containing credentials, persistent PDF storage,
+  annotation actions, JavaScript evaluation or embedded PDF plugins.
 - Acting for never reduces or elevates the signed-in account's permissions.
 - Reject anonymous/inactive/member writes, hidden-document reads, bad CSRF,
   wrong/oversized files and stale administrator sessions during upload.

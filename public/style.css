@@ -12,7 +12,24 @@
 .document-visibility{font-size:var(--text-xs);font-weight:600;color:var(--green)}
 .document-actions{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:var(--space-3);flex:0 0 240px}
 .documents-empty{padding:var(--space-8);margin:var(--space-6) 0;border:1px solid var(--line);border-radius:8px}
-.document-link{display:block;text-align:center;text-decoration:none}
+.pdf-reader{min-width:0;margin:var(--space-6) 0;border:1px solid var(--line);border-radius:8px;background:var(--white);overflow:hidden}
+.pdf-reader-heading{display:flex;justify-content:space-between;flex-wrap:wrap;gap:var(--space-3);padding:var(--space-4)}
+.pdf-reader-title{font-size:var(--text-xl);margin:0;padding:0 var(--space-4) var(--space-4);overflow-wrap:anywhere}
+.pdf-reader-toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:var(--space-3);padding:var(--space-4);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.pdf-reader-toolbar label{display:flex;align-items:center;gap:var(--space-2);margin:0;font-size:var(--text-sm);font-weight:500}
+.pdf-reader-toolbar input{width:4.5rem;padding:var(--space-2);margin:0;min-height:44px}
+.pdf-reader-toolbar select{width:auto;min-height:44px;margin:0;padding:var(--space-2)}
+.pdf-page-total{font-size:var(--text-sm);white-space:nowrap;font-variant-numeric:tabular-nums}
+.pdf-reader-toolbar .pdf-zoom-label{margin-left:auto}
+.pdf-reader button:disabled{opacity:1;color:var(--muted);cursor:not-allowed}
+.pdf-reader-status{padding:var(--space-3) var(--space-4);margin:0!important}
+.pdf-surface{overflow:auto;max-height:max(16rem,calc(100svh - 24rem));min-height:12rem;background:var(--paper);overscroll-behavior:contain}
+.pdf-sheet{width:max-content;min-width:100%;padding:var(--space-4);display:flex;justify-content:center;align-items:flex-start}
+.pdf-sheet canvas{display:block;max-width:none;background:#fff;box-shadow:0 1px 6px #0002;flex-shrink:0}
+.pdf-page-text{padding:var(--space-4);border-top:1px solid var(--line)}
+.pdf-page-text summary{cursor:pointer;color:var(--green);font-size:var(--text-sm);font-weight:600}
+.pdf-page-text div{white-space:pre-wrap;overflow-wrap:anywhere;margin-top:var(--space-4);font-size:var(--text-base)}
+@media(max-width:480px){.pdf-reader-toolbar{gap:var(--space-2);padding:var(--space-3)}.pdf-reader-toolbar button{padding:var(--space-2)}.pdf-reader-toolbar .pdf-zoom-label{width:100%;margin-left:0}}
 .documents-header nav{flex-wrap:wrap}#document-form textarea{width:100%;resize:vertical;font:inherit;border:1px solid var(--line);border-radius:4px;padding:.75rem;background:var(--white);color:var(--ink)}
 #document-form input[type=file]{max-width:100%;font-size:var(--text-sm);padding:.5rem}
 @media(max-width:640px){.documents-heading,.document-card{flex-direction:column;align-items:stretch}.document-actions{flex-basis:auto;justify-content:flex-start}.documents-page{padding:var(--space-6) var(--space-4)}.documents-header nav{gap:.5rem}.documents-header .identity{width:100%;text-align:right}}

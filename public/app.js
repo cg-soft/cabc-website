@@ -1,11 +1,14 @@
 (() => {
-  const FRONTEND_VERSION = "1.0.1+9c4cdeda5e88";
-  const EXPECTED_BACKEND_VERSION = "1.0.1+4512be8e64e2";
+  const FRONTEND_VERSION = "1.0.1+843688a25cff";
+  const EXPECTED_BACKEND_VERSION = "1.0.1+4cde21937384";
   const app = document.querySelector("#app"), dialog = document.querySelector("#dialog");
   const state = { token: null, csrfToken: null, user: null, config: null, month: null, selected: null, calendar: null, generation: 0, loginNotice: null, showWildcard: null, actingMemberId: null, schedulingPending: false };
   let authRevision = 0, initialRestoreStarted = false;
   const documentUrls = new Set();
+  let activeDocumentViewer = null, documentViewOpen = false, documentOpenRevision = 0;
   function clearDocumentUrls() {
+    documentOpenRevision++; documentViewOpen = false;
+    activeDocumentViewer?.destroy(); activeDocumentViewer = null;
     for (const url of documentUrls) URL.revokeObjectURL(url);
     documentUrls.clear();
   }
@@ -89,6 +92,7 @@
   async function api(route, method = "GET", body, format = "json", quietUnauthorized = false, extraHeaders = {}) {
     if (window.navigator?.onLine === false) throw new Error("You’re offline. Reconnect to the internet and try again. No changes have been sent.");
     const binary = typeof Blob !== "undefined" && body instanceof Blob;
+    const requestIdentity = sessionIdentity();
     let response;
     try { response = await fetch(`${window.CABC_API || ""}/api${route}`, {
       method, credentials: "same-origin", cache: "no-store", headers: {
@@ -102,7 +106,7 @@
     }
     const result = response.ok && format === "blob" ? await response.blob() : await response.json();
     if (!response.ok) {
-      if (response.status === 401 && route !== "/login" && !quietUnauthorized) {
+      if (response.status === 401 && route !== "/login" && !quietUnauthorized && sessionIdentity() === requestIdentity) {
         clearIdentity();
         if (dialog.open) dialog.close();
         location.hash = "#login";
@@ -491,6 +495,7 @@
     const action = control.dataset.action;
     try {
       if (["home", "about", "login", "documents", "calendar"].includes(action)) { location.hash = `#${action}`; return; }
+      if (action === "documents-back") { route(); return; }
       if (action === "documents-retry") { await loadDocuments(); return; }
       if (["upload-document", "edit-document", "delete-document"].includes(action)) {
         if (state.user?.role !== "admin") return;
@@ -506,28 +511,11 @@
       if (["open-document", "download-document"].includes(action)) {
         const row = state.documents?.find(document => document.id === Number(control.dataset.document));
         if (!row) return;
-        const identity = sessionIdentity(), generation = state.generation;
-        let popup = null;
-        const sandboxedPdf = window.origin === "null";
-        if (action === "open-document" && !sandboxedPdf) {
-          try {
-            popup = window.open("about:blank", "_blank");
-            if (popup) { popup.document.body.textContent = "Loading document…"; popup.opener = null; }
-          } catch { popup?.close(); popup = null; }
-        }
         control.disabled = true;
         try {
-          const blob = await api(`/documents/${row.id}/file${action === "download-document" ? "?download=1" : ""}`, "GET", undefined, "blob");
-          if (sessionIdentity() !== identity || state.generation !== generation) { popup?.close(); return; }
-          const url = URL.createObjectURL(blob); documentUrls.add(url);
-          if (action === "download-document" || sandboxedPdf) {
-            const link = document.createElement("a"); link.href = url; link.download = row.filename;
-            document.body.append(link); link.click(); link.remove();
-            if (action === "open-document") toast("PDF downloaded. This sandboxed preview blocks PDF tabs; open the saved file.");
-          } else if (popup && !popup.closed) popup.location.replace(url);
-          else openDialog("Document ready", `<p>${esc(row.title)}</p><p>Your browser blocked the automatic new tab. Use Open PDF below.</p><a class="primary wide document-link" href="${url}" target="_blank" rel="noopener">Open PDF</a>${button("Done", "close-dialog", "quiet wide")}`);
-          setTimeout(() => { URL.revokeObjectURL(url); documentUrls.delete(url); }, 300000);
-        } catch (error) { popup?.close(); throw error; }
+          if (action === "open-document") await openDocument(row);
+          else await downloadDocument(row);
+        }
         finally { if (control.isConnected) control.disabled = false; }
         return;
       }
@@ -866,7 +854,7 @@
   window.addEventListener("online", refreshVisibleCalendar);
   window.addEventListener("pageshow", event => { if (event.persisted) refreshVisibleCalendar(); });
   function refreshVisibleDocuments() {
-    if (!document.hidden && state.user && location.hash === "#documents" && !dialog.open) void loadDocuments();
+    if (!document.hidden && state.user && location.hash === "#documents" && !dialog.open && !documentViewOpen) void loadDocuments();
   }
   async function restoreRememberedSession() {
     const revision = authRevision;
@@ -887,19 +875,19 @@
     document.title = "Documents | Chinese American Bridge Club";
     app.innerHTML = header(`<span class="identity">${esc(state.user.name)}</span>${button("Calendar", "calendar", "quiet")}${button("Home", "home", "quiet")}${button("Log out", "logout", "quiet")}`, false, "documents-header") +
       `<main class="documents-page"><div class="documents-heading"><div><p class="eyebrow">Members’ library</p><h1>Documents</h1><p>${state.user.role === "admin" ? "Manage private club PDFs and choose who can view them." : "Club documents shared with all active members."}</p></div>${state.user.role === "admin" ? button("Upload document", "upload-document", "primary") : ""}</div>
-      ${state.config?.preview ? `<p class="preview-line">Fictional preview only. Do not upload private club documents here.${window.origin === "null" ? " Open saves the PDF here because this sandboxed preview blocks PDF tabs." : ""}</p>` : ""}
+      ${state.config?.preview ? `<p class="preview-line">Fictional preview only. Do not upload private club documents here.</p>` : ""}
       <div id="documents-content" aria-live="polite"><p>Loading documents…</p></div>
       <p class="small-note">PDFs are available only while signed in. Downloaded copies cannot be recalled if access changes later.</p></main>`;
     void loadDocuments();
   }
   async function loadDocuments() {
-    const identity = sessionIdentity(), generation = state.generation;
+    const identity = sessionIdentity(), generation = state.generation, openRevision = documentOpenRevision;
     const container = document.querySelector("#documents-content");
     if (!container) return;
     container.setAttribute("aria-busy", "true");
     try {
       const result = await api("/documents");
-      if (sessionIdentity() !== identity || state.generation !== generation || !container.isConnected) return;
+      if (sessionIdentity() !== identity || state.generation !== generation || documentOpenRevision !== openRevision || !container.isConnected) return;
       state.documents = result.documents;
       const admin = state.user.role === "admin";
       container.innerHTML = result.documents.length ? `<ul class="document-list">${result.documents.map(row => `<li class="document-card">
@@ -909,9 +897,47 @@
         ${admin ? `<button class="quiet" type="button" data-action="edit-document" data-document="${row.id}" aria-label="Edit ${esc(row.title)}">Edit / replace</button><button class="text-button danger" type="button" data-action="delete-document" data-document="${row.id}" aria-label="Delete ${esc(row.title)}">Delete</button>` : ""}</div></li>`).join("")}</ul>` :
         `<div class="documents-empty"><h2>No documents yet</h2><p>${admin ? "Upload a PDF to start the club library. New documents are private to administrators by default." : "No documents have been shared with members yet."}</p></div>`;
     } catch (error) {
-      if (sessionIdentity() === identity && state.generation === generation && container.isConnected)
+      if (sessionIdentity() === identity && state.generation === generation && documentOpenRevision === openRevision && container.isConnected)
         container.innerHTML = `<p role="alert">${esc(error.message)}</p>${button("Try again", "documents-retry", "quiet")}`;
-    } finally { if (container.isConnected) container.removeAttribute("aria-busy"); }
+    } finally { if (container.isConnected && documentOpenRevision === openRevision) container.removeAttribute("aria-busy"); }
+  }
+  async function downloadDocument(row) {
+    const identity = sessionIdentity(), generation = state.generation;
+    const blob = await api(`/documents/${row.id}/file?download=1`, "GET", undefined, "blob");
+    if (sessionIdentity() !== identity || state.generation !== generation) return;
+    const url = URL.createObjectURL(blob); documentUrls.add(url);
+    const link = document.createElement("a"); link.href = url; link.download = row.filename;
+    document.body.append(link); link.click(); link.remove();
+    setTimeout(() => { URL.revokeObjectURL(url); documentUrls.delete(url); }, 300000);
+  }
+  async function openDocument(row) {
+    const container = document.querySelector("#documents-content");
+    if (!container) return;
+    clearDocumentUrls(); documentViewOpen = true;
+    const revision = documentOpenRevision, identity = sessionIdentity(), generation = state.generation;
+    const current = () => documentViewOpen && revision === documentOpenRevision &&
+      identity === sessionIdentity() && generation === state.generation && container.isConnected;
+    const upload = document.querySelector('[data-action="upload-document"]');
+    if (upload) upload.hidden = true;
+    container.removeAttribute("aria-busy"); container.removeAttribute("aria-live");
+    container.innerHTML = `<div class="pdf-reader"><div class="pdf-reader-heading">${button("Back to documents", "documents-back", "quiet")}<button type="button" class="quiet" data-action="download-document" data-document="${row.id}">Download PDF</button></div><h2 class="pdf-reader-title">${esc(row.title)}</h2><p class="small-note" role="status">Loading PDF viewer…</p></div>`;
+    try {
+      const { createPdfViewer } = await import("./pdf-viewer.mjs");
+      if (!current()) return;
+      activeDocumentViewer = createPdfViewer({ container, title: row.title, isCurrent: current,
+        loadBytes: async () => {
+          const blob = await api(`/documents/${row.id}/file`, "GET", undefined, "blob");
+          return current() ? blob.arrayBuffer() : new ArrayBuffer(0);
+        },
+        onClose: route,
+        onDownload: async () => { try { await downloadDocument(row); } catch (error) { if (current()) toast(error.message); } }
+      });
+    } catch {
+      if (!current()) return;
+      const status = container.querySelector('[role="status"]');
+      status.setAttribute("role", "alert");
+      status.textContent = "The PDF viewer could not load. Go back and try again, or use Download PDF. If this persists, ask the administrator to check the uploaded viewer files.";
+    }
   }
   function editDocument(row) {
     openDialog(row ? "Edit or replace document" : "Upload document", `<form id="document-form" data-document="${row?.id || ""}" data-revision="${row?.revision || ""}" data-visibility="${row?.visibility || "admin"}">
