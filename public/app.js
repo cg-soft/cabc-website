@@ -1,5 +1,5 @@
 (() => {
-  const FRONTEND_VERSION = "1.0.1+843688a25cff";
+  const FRONTEND_VERSION = "1.0.1+a45cc91f484d";
   const EXPECTED_BACKEND_VERSION = "1.0.1+4cde21937384";
   const app = document.querySelector("#app"), dialog = document.querySelector("#dialog");
   const state = { token: null, csrfToken: null, user: null, config: null, month: null, selected: null, calendar: null, generation: 0, loginNotice: null, showWildcard: null, actingMemberId: null, schedulingPending: false };
@@ -922,7 +922,9 @@
     container.removeAttribute("aria-busy"); container.removeAttribute("aria-live");
     container.innerHTML = `<div class="pdf-reader"><div class="pdf-reader-heading">${button("Back to documents", "documents-back", "quiet")}<button type="button" class="quiet" data-action="download-document" data-document="${row.id}">Download PDF</button></div><h2 class="pdf-reader-title">${esc(row.title)}</h2><p class="small-note" role="status">Loading PDF viewer…</p></div>`;
     try {
-      const { createPdfViewer } = await import("./pdf-viewer.mjs");
+      // Opaque preview origins can hide a classic script's referrer/base URL.
+      // Resolve explicitly from the document instead of a relative specifier.
+      const { createPdfViewer } = await import(new URL("./pdf-viewer.mjs", document.baseURI).href);
       if (!current()) return;
       activeDocumentViewer = createPdfViewer({ container, title: row.title, isCurrent: current,
         loadBytes: async () => {

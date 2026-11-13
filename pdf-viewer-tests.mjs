@@ -162,6 +162,7 @@ test("viewer source never opens native PDF windows or uses persistent storage; a
   assert.match(app, /documentOpenRevision !== openRevision/);
   assert.match(app, /!documentViewOpen/);
   assert.match(app, /sessionIdentity\(\) === requestIdentity/);
+  assert.match(app, /import\(new URL\("\.\/pdf-viewer\.mjs", document\.baseURI\)\.href\)/);
   assert.match(viewer, /globalThis\.pdfjsWorker = worker/);
   assert.doesNotMatch(viewer, /https?:\/\//);
 });
