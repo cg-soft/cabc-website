@@ -77,6 +77,15 @@ new production npm installation. The reader deliberately uses the in-process
 worker so it works in opaque-origin previews, disables JavaScript evaluation and
 WebAssembly, and uses the package's JavaScript image-decoder fallbacks.
 
+For development, the vendor files are selected unmodified from an extracted
+`pdfjs-dist@6.5.438` npm package. Run
+`node scripts/vendor-pdfjs.mjs /absolute/path/to/extracted/package` from the
+repository to reproduce the selected files and `pdf-assets.mjs` allowlist.
+Keep the included licenses. After any deliberate library upgrade, update the
+pinned paths and tests, regenerate component stamps with `npm run release:version`,
+rerun the full tests and browser checks, and regenerate SHA256SUMS.
+The vendor-copy script is not a production deployment step.
+
 Uploads are bounded and checked for PDF headers/endings, filenames and common
 active-content markers. This is basic screening, not antivirus or complete PDF
 sanitization; upload only trusted, vetted PDFs. Encrypted PDFs, detected scripts,

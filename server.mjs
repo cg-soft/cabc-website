@@ -4,6 +4,7 @@ import { randomBytes, timingSafeEqual } from "node:crypto";
 import { pathToFileURL } from "node:url";
 import path from "node:path";
 import { VERSION } from "./release.mjs";
+import { PDF_ASSETS } from "./pdf-assets.mjs";
 import { createDocumentHandler } from "./documents.mjs";
 import { registeredGamesCalendar } from "./icalendar.mjs";
 import { notificationsAvailable, preference, setPreference, entrySnapshot, queueChanges } from "./notifications.mjs";
@@ -211,11 +212,11 @@ export function createApp({ db = openDatabase(), preview = false, previewToday,
       const route = url.pathname;
       if (!route.startsWith("/api/")) {
         if (!["GET", "HEAD"].includes(req.method)) throw new HttpError(405, "Method not allowed.");
-        const files = { "/": "index.html", "/index.html": "index.html", "/app.js": "app.js", "/style.css": "style.css", "/config.js": "config.js",
+        const files = { "/": "index.html", "/index.html": "index.html", "/app.js": "app.js", "/style.css": "style.css", "/config.js": "config.js", "/pdf-viewer.mjs": "pdf-viewer.mjs",
           "/web-app.js": "web-app.js", "/manifest.webmanifest": "manifest.webmanifest",
           "/apple-touch-icon.png": "apple-touch-icon.png", "/app-icon-192.png": "app-icon-192.png", "/app-icon-512.png": "app-icon-512.png",
           "/slides/table.webp": "slides/table.webp", "/slides/room.webp": "slides/room.webp", "/favicon.png": "favicon.png", "/club-logo.png": "club-logo.png" };
-        const file = files[route];
+        const file = Object.hasOwn(files, route) ? files[route] : PDF_ASSETS.has(route) ? route.slice(1) : null;
         if (!file) throw new HttpError(404, "Not found.");
         let content;
         try { content = await readFile(path.join(publicRoot, file)); }
@@ -224,8 +225,9 @@ export function createApp({ db = openDatabase(), preview = false, previewToday,
             throw new HttpError(404, "Public file not found. Check PUBLIC_DIR and uploaded assets.");
           throw error;
         }
-        const mime = file.endsWith(".html") ? "text/html" : file.endsWith(".css") ? "text/css" : file.endsWith(".js") ? "text/javascript" : file.endsWith(".webmanifest") ? "application/manifest+json" : file.endsWith(".png") ? "image/png" : "image/webp";
-        res.writeHead(200, { "Content-Type": mime.startsWith("image/") ? mime : `${mime}; charset=utf-8`, "Cache-Control": "no-cache" });
+        const mime = file.endsWith(".html") ? "text/html" : file.endsWith(".css") ? "text/css" : /\.(m?js)$/.test(file) ? "text/javascript" : file.endsWith(".webmanifest") ? "application/manifest+json" : file.endsWith(".png") ? "image/png" : file.endsWith(".webp") ? "image/webp" : /LICENSE[^/]*$/.test(file) ? "text/plain" : "application/octet-stream";
+        const textual = mime.startsWith("text/") || mime === "application/manifest+json";
+        res.writeHead(200, { "Content-Type": textual ? `${mime}; charset=utf-8` : mime, "Cache-Control": "no-cache" });
         res.end(req.method === "HEAD" ? undefined : content);
         return;
       }

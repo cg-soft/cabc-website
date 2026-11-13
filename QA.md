@@ -1,5 +1,55 @@
 # New minimal website verification
 
+## Embedded PDF reader
+
+Verified on 2026-11-12 (2026-11-13 UTC). All 318 tests pass on Node 22.23.2
+and 24.22.2, including nine reader tests. Frontend `1.0.1+a45cc91f484d`
+expects backend `1.0.1+4cde21937384`; the normal-origin About disclosure
+reports those stamps and a matching running backend. These checks supersede
+the older PDF-tab/download-on-Open behavior recorded below.
+
+Open now displays a locally vendored PDF.js canvas reader inside Documents,
+without a PDF plugin, iframe, popup or automatic download. A genuine three-page
+fictional fixture exercises English text, embedded Chinese fonts and an
+image-only scanned page. The deployed preview was tested inside a fresh browser
+context's iframe with the preview's actual opaque-origin sandbox flags, not
+only on localhost. Rendered canvases, Chinese extracted text and the scanned
+page were inspected. No popup or download event occurred on Open or paging.
+This harness verifies the hosted application, not the surrounding Perplexity UI.
+
+Browser coverage includes administrator and member reading, the shared list
+versus hidden Board minutes, Previous/Next, numeric page selection, zoom,
+Back to documents, and original PDF downloads. A deliberately missing reader
+module produced an inline error; its explicit Download PDF control still
+downloaded the exact original three-page fixture and Back restored the list.
+The nine automated reader tests additionally cover parser/load failure,
+password errors, invalid page input, bounded rendering, delayed teardown and
+the server's complete 194-file vendor allowlist and MIME types.
+
+Desktop and 375px layouts were inspected, including Chinese and scanned pages.
+The hosted 375px reader measured a 375px document width with no page-level
+horizontal overflow; enlarged pages scroll within their reader region.
+Desktop-to-phone resizing preserves the reading state. An online-event
+simulation retained the active page and canvas instead of replacing the
+reader with a refreshed document list.
+
+Normal-origin and hosted sign-out both erased retained canvas backing stores
+to 0 by 0 pixels and disconnected them from the page. A held old-session file
+request was released with a 401 after signing out and entering a new member
+session: it neither signed out the new member nor restored a private canvas.
+
+Focused calendar regression created, renamed and deleted an unregistered
+fictional game through the normal administrator dialogs. The new-game date
+remained within the displayed month. Public Home/About navigation and the
+initially collapsed, matching version disclosure were also checked. Broader
+unchanged calendar/account flows have the historical coverage below and the
+current automated suite, rather than being claimed as freshly repeated here.
+
+No production data, hosting configuration or actual email delivery was changed.
+Real iPhone Safari and home-screen acceptance remain owner-side checks.
+For an installation already running Documents, this reader needs the files
+listed in DOCUMENTS.md and one backend restart, but no new database migration.
+
 ## Previous release: members-only PDF documents
 
 Verified on 2026-11-12. All 309 tests pass on Node 22.23.2 and 24.22.2,
