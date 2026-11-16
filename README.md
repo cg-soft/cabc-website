@@ -4,6 +4,11 @@ About includes frontend/backend release diagnostics. See [VERSIONING.md](VERSION
 for independent component stamps, no-restart website-only updates and the
 mandatory development version-stamping step after application changes.
 
+For the Show dropdown's cross-month **My Own Dates** assignment list and the
+four-file Dathorn upgrade, see [MY-OWN-DATES.md](MY-OWN-DATES.md). The list follows
+Acting for for administrators and includes solo, partner, wildcard and team
+statuses. This feature needs one backend restart but no database migration.
+
 For private PDF uploads, administrator-only/all-member visibility, the in-page
 PDF reader, and complete or viewer-only upgrade instructions, see
 [CABC members-only documents](DOCUMENTS.md). Document contents and permissions are

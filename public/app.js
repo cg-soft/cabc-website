@@ -1,6 +1,6 @@
 (() => {
-  const FRONTEND_VERSION = "1.0.1+a45cc91f484d";
-  const EXPECTED_BACKEND_VERSION = "1.0.1+4cde21937384";
+  const FRONTEND_VERSION = "1.0.1+896f0a336d75";
+  const EXPECTED_BACKEND_VERSION = "1.0.1+f5e892dfbc83";
   const app = document.querySelector("#app"), dialog = document.querySelector("#dialog");
   const state = { token: null, csrfToken: null, user: null, config: null, month: null, selected: null, calendar: null, generation: 0, loginNotice: null, showWildcard: null, actingMemberId: null, schedulingPending: false };
   let authRevision = 0, initialRestoreStarted = false;
@@ -325,7 +325,7 @@
         <span class="agenda-indicator" aria-hidden="true">${own ? "✓" : "›"}</span></button>`;
     }).join("");
     document.querySelector("#calendar-content").innerHTML = `<div class="calendar-layout"><section class="calendar" aria-label="Playing dates calendar">
-      <div class="month-nav"><div class="month-title"><h2>${dateLabel(`${state.month}-01`, { month: "long", year: "numeric" })}</h2><p>${games.length} playing ${games.length === 1 ? "date" : "dates"} · Pacific time</p></div><div class="month-controls">${wildcardList().length ? `<label class="show-filter">Show<select data-show="wildcard" aria-label="Show which schedule"><option value="">All members</option>${wildcardList().map(w => `<option value="${w.id}"${state.showWildcard === w.id ? " selected" : ""}>${esc(w.name)}</option>`).join("")}</select></label>` : ""}${button("‹", "previous", "icon-button")}${button("Upcoming", "today", "quiet compact")}${button("›", "next", "icon-button")}</div></div>
+      <div class="month-nav"><div class="month-title"><h2>${dateLabel(`${state.month}-01`, { month: "long", year: "numeric" })}</h2><p>${games.length} playing ${games.length === 1 ? "date" : "dates"} · Pacific time</p></div><div class="month-controls"><label class="show-filter">Show<select data-show="wildcard" aria-label="Show which schedule"><option value="">All members</option><option value="own"${state.showWildcard === "own" ? " selected" : ""}>My Own Dates</option>${wildcardList().map(w => `<option value="${w.id}"${state.showWildcard === w.id ? " selected" : ""}>${esc(w.name)}</option>`).join("")}</select></label>${button("‹", "previous", "icon-button")}${button("Upcoming", "today", "quiet compact")}${button("›", "next", "icon-button")}</div></div>
       <div class="weekdays" aria-hidden="true">${["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map(d => `<span>${d}</span>`).join("")}</div>
       <div class="calendar-grid">${cells.join("")}</div>
       <div class="playing-agenda">${agenda}</div>
@@ -350,7 +350,27 @@
       ${items.length ? `<ol class="wildcard-schedule">${items.map(g => `<li><button type="button" data-action="wildcard-jump" data-jump="${g.date}"><span class="jump-date"><strong>${dateLabel(g.date, { month: "short", day: "numeric" })}</strong><span>${dateLabel(g.date, { weekday: "short" })} · ${timeLabel(g.time)}</span></span><span class="jump-copy"><strong>${esc(g.gameName || dateLabel(g.date, { weekday: "long" }))}</strong><span>${g.eventType === "teams" ? "Team event · " : ""}${g.members.length} assignment${g.members.length === 1 ? "" : "s"}</span><span class="jump-members">${g.members.map(esc).join(", ")}</span></span></button></li>`).join("")}</ol>` : '<p class="empty-copy">No upcoming assignments.</p>'}
       <p class="small-note">Read-only view. Set Show to All members to return to your dance card.</p>`;
   }
+  function ownDatesPanel() {
+    const member = schedulingMember();
+    const heading = `<div class="dance-date-header"><div><p class="eyebrow">Your schedule</p><h2>My Own Dates</h2><p class="muted">${esc(member.name)} · Today and upcoming · Pacific time</p></div></div>`;
+    // Never mistake an older backend's month-only data for a complete schedule.
+    if (!Array.isArray(state.calendar.memberAssignments))
+      return `${heading}<p class="empty-copy" role="status">The complete schedule is unavailable until the updated server is running. Ask the administrator to finish the server upgrade and restart.</p>`;
+    const items = state.calendar.memberAssignments.filter(row =>
+      row.memberId === member.id && row.date >= state.calendar.today);
+    const status = row => {
+      const type = partnerWildcardType(row.partnerId);
+      return type ? { guest: "Playing with a guest", standby: "On standby", unavailable: "Unavailable" }[type]
+        : row.partnerName ? `With ${row.partnerName}` : "Registered · partner needed";
+    };
+    return `${heading}${items.length ? `<ol class="wildcard-schedule" aria-label="My own assignments">${items.map(g =>
+      `<li><button type="button" data-action="own-date-jump" data-jump="${g.date}" aria-label="${esc(g.gameName || "Playing date")}, ${esc(dateLabel(g.date, { weekday: "long", month: "long", day: "numeric", year: "numeric" }))}, ${timeLabel(g.time)}">
+        <span class="jump-date"><strong>${dateLabel(g.date, { month: "short", day: "numeric", year: "numeric" })}</strong><span>${dateLabel(g.date, { weekday: "short" })} · ${timeLabel(g.time)}</span></span>
+        <span class="jump-copy"><strong>${esc(g.gameName || dateLabel(g.date, { weekday: "long" }))}</strong><span>${g.eventType === "teams" ? `Team event · ${g.teamId ? "Team formed" : "Not yet in a team"}` : "Pairs"}</span><span class="jump-members">${esc(status(g))}</span></span></button></li>`).join("")}</ol>` : '<p class="empty-copy">No assignments for today or later.</p>'}
+      <p class="small-note">Select an assignment to open its dance card, or set Show to All members.</p>`;
+  }
   function danceCard() {
+    if (state.showWildcard === "own") return ownDatesPanel();
     if (state.showWildcard) {
       const panel = wildcardPanel();
       if (panel) return panel;
@@ -468,13 +488,14 @@
     if (actingSelect) {
       if (state.schedulingPending || dialog.open || document.querySelector("#calendar-content")?.getAttribute?.("aria-busy") === "true") { actingSelect.value = state.actingMemberId || ""; return; }
       state.actingMemberId = actingSelect.value ? Number(actingSelect.value) : null;
-      state.showWildcard = null; state.generation++;
+      if (state.showWildcard !== "own") state.showWildcard = null;
+      state.generation++;
       drawCalendar(); return;
     }
     const select = event.target.closest('select[data-show="wildcard"]');
     if (!select) return;
     if (document.querySelector("#calendar-content")?.getAttribute?.("aria-busy") === "true") { select.value = state.showWildcard || ""; return; }
-    state.showWildcard = select.value ? Number(select.value) : null;
+    state.showWildcard = select.value === "own" ? "own" : select.value ? Number(select.value) : null;
     drawCalendar();
   });
   document.addEventListener("click", async (event) => {
@@ -617,9 +638,12 @@
       }
       if (action === "acting-reset") {
         if (state.schedulingPending || dialog.open || document.querySelector("#calendar-content")?.getAttribute?.("aria-busy") === "true") return;
-        state.actingMemberId = null; state.showWildcard = null; state.generation++; drawCalendar(); return;
+        state.actingMemberId = null;
+        if (state.showWildcard !== "own") state.showWildcard = null;
+        state.generation++; drawCalendar(); return;
       }
-      if (action === "wildcard-jump") {
+      if (action === "wildcard-jump" || action === "own-date-jump") {
+        if (action === "own-date-jump") state.showWildcard = null;
         const jump = control.dataset.jump;
         state.month = jump.slice(0, 7); state.selected = jump;
         await loadCalendar();

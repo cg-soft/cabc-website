@@ -1,5 +1,20 @@
 # Main flows and calendar layout checks
 
+## My Own Dates
+- Show lists All members, My Own Dates, and existing wildcards, even when no
+  wildcard accounts exist. All members remains the default.
+- My Own Dates replaces the dance card with every current assignment from today
+  onward across all months, ordered by date. Include solo, partnered, guest,
+  standby, unavailable and team registrations; omit cancelled and past entries.
+- Show partner/status and team membership. An assignment opens its game's month
+  and normal dance card, returning Show to All members.
+- For administrators, follow Acting for and Return to myself while staying in
+  My Own Dates. Ordinary members receive only their own upcoming assignments.
+- Check no assignments, an older backend without the new response field, update
+  after registration/cancellation, month navigation, 375px and desktop resizing.
+- Recheck public navigation, both roles, wildcard views/jumps, registration,
+  cancellation, teams, export, Documents and administrator/account dialogs.
+
 ## Private documents
 - Documents opens from the signed-in calendar; Calendar, Home and Log out remain
   available. Active members see only all-member PDFs; admins also see admin-only

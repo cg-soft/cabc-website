@@ -454,6 +454,17 @@ export function createApp({ db = openDatabase(), preview = false, previewToday,
           schedule: db.prepare(`SELECT g.id AS gameId,g.date,g.time,g.name AS gameName,g.event_type AS eventType,e.member_id AS memberId,m.name AS memberName FROM entries e JOIN games g ON g.id=e.game_id JOIN members m ON m.id=e.member_id WHERE e.partner_id=? AND g.date>=?${notWildcardOwned} ORDER BY g.date,g.time,g.id,m.name`)
             .all(row.id, currentDate, ...wildcardIdList)
         }));
+        // Members get only their own assignments. Administrators can switch the
+        // existing Acting for selector without another request or identity change.
+        const memberAssignments = db.prepare(`SELECT g.id AS gameId,g.date,g.time,
+          g.name AS gameName,g.event_type AS eventType,e.member_id AS memberId,
+          e.partner_id AS partnerId,p.name AS partnerName,t.team_id AS teamId
+          FROM entries e JOIN games g ON g.id=e.game_id
+          LEFT JOIN members p ON p.id=e.partner_id
+          LEFT JOIN team_members t ON t.game_id=e.game_id AND t.member_id=e.member_id
+          WHERE g.date>=?${notWildcardOwned}${user.role === "admin" ? "" : " AND e.member_id=?"}
+          ORDER BY g.date,g.time,g.id,e.member_id`)
+          .all(currentDate, ...wildcardIdList, ...(user.role === "admin" ? [] : [user.id]));
         const teamRows = month ? db.prepare("SELECT t.game_id,t.team_id,t.member_id FROM team_members t JOIN games g ON g.id=t.game_id WHERE g.date LIKE ? ORDER BY t.team_id,t.member_id").all(`${month}-%`) : [];
         const groups = new Map();
         for (const row of teamRows) {
@@ -463,7 +474,7 @@ export function createApp({ db = openDatabase(), preview = false, previewToday,
         }
         const registrationRevisions = user.role === "admin"
           ? Object.fromEntries(games.filter(g => g.date >= currentDate).map(g => [g.id, gamePlan(g.id).revision])) : undefined;
-        return reply(200, { month, months, games, entries, members, teams: [...groups.values()], wildcards, user, today: currentDate, registrationRevisions,
+        return reply(200, { month, months, games, entries, members, teams: [...groups.values()], wildcards, memberAssignments, user, today: currentDate, registrationRevisions,
           notificationsAvailable: notificationsAvailable(db) });
       }
       const teamRoute = /^\/api\/games\/(\d+)\/team$/.exec(route);
