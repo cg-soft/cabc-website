@@ -1,5 +1,36 @@
 # New minimal website verification
 
+## About-page dated change history
+
+All 332 automated tests pass on Node 24.22.2 after the final content/style edits.
+
+Verified 2026-11-16. Added a separate Recent changes native disclosure directly
+beneath Website version. Both start collapsed on every About visit and toggle
+independently. The list contains 20 concise, dated summaries, newest first,
+covering source history from 2026-10-20 through 2026-11-16. Dates were checked
+against local Git history and explicitly describe code changes, not Dathorn
+installation dates. Future user-visible releases should update WEBSITE_CHANGES.
+
+Frontend `1.0.1+8e5f60d52bf6` expects unchanged backend
+`1.0.1+f5e892dfbc83`. Upload public/app.js and public/style.css only; no backend
+restart, dependency installation or migration. The new version-model test
+checks separate initially closed disclosures, dated nonempty entries,
+newest-first order and concise single-line summary strings.
+
+Browser checks covered click, Enter and Space toggles, independent open states,
+closed states after navigation/revisit, all entries through the oldest item,
+375px/desktop resizing and no horizontal page overflow. At desktop all summary
+texts occupy one 21.6875px line; phone summaries wrap naturally without
+truncation. Muted note/date contrast is 5.21:1 and summary contrast is 12.64:1.
+Fixed an inherited footer-note spacing rule before final verification.
+
+Rechecked public navigation, matching backend diagnostics, both preview roles,
+Acting for/Return to myself, own schedule/jump, pair/team cards and Documents.
+A fresh opaque hosted iframe showed both closed disclosures, opened 20 history
+entries independently of current version data, then loaded a member schedule.
+History also remained available with a browser-simulated 503 version response.
+No page exceptions, production modifications or real email delivery occurred.
+
 ## Year-grouped schedule tables
 
 Verified 2026-11-16. All 331 tests pass on Node 24.22.2. Frontend

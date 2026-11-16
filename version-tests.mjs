@@ -50,6 +50,30 @@ test("About version diagnostics are inside a closed native disclosure on every r
   }
 });
 
+test("About includes a separate closed dated change history after Website version", () => {
+  for (let visit = 0; visit < 2; visit++) {
+    const html = aboutMarkup();
+    const panels = [...html.matchAll(/<details([^>]*)>([\s\S]*?)<\/details>/g)];
+    assert.equal(panels.length, 2);
+    assert.match(panels[0][2], /Website version/);
+    assert.match(panels[1][2], /<summary id="changes-heading">Recent changes<\/summary>/);
+    assert.doesNotMatch(panels[1][1], /\bopen\b/);
+    const entries = [...panels[1][2].matchAll(/<li><time datetime="(\d{4}-\d{2}-\d{2})">([^<]+)<\/time><span>([^<]+)<\/span><\/li>/g)];
+    assert.ok(entries.length >= 10);
+    let previous = "9999-12-31";
+    for (const [, date, label, summary] of entries) {
+      assert.equal(label, date);
+      assert.ok(Number.isFinite(Date.parse(`${date}T12:00:00Z`)));
+      assert.ok(date <= previous, "Newest changes must appear first.");
+      assert.ok(summary.length <= 100, "Keep each summary concise.");
+      assert.doesNotMatch(summary, /[\r\n]/);
+      previous = date;
+    }
+    assert.match(panels[1][2], /Dates refer to code changes, not installation dates/);
+    assert.doesNotMatch(panels[0][2], /Recent changes|change-list/);
+  }
+});
+
 test("each component is stamped and frontend records its expected backend", () => {
   assert.equal(SOURCE_FINGERPRINT, releaseFingerprint(), "Run npm run release:version after changing application code/assets.");
   const base = JSON.parse(readFileSync(new URL("./package.json", import.meta.url))).version;

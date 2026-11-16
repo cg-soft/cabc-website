@@ -151,6 +151,13 @@ figcaption{position:absolute;bottom:var(--space-8);left:clamp(var(--space-5),4vw
 .version-panel dt{color:var(--muted)}
 .version-panel dd{margin:0;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
 .version-panel .version-status{margin-top:var(--space-5);font-size:var(--text-sm);line-height:1.55}
+.changes-panel{margin-top:var(--space-3)}
+.changes-note{margin:0;font-size:var(--text-sm);color:var(--muted);line-height:1.55}
+.change-list{list-style:none;margin:var(--space-3) 0 0;padding:0}
+.change-list li{display:grid;grid-template-columns:6rem minmax(0,1fr);gap:var(--space-3);padding:var(--space-3) 0;border-top:1px solid var(--line);font-size:var(--text-sm);line-height:1.55}
+.change-list time{color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.change-list span{overflow-wrap:anywhere}
+@media(max-width:480px){.change-list li{grid-template-columns:1fr;gap:var(--space-1)}}
 @media(max-width:480px){.version-panel dl>div{grid-template-columns:1fr;gap:var(--space-1)}}
 .simple-page .small-note{margin-top:var(--space-16);border-top:1px solid var(--line);padding-top:var(--space-6)}
 .login-layout{max-width:1160px;margin:var(--space-12) auto;display:grid;grid-template-columns:1fr 1fr;gap:clamp(var(--space-8),7vw,110px);padding:0 var(--space-8);align-items:center}

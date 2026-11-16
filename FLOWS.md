@@ -1,5 +1,16 @@
 # Main flows and calendar layout checks
 
+## About recent changes
+- Beneath the Website version disclosure, show an independent Recent changes
+  disclosure. Both start collapsed on every About visit and toggle separately
+  by click, Enter and Space without interrupting backend version loading.
+- Expand Recent changes to see concise, newest-first, dated summaries from
+  source history. Clarify these are update dates, not Dathorn installation dates.
+- Keep this history current when adding user-visible features. Entries are
+  text-only, escaped, and readable at 375px and desktop without truncation.
+- Recheck public Home/About/Login, version matching and error responses,
+  both preview roles, schedule tables/jumps, pair/team cards and Documents.
+
 ## Schedule tables grouped by year
 - My Own Dates and every wildcard schedule use one semantic table per year,
   chronologically ordered, with a year heading and aligned date/time and

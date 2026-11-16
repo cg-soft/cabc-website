@@ -1,6 +1,30 @@
 (() => {
-  const FRONTEND_VERSION = "1.0.1+115b5d2cca01";
+  const FRONTEND_VERSION = "1.0.1+8e5f60d52bf6";
   const EXPECTED_BACKEND_VERSION = "1.0.1+f5e892dfbc83";
+  // Newest first; dates describe source updates, not an installation's upload date.
+  // Add a concise entry here when releasing a user-visible website change.
+  const WEBSITE_CHANGES = [
+    ["2026-11-16", "Added dated change history to About."],
+    ["2026-11-16", "Grouped schedules by year; compacted pair/team rows."],
+    ["2026-11-16", "Added My Own Dates for current and future games."],
+    ["2026-11-13", "Added in-page PDF reading."],
+    ["2026-11-12", "Added member-only and administrator-only documents."],
+    ["2026-11-11", "Added administrator-selected password resets."],
+    ["2026-11-02", "Updated club details and independent version checks."],
+    ["2026-10-31", "Added optional 30-day remembered sign-in."],
+    ["2026-10-31", "Excluded your own actions from email notifications."],
+    ["2026-10-30", "Added opt-out registration and cancellation emails."],
+    ["2026-10-29", "Added iPhone Home Screen support."],
+    ["2026-10-27", "Added administrator scheduling for other members."],
+    ["2026-10-27", "Added administrator game editing and deletion."],
+    ["2026-10-27", "Added Guest, Standby and Unavailable placeholders."],
+    ["2026-10-24", "Added member deactivation while preserving past records."],
+    ["2026-10-24", "Added four-player teams formed from registered pairs."],
+    ["2026-10-24", "Added personal calendar export for upcoming games."],
+    ["2026-10-22", "Added member password changes and CSV member import."],
+    ["2026-10-22", "Added game names and upcoming-month navigation."],
+    ["2026-10-20", "Introduced the member calendar and dance cards."]
+  ];
   const app = document.querySelector("#app"), dialog = document.querySelector("#dialog");
   const state = { token: null, csrfToken: null, user: null, config: null, month: null, selected: null, calendar: null, generation: 0, loginNotice: null, showWildcard: null, actingMemberId: null, schedulingPending: false };
   let authRevision = 0, initialRestoreStarted = false;
@@ -174,6 +198,10 @@
       <div><dt>Expected backend</dt><dd>${esc(EXPECTED_BACKEND_VERSION)}</dd></div>
       <div><dt>Backend started</dt><dd data-backend-started>Checking…</dd></div></dl>
       <p class="version-status" data-version-status role="status">Checking the running backend.</p></div></details>
+      <details class="version-panel changes-panel" aria-labelledby="changes-heading"><summary id="changes-heading">Recent changes</summary><div class="version-content">
+      <p class="changes-note">Website updates, newest first. Dates refer to code changes, not installation dates.</p>
+      <ul class="change-list">${WEBSITE_CHANGES.map(([date, summary]) => `<li><time datetime="${esc(date)}">${esc(date)}</time><span>${esc(summary)}</span></li>`).join("")}</ul>
+      </div></details>
       <div class="small-note">The homepage currently uses illustrative photographs, not photographs of the club’s venue.</div></main>`;
     void loadBackendVersion(app.querySelector(".version-panel"));
   }
