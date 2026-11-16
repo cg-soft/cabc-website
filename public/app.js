@@ -1,5 +1,5 @@
 (() => {
-  const FRONTEND_VERSION = "1.0.1+2c77e9475198";
+  const FRONTEND_VERSION = "1.0.1+ca2cbcc83055";
   const EXPECTED_BACKEND_VERSION = "1.0.1+f5e892dfbc83";
   const app = document.querySelector("#app"), dialog = document.querySelector("#dialog");
   const state = { token: null, csrfToken: null, user: null, config: null, month: null, selected: null, calendar: null, generation: 0, loginNotice: null, showWildcard: null, actingMemberId: null, schedulingPending: false };
@@ -407,7 +407,7 @@
     return `<div class="dance-date-header"><div class="selected-date-number" aria-hidden="true"><span>${dateLabel(game.date,{month:"short"})}</span><strong>${Number(game.date.slice(-2))}</strong></div><div><p class="eyebrow">Dance card</p><h2>${esc(game.name || dateLabel(game.date, { weekday: "long", month: "long", day: "numeric" }))}</h2>${game.name ? `<p class="muted game-date-label">${dateLabel(game.date, { weekday: "long", month: "long", day: "numeric" })}</p>` : ""}<p class="muted">${timeLabel(game.time)} · Pacific time</p>${state.user.role === "admin" && !closed ? `<div class="game-admin-actions">${button("Edit game", "edit-game", "text-button")}${button("Delete game", "delete-game", "text-button danger")}</div>` : ""}</div></div>
       ${game.event_type === "teams" ? '<p class="team-intro"><strong>Team event</strong> · Register as a pair, then join another pair to make a team of four.</p>' : ""}
       <div class="registration-area">${registration}</div>${game.event_type === "teams" ? teamCard(game, own, pairs, name, closed) : `<div class="pair-heading"><h3>Registered pairs</h3><span>${pairs.length} ${pairs.length === 1 ? "pair" : "pairs"}</span></div>
-      ${pairs.length ? `<ol class="pairs">${pairs.map(e => `<li><span>${esc(e.name)}</span><span>${esc(name(e.partner_id))}</span></li>`).join("")}</ol>` : '<p class="empty-copy">No pairs yet. There’s a place for you.</p>'}`}
+      ${pairs.length ? `<ol class="pairs">${pairs.map(e => `<li>${esc(e.name)} + ${esc(name(e.partner_id))}</li>`).join("")}</ol>` : '<p class="empty-copy">No pairs yet. There’s a place for you.</p>'}`}
       ${singles.length ? `<div class="waiting"><h3>Looking for a partner</h3>${singles.map(e => `<p>${esc(e.name)}${e.member_id === schedulingMember().id ? acting ? " (selected member)" : " (you)" : ""}</p>`).join("")}</div>` : ""}
       ${standbyMembers.length ? `<div class="waiting"><h3>Standby</h3>${standbyMembers.map(e => `<p>${esc(e.name)}${e.member_id === schedulingMember().id ? acting ? " (selected member)" : " (you)" : ""}</p>`).join("")}</div>` : ""}
       ${unavailableMembers.length ? `<div class="waiting"><h3>Unavailable</h3>${unavailableMembers.map(e => `<p>${esc(e.name)}${e.member_id === schedulingMember().id ? acting ? " (selected member)" : " (you)" : ""}</p>`).join("")}</div>` : ""}`;
@@ -430,7 +430,7 @@
     return `${controls}<div class="pair-heading"><h3>Registered teams</h3><span>${teams.length} ${teams.length === 1 ? "team" : "teams"}</span></div>
       ${teams.length ? `<ol class="team-list">${teams.map((team, index) => `<li class="team-item ${team.id === mine?.id ? "own-team" : ""}"><div class="team-label">Team ${index + 1}${team.id === mine?.id ? `<span>${actingForMember() ? "Selected member’s team" : "Your team"}</span>` : ""}</div>${pairs.filter(pair => team.memberIds.includes(pair.member_id)).map(pair => `<p>${esc(label(pair))}</p>`).join("")}</li>`).join("")}</ol>` : '<p class="empty-copy">No complete teams yet.</p>'}
       <div class="pair-heading"><h3>Pairs seeking teammates</h3><span>${waiting.length}</span></div>
-      ${waiting.length ? `<ol class="pairs">${waiting.map(pair => `<li><span>${esc(name(pair.member_id))}</span><span>${esc(name(pair.partner_id))}</span></li>`).join("")}</ol>` : '<p class="empty-copy">No pairs waiting for teammates.</p>'}`;
+      ${waiting.length ? `<ol class="pairs">${waiting.map(pair => `<li>${esc(label(pair))}</li>`).join("")}</ol>` : '<p class="empty-copy">No pairs waiting for teammates.</p>'}`;
   }
   async function chooseDeactivation() {
     const userId = state.user?.id;

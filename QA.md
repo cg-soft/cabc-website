@@ -1,5 +1,30 @@
 # New minimal website verification
 
+## Single-line dance-card pairs
+
+Verified 2026-11-16. All 330 tests pass on Node 24.22.2, including a new
+rendering/style regression for registered pairs, pairs seeking teammates,
+escaped names, and two pair lines per complete team. Frontend
+`1.0.1+ca2cbcc83055` expects unchanged backend `1.0.1+f5e892dfbc83`.
+Upload public/app.js and public/style.css only; no backend restart or migration.
+
+Removed pair row counters and the reserved left gutter. Pair lists render
+Player + Partner on one line. Complete teams preserve their identifying label
+and one pair per line beneath it. Rows use no-wrap with local horizontal
+overflow for unusually long names rather than widening the page.
+
+Inspected populated pair and complete-team/waiting lists at 375px and desktop,
+including Guest partners. Local phone document width remains 375px, and
+decorative pair markers compute to none. Checked member/admin preview views,
+Acting for/Return to myself, own schedule/jump, wildcard schedule, Documents,
+account and email dialogs without saving, Home/About version diagnostics and
+calendar export download. No page exceptions.
+
+A fresh opaque hosted iframe loaded the new pair lists and two-line team,
+including waiting pairs, and fetched the member document library. Its 359px
+inner viewport had 359px document width and no page exceptions. No production
+data was modified and no real emails were sent.
+
 ## Single-line dates and concise schedule headings
 
 Verified 2026-11-16. All 329 tests pass on Node 24.22.2. Frontend

@@ -1,5 +1,16 @@
 # Main flows and calendar layout checks
 
+## Compact dance-card pairs
+- Registered pairs and Pairs seeking teammates have no decorative row numbers
+  or number gutter. Each pair appears as Player + Partner on one line.
+- Complete teams retain their team label and two player lines, one pair per
+  line. Long names scroll within their row rather than wrapping or widening
+  the page. Preserve name escaping and guest labels.
+- Check populated pairs, team and waiting lists at 375px and desktop, both
+  preview roles, Acting for and own/wildcard schedule views and jumps.
+- Recheck registration/cancellation controls, team controls, public navigation,
+  account dialogs, Documents and exports without modifying production.
+
 ## Compact Show assignment lists
 - Use one heading: Your schedule, Standby Schedule, Dates marked Unavailable,
   or Guest Schedule. Keep My Own Dates as the dropdown option, not a second title.

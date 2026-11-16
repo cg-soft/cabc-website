@@ -234,9 +234,8 @@ input,select{display:block;width:100%;min-width:0;border:1px solid #bcc5ba;borde
 .dance-card .form-error{margin-top:var(--space-3)}
 .pair-heading{display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--line);padding-top:var(--space-6);margin-top:var(--space-8);margin-bottom:var(--space-3)}
 .pair-heading>span{font-size:var(--text-xs);color:var(--muted)}
-.pairs{list-style:none;counter-reset:pairs;margin:0;padding:0}
-.pairs li{counter-increment:pairs;position:relative;padding:var(--space-3) 0 var(--space-3) var(--space-8);border-bottom:1px solid var(--line);display:flex;flex-direction:column;font-size:var(--text-sm);overflow-wrap:anywhere}
-.pairs li::before{content:counter(pairs,decimal-leading-zero);position:absolute;left:0;top:var(--space-3);font-size:var(--text-xs);color:var(--muted)}
+.pairs{list-style:none;margin:0;padding:0}
+.pairs li{padding:var(--space-3) 0;border-bottom:1px solid var(--line);font-size:var(--text-sm);white-space:nowrap;overflow-x:auto}
 .waiting{margin-top:var(--space-6);font-size:var(--text-sm)}
 .waiting h3{margin-bottom:var(--space-2)}
 .waiting p{margin-bottom:var(--space-1);color:var(--muted)}
@@ -267,7 +266,7 @@ input,select{display:block;width:100%;min-width:0;border:1px solid #bcc5ba;borde
 .team-item.own-team{border-color:var(--green)}
 .team-label{display:flex;justify-content:space-between;gap:var(--space-2);font-size:var(--text-sm);font-weight:600;margin-bottom:var(--space-2)}
 .team-label span{font-weight:400;font-size:var(--text-xs)}
-.team-item p{font-size:var(--text-sm);margin:var(--space-2) 0 0}
+.team-item p{font-size:var(--text-sm);margin:var(--space-2) 0 0;white-space:nowrap;overflow-x:auto}
 .loading-surface{min-height:400px;display:grid;align-content:center;justify-content:center;color:var(--muted);text-align:center;gap:var(--space-4);border:1px solid var(--line);border-radius:6px}
 dialog{border:1px solid var(--line);border-radius:8px;max-width:440px;width:calc(100% - 32px);padding:var(--space-8);background:var(--white);color:var(--ink);box-shadow:0 24px 80px #16261c26;max-height:90svh;overflow:auto}
 dialog::backdrop{background:#14241980;backdrop-filter:blur(3px)}

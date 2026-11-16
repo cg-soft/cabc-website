@@ -91,7 +91,7 @@ function browserModel() {
   const sandbox = { document, window: { addEventListener() {} } };
   const source = readFileSync(new URL("./public/app.js", import.meta.url), "utf8");
   vm.runInNewContext(source.replace("  route();\n})();",
-    "  window.model = { state, ownDatesPanel, wildcardPanel, drawCalendar }; \n})();"), sandbox);
+    "  window.model = { state, ownDatesPanel, wildcardPanel, danceCard, drawCalendar }; \n})();"), sandbox);
   const model = sandbox.window.model;
   Object.assign(model.state, { user: { id: 1, name: "Alice <QA>", role: "member" }, month: "2026-10", selected: "2026-10-24",
     calendar: { today: "2026-10-24", months: ["2026-10"], members: [{ id: 1, name: "Alice <QA>", active: 1 }, { id: 2, name: "Bob", active: 1 }],
@@ -125,6 +125,33 @@ test("My Own Dates distinguishes empty schedules from an older backend", () => {
   delete model.state.calendar.memberAssignments;
   assert.match(model.ownDatesPanel(), /updated server is running/);
   assert.doesNotMatch(model.ownDatesPanel(), /No assignments/);
+});
+
+test("dance card renders unnumbered single-line pairs and two pair lines per team", () => {
+  const model = browserModel();
+  model.state.calendar.entries = [
+    { game_id: 1, member_id: 1, partner_id: 2, name: "Alice <QA>" },
+    { game_id: 1, member_id: 2, partner_id: 1, name: "Bob" },
+    { game_id: 1, member_id: 4, partner_id: 5, name: "Casey" },
+    { game_id: 1, member_id: 5, partner_id: 4, name: "Morgan" }
+  ];
+  model.state.calendar.members.push({ id: 4, name: "Casey" }, { id: 5, name: "Morgan" });
+  const pairs = model.danceCard();
+  assert.match(pairs, /<li>Alice &lt;QA&gt; \+ Bob<\/li>/);
+  assert.match(pairs, /<li>Casey \+ Morgan<\/li>/);
+  model.state.calendar.games[0].event_type = "teams";
+  model.state.calendar.teams = [{ id: "qa", game_id: 1, memberIds: [1, 2, 4, 5] }];
+  const team = model.danceCard().match(/<ol class="team-list">([\s\S]*?)<\/ol>/)?.[1];
+  assert.ok(team);
+  assert.equal((team.match(/<p>/g) || []).length, 2);
+  assert.match(team, /<p>Alice &lt;QA&gt; \+ Bob<\/p>/);
+  assert.match(team, /<p>Casey \+ Morgan<\/p>/);
+  model.state.calendar.teams = [];
+  assert.match(model.danceCard(), /<li>Alice &lt;QA&gt; \+ Bob<\/li>/);
+  const css = readFileSync(new URL("./public/style.css", import.meta.url), "utf8");
+  assert.doesNotMatch(css, /counter-(?:reset|increment):pairs|counter\(pairs/);
+  for (const selector of ["\\.pairs li", "\\.team-item p"])
+    assert.match(css, new RegExp(`${selector}\\{[^}]*white-space:nowrap;overflow-x:auto`));
 });
 
 test("Show assignment lists omit weekday prefixes and numbered gutters and keep time unwrapped", () => {
