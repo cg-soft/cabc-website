@@ -1,5 +1,34 @@
 # New minimal website verification
 
+## Year-grouped schedule tables
+
+Verified 2026-11-16. All 331 tests pass on Node 24.22.2. Frontend
+`1.0.1+115b5d2cca01` expects unchanged backend `1.0.1+f5e892dfbc83`.
+Upload public/app.js and public/style.css only; no backend restart or migration.
+
+Your schedule and all wildcard schedule views now share a semantic table
+renderer. Each year has one chronologically ordered table headed by its year.
+Visible date cells contain month/day and time, with the full date retained in
+the accessible button name. Fixed date columns and top-aligned table cells
+align game titles, event/partner statuses and member names across rows/years.
+Tables have accessible column headings without adding visible header clutter.
+Existing titles, empty/older-server states and assignment scopes are preserved.
+
+Inspected the normal preview at 375px and a browser-only response fixture
+containing 2026 and 2027 assignments, without writing the fixture to the server.
+All four schedule views produced one table per fixture year. Own-date detail
+cells align at x=125 across both years, with matching date/detail cell top
+coordinates and no repeated year in visible date cells. Desktop width remained
+1280px after resizing. Verified row-click and keyboard-button own-date jumps,
+wildcard date selection preserving Show, single-line team/pair dance cards,
+Documents, account/email dialogs without saving, calendar export, both preview
+roles, Acting for/Return to myself and Home/About version diagnostics.
+
+A fresh opaque hosted iframe loaded the actual 2026 own and Guest tables,
+confirmed aligned date/detail rows, opened an own-date assignment with Enter,
+and fetched the member document library. No page exceptions were observed.
+No production changes or real emails were involved.
+
 ## Single-line dance-card pairs
 
 Verified 2026-11-16. All 330 tests pass on Node 24.22.2, including a new

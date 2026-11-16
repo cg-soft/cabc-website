@@ -1,5 +1,5 @@
 (() => {
-  const FRONTEND_VERSION = "1.0.1+ca2cbcc83055";
+  const FRONTEND_VERSION = "1.0.1+115b5d2cca01";
   const EXPECTED_BACKEND_VERSION = "1.0.1+f5e892dfbc83";
   const app = document.querySelector("#app"), dialog = document.querySelector("#dialog");
   const state = { token: null, csrfToken: null, user: null, config: null, month: null, selected: null, calendar: null, generation: 0, loginNotice: null, showWildcard: null, actingMemberId: null, schedulingPending: false };
@@ -336,6 +336,21 @@
     app.querySelector('[data-action="previous"]').disabled = state.calendar.months.indexOf(state.month) <= 0;
     app.querySelector('[data-action="next"]').disabled = state.calendar.months.indexOf(state.month) === state.calendar.months.length - 1;
   }
+  function scheduleTables(items, action, title, details) {
+    const years = new Map();
+    for (const item of [...items].sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time))) {
+      const year = item.date.slice(0, 4);
+      if (!years.has(year)) years.set(year, []);
+      years.get(year).push(item);
+    }
+    return [...years].map(([year, rows]) => `<table class="wildcard-schedule" aria-label="${esc(title)}, ${esc(year)}">
+      <caption><h3>${esc(year)}</h3></caption><colgroup><col class="schedule-date-column"><col></colgroup>
+      <thead class="schedule-column-headings"><tr><th scope="col">Date and time</th><th scope="col">Game and details</th></tr></thead>
+      <tbody>${rows.map(g => `<tr data-action="${action}" data-jump="${g.date}">
+        <td><button type="button" class="schedule-date-button" aria-label="${esc(g.gameName || "Playing date")}, ${esc(dateLabel(g.date, { weekday: "long", month: "long", day: "numeric", year: "numeric" }))}, ${timeLabel(g.time)}"><span class="jump-date"><strong>${dateLabel(g.date, { month: "short", day: "numeric" })}</strong><span>${timeLabel(g.time)}</span></span></button></td>
+        <td><div class="jump-copy"><strong>${esc(g.gameName || dateLabel(g.date, { weekday: "long" }))}</strong>${details(g)}</div></td>
+      </tr>`).join("")}</tbody></table>`).join("");
+  }
   function wildcardPanel() {
     const wildcard = wildcardById(state.showWildcard);
     if (!wildcard) { state.showWildcard = null; return null; }
@@ -348,7 +363,7 @@
     const items = [...grouped.values()];
     const title = { standby: "Standby Schedule", unavailable: "Dates marked Unavailable", guest: "Guest Schedule" }[wildcard.type] || wildcard.name;
     return `<div class="dance-date-header"><div><h2>${esc(title)}</h2><p class="muted">Pacific time</p></div></div>
-      ${items.length ? `<ol class="wildcard-schedule">${items.map(g => `<li><button type="button" data-action="wildcard-jump" data-jump="${g.date}"><span class="jump-date"><strong>${dateLabel(g.date, { month: "short", day: "numeric" })}</strong><span>${timeLabel(g.time)}</span></span><span class="jump-copy"><strong>${esc(g.gameName || dateLabel(g.date, { weekday: "long" }))}</strong>${g.eventType === "teams" ? "<span>Team event</span>" : ""}<span class="jump-members">${g.members.map(esc).join(", ")}</span></span></button></li>`).join("")}</ol>` : '<p class="empty-copy">No upcoming assignments.</p>'}
+      ${items.length ? scheduleTables(items, "wildcard-jump", title, g => `${g.eventType === "teams" ? "<span>Team event</span>" : ""}<span class="jump-members">${g.members.map(esc).join(", ")}</span>`) : '<p class="empty-copy">No upcoming assignments.</p>'}
       <p class="small-note">Read-only view. Set Show to All members to return to your dance card.</p>`;
   }
   function ownDatesPanel() {
@@ -364,10 +379,7 @@
       return type ? { guest: "Playing with a guest", standby: "On standby", unavailable: "Unavailable" }[type]
         : row.partnerName ? `With ${row.partnerName}` : "Registered · partner needed";
     };
-    return `${heading}${items.length ? `<ol class="wildcard-schedule" aria-label="My own assignments">${items.map(g =>
-      `<li><button type="button" data-action="own-date-jump" data-jump="${g.date}" aria-label="${esc(g.gameName || "Playing date")}, ${esc(dateLabel(g.date, { weekday: "long", month: "long", day: "numeric", year: "numeric" }))}, ${timeLabel(g.time)}">
-        <span class="jump-date"><strong>${dateLabel(g.date, { month: "short", day: "numeric", year: "numeric" })}</strong><span>${timeLabel(g.time)}</span></span>
-        <span class="jump-copy"><strong>${esc(g.gameName || dateLabel(g.date, { weekday: "long" }))}</strong><span>${g.eventType === "teams" ? `Team event · ${g.teamId ? "Team formed" : "Not yet in a team"}` : "Pairs"}</span><span class="jump-members">${esc(status(g))}</span></span></button></li>`).join("")}</ol>` : '<p class="empty-copy">No assignments for today or later.</p>'}
+    return `${heading}${items.length ? scheduleTables(items, "own-date-jump", "Your schedule", g => `<span>${g.eventType === "teams" ? `Team event · ${g.teamId ? "Team formed" : "Not yet in a team"}` : "Pairs"}</span><span class="jump-members">${esc(status(g))}</span>`) : '<p class="empty-copy">No assignments for today or later.</p>'}
       <p class="small-note">Select an assignment to open its dance card, or set Show to All members.</p>`;
   }
   function danceCard() {

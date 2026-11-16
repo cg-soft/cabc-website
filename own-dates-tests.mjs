@@ -171,10 +171,36 @@ test("Show assignment lists omit weekday prefixes and numbered gutters and keep 
   }
   const css = readFileSync(new URL("./public/style.css", import.meta.url), "utf8");
   assert.doesNotMatch(css, /counter-(?:reset|increment):jumps|counter\(jumps/);
-  assert.match(css, /\.wildcard-schedule button\{[^}]*padding:var\(--space-3\);/);
+  assert.match(css, /\.wildcard-schedule\{[^}]*table-layout:fixed/);
+  assert.match(css, /\.schedule-date-column\{width:88px/);
   assert.match(css, /\.jump-date span\{[^}]*white-space:nowrap/);
   assert.match(css, /\.jump-date strong\{[^}]*white-space:nowrap/);
   assert.match(css, /\.jump-date\{[^}]*flex-shrink:0/);
+});
+
+test("own and wildcard schedules group chronological rows into one aligned table per year", () => {
+  const model = browserModel();
+  model.state.calendar.memberAssignments.reverse();
+  model.state.showWildcard = 3;
+  model.state.calendar.wildcards[0].schedule = [
+    { gameId: 3, date: "2027-02-12", time: "12:30", gameName: "Next year", eventType: "pairs", memberName: "Alice <QA>" },
+    { gameId: 1, date: "2026-10-24", time: "11:30", gameName: "This year", eventType: "pairs", memberName: "Alice <QA>" },
+    { gameId: 2, date: "2027-01-01", time: "11:30", gameName: "New year", eventType: "teams", memberName: "Bob" }
+  ];
+  for (const html of [model.ownDatesPanel(), model.wildcardPanel()]) {
+    assert.equal((html.match(/<table class="wildcard-schedule"/g) || []).length, 2);
+    assert.equal((html.match(/<caption><h3>2026<\/h3><\/caption>/g) || []).length, 1);
+    assert.equal((html.match(/<caption><h3>2027<\/h3><\/caption>/g) || []).length, 1);
+    assert.ok(html.indexOf("2026</h3>") < html.indexOf("2027</h3>"));
+    const dates = [...html.matchAll(/<span class="jump-date"><strong>(.*?)<\/strong>/g)].map(match => match[1]);
+    assert.equal(dates[0], "Oct 24");
+    assert.ok(dates.every(date => !/\d{4}/.test(date)));
+    assert.match(html, /<th scope="col">Date and time<\/th>/);
+    assert.match(html, /aria-label="[^"]*2027/);
+    assert.doesNotMatch(html, /Alice <QA>/);
+  }
+  const wildcard = model.wildcardPanel();
+  assert.ok(wildcard.indexOf('data-jump="2027-01-01"') < wildcard.indexOf('data-jump="2027-02-12"'));
 });
 
 test("Show panels use single concise headings and omit wildcard assignment counts", () => {

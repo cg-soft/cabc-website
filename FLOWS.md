@@ -1,5 +1,14 @@
 # Main flows and calendar layout checks
 
+## Schedule tables grouped by year
+- My Own Dates and every wildcard schedule use one semantic table per year,
+  chronologically ordered, with a year heading and aligned date/time and
+  game/detail columns. Date cells show month and day only, never a repeated year.
+- Keep full dates in accessible button names, headings/statuses, row-click
+  jumps, keyboard date-button jumps, and empty/older-server notices.
+- Check multiple years, unequal date lengths, long names, 375px and desktop,
+  Acting for, all wildcard categories, and normal dance-card pair/team layouts.
+
 ## Compact dance-card pairs
 - Registered pairs and Pairs seeking teammates have no decorative row numbers
   or number gutter. Each pair appears as Player + Partner on one line.
@@ -14,7 +23,7 @@
 ## Compact Show assignment lists
 - Use one heading: Your schedule, Standby Schedule, Dates marked Unavailable,
   or Guest Schedule. Keep My Own Dates as the dropdown option, not a second title.
-- Keep the complete date including its year on one line. Remove assignment
+- Keep month/day on one line with the year in its table heading. Remove assignment
   counts from wildcard rows and Upcoming assignments from their header.
 - My Own Dates and every wildcard list omit decorative row numbers and weekday
   prefixes beside the time. Keep game titles and accessible full dates unchanged.

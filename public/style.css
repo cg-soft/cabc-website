@@ -244,10 +244,16 @@ input,select{display:block;width:100%;min-width:0;border:1px solid #bcc5ba;borde
 .show-filter select{width:auto;min-width:120px;height:44px;min-height:44px;margin-top:0;padding:var(--space-2) var(--space-3);font-size:var(--text-sm)}
 .wildcard-badge{font-size:var(--text-xs);color:var(--muted);overflow-wrap:anywhere}
 .day.playing .wildcard-badge{white-space:nowrap}
-.wildcard-schedule{list-style:none;margin:0 0 var(--space-5);padding:0}
-.wildcard-schedule li{border-bottom:1px solid var(--line)}
-.wildcard-schedule button{width:100%;display:flex;align-items:center;text-align:left;gap:var(--space-4);padding:var(--space-3);border:0;border-radius:0;background:transparent;cursor:pointer}
-.wildcard-schedule button:hover{background:var(--tint)}
+.wildcard-schedule{width:100%;table-layout:fixed;border-collapse:collapse;margin:0 0 var(--space-5)}
+.wildcard-schedule caption{text-align:left;padding:0 0 var(--space-3);border-bottom:1px solid var(--line)}
+.wildcard-schedule caption h3{margin:0}
+.schedule-date-column{width:88px}
+.schedule-column-headings{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.wildcard-schedule td{padding:var(--space-3) var(--space-2);border-bottom:1px solid var(--line);vertical-align:top}
+.wildcard-schedule tbody tr{cursor:pointer}
+.wildcard-schedule tbody tr:hover,.wildcard-schedule tbody tr:focus-within{background:var(--tint)}
+.schedule-date-button{width:100%;display:flex;align-items:flex-start;text-align:left;padding:0;border:0;border-radius:0;background:transparent}
+.schedule-date-button:hover{background:transparent}
 .jump-date{width:max-content;min-width:64px;flex-shrink:0;display:flex;flex-direction:column;line-height:1.2}
 .jump-date strong{font:1.25rem/1.1 var(--font-display);white-space:nowrap}
 .jump-date span{font-size:var(--text-xs);color:var(--muted);white-space:nowrap}
