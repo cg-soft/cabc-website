@@ -1,5 +1,57 @@
 # New minimal website verification
 
+## My Own Dates schedule view
+
+Verified 2026-11-16. All 327 tests pass on Node 22.23.2 and 24.22.2,
+including nine new assignment/API/browser-model checks. Frontend
+`1.0.1+896f0a336d75` expects backend `1.0.1+f5e892dfbc83`; About reports
+the matching running backend. No migration is added.
+
+The normal browser flow created a disposable January 2027 game, registered
+Alex Chen through Acting for, and listed it alongside October 2026 assignments.
+The list showed solo, actual-partner, guest, standby and unavailable states
+through real registration/cancellation cycles; existing Thursday Teams showed
+its partner and formed-team status. Cancellation removed the listed assignment,
+and the synthetic game and its registrations were removed afterward.
+
+Acting for changes and Return to myself kept My Own Dates selected while
+updating the member and assignments together. Assignment clicks opened the
+correct month/date and returned Show to All members after loading. Empty-list
+and older-backend responses were staged separately in the browser: the former
+showed the explicit empty state, the latter an upgrade/restart warning rather
+than an incomplete month-only list.
+
+The deployed application was opened in a fresh context inside an iframe with
+the preview's actual sandbox flags; its origin was null. Hosted member and
+administrator reads, assignment jumps, Acting for/Return to myself, and a
+member cancellation/re-registration cycle passed. The original fictional guest
+registration was restored. Ordinary members did not gain administrator document
+controls or private Board minutes.
+
+Desktop and 375px views were reviewed, including resize back to desktop. The
+375px document width remained 375px, with readable assignment rows and no
+horizontal page overflow. An early capture caught a viewport transition before
+all rows painted; the settled capture and row bounds verified the complete list.
+No page exceptions were observed in the normal or hosted checks.
+
+Focused regression also checked wildcard selection, calendar export bytes,
+the Change password, Email notifications, Add member, Reset member password,
+Deactivate member and Add date dialogs, the admin-only in-page PDF reader,
+Documents/Calendar navigation, and public Home/About with collapsed version
+diagnostics. Untouched flows retain the historical coverage recorded below;
+the complete current automated suite also passed.
+
+The new calendar field returns only the signed-in member's assignment rows to
+ordinary members and the rows needed by Acting for to administrators. API tests
+cover chronological cross-month reads, today/past boundaries, partner/team/
+wildcard metadata, empty lists, no credential fields, anonymous denial and
+registration updates. Browser-model checks cover escaping, older-backend
+handling, a Show dropdown without wildcard accounts and Acting for changes.
+
+Production files, member data, hosting settings and actual email delivery were
+not changed. MY-OWN-DATES.md lists the four-file upgrade and required backend
+restart. Actual iPhone Safari/home-screen acceptance remains owner-side.
+
 ## Embedded PDF reader
 
 Verified on 2026-11-12 (2026-11-13 UTC). All 318 tests pass on Node 22.23.2
