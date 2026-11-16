@@ -1,5 +1,12 @@
 # Main flows and calendar layout checks
 
+## Compact Show assignment lists
+- My Own Dates and every wildcard list omit decorative row numbers and weekday
+  prefixes beside the time. Keep game titles and accessible full dates unchanged.
+- Remove the number gutter and keep time labels on one line at 375px and desktop.
+- Preserve assignment ordering, years, statuses, Acting for, empty states and
+  date jumps; recheck All members, public navigation, documents and account dialogs.
+
 ## My Own Dates
 - Show lists All members, My Own Dates, and existing wildcards, even when no
   wildcard accounts exist. All members remains the default.

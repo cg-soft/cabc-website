@@ -91,7 +91,7 @@ function browserModel() {
   const sandbox = { document, window: { addEventListener() {} } };
   const source = readFileSync(new URL("./public/app.js", import.meta.url), "utf8");
   vm.runInNewContext(source.replace("  route();\n})();",
-    "  window.model = { state, ownDatesPanel, drawCalendar }; \n})();"), sandbox);
+    "  window.model = { state, ownDatesPanel, wildcardPanel, drawCalendar }; \n})();"), sandbox);
   const model = sandbox.window.model;
   Object.assign(model.state, { user: { id: 1, name: "Alice <QA>", role: "member" }, month: "2026-10", selected: "2026-10-24",
     calendar: { today: "2026-10-24", months: ["2026-10"], members: [{ id: 1, name: "Alice <QA>", active: 1 }, { id: 2, name: "Bob", active: 1 }],
@@ -125,6 +125,27 @@ test("My Own Dates distinguishes empty schedules from an older backend", () => {
   delete model.state.calendar.memberAssignments;
   assert.match(model.ownDatesPanel(), /updated server is running/);
   assert.doesNotMatch(model.ownDatesPanel(), /No assignments/);
+});
+
+test("Show assignment lists omit weekday prefixes and numbered gutters and keep time unwrapped", () => {
+  const model = browserModel();
+  model.state.calendar.wildcards[0].schedule = [{
+    gameId: 1, date: "2026-10-24", time: "11:30", gameName: "Game",
+    eventType: "pairs", memberName: "Alice"
+  }];
+  model.state.showWildcard = 3;
+  for (const html of [model.ownDatesPanel(), model.wildcardPanel()]) {
+    const dates = [...html.matchAll(/<span class="jump-date">([\s\S]*?)<\/span><\/span>/g)];
+    assert.ok(dates.length);
+    for (const [, date] of dates) {
+      assert.match(date, /<span>11:30 am$/);
+      assert.doesNotMatch(date, /\b(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)\b| · /);
+    }
+  }
+  const css = readFileSync(new URL("./public/style.css", import.meta.url), "utf8");
+  assert.doesNotMatch(css, /counter-(?:reset|increment):jumps|counter\(jumps/);
+  assert.match(css, /\.wildcard-schedule button\{[^}]*padding:var\(--space-3\);/);
+  assert.match(css, /\.jump-date span\{[^}]*white-space:nowrap/);
 });
 
 test("Show handles own selection without wildcards and preserves it when Acting for changes", () => {

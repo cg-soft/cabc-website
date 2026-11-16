@@ -245,14 +245,13 @@ input,select{display:block;width:100%;min-width:0;border:1px solid #bcc5ba;borde
 .show-filter select{width:auto;min-width:120px;height:44px;min-height:44px;margin-top:0;padding:var(--space-2) var(--space-3);font-size:var(--text-sm)}
 .wildcard-badge{font-size:var(--text-xs);color:var(--muted);overflow-wrap:anywhere}
 .day.playing .wildcard-badge{white-space:nowrap}
-.wildcard-schedule{list-style:none;counter-reset:jumps;margin:0 0 var(--space-5);padding:0}
-.wildcard-schedule li{counter-increment:jumps;position:relative;border-bottom:1px solid var(--line)}
-.wildcard-schedule li::before{content:counter(jumps,decimal-leading-zero);position:absolute;left:var(--space-2);top:var(--space-3);font-size:var(--text-xs);color:var(--muted)}
-.wildcard-schedule button{width:100%;display:flex;align-items:center;text-align:left;gap:var(--space-4);padding:var(--space-3) var(--space-3) var(--space-3) var(--space-8);border:0;border-radius:0;background:transparent;cursor:pointer}
+.wildcard-schedule{list-style:none;margin:0 0 var(--space-5);padding:0}
+.wildcard-schedule li{border-bottom:1px solid var(--line)}
+.wildcard-schedule button{width:100%;display:flex;align-items:center;text-align:left;gap:var(--space-4);padding:var(--space-3);border:0;border-radius:0;background:transparent;cursor:pointer}
 .wildcard-schedule button:hover{background:var(--tint)}
 .jump-date{width:64px;min-width:64px;display:flex;flex-direction:column;line-height:1.2}
 .jump-date strong{font:1.25rem/1.1 var(--font-display)}
-.jump-date span{font-size:var(--text-xs);color:var(--muted)}
+.jump-date span{font-size:var(--text-xs);color:var(--muted);white-space:nowrap}
 .jump-copy{min-width:0;flex:1;display:flex;flex-direction:column;gap:var(--space-1);font-size:var(--text-sm)}
 .jump-copy span{font-size:var(--text-xs);color:var(--muted)}
 .jump-members{overflow-wrap:anywhere}

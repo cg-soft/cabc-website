@@ -1,5 +1,30 @@
 # New minimal website verification
 
+## Compact Show assignment lists
+
+Verified 2026-11-16. All 328 automated tests pass on Node 24.22.2,
+including the new shared-list rendering/style regression. Frontend
+`1.0.1+ab8c55eb7ba3` still expects backend `1.0.1+f5e892dfbc83`;
+release.mjs is unchanged. Upload public/app.js and public/style.css only.
+No backend restart, dependency installation or database migration is needed.
+
+My Own Dates and Guest/Standby/Unavailable lists omit decorative row counters,
+reclaim their left gutter, omit weekday prefixes beside the time, and prevent
+time labels from wrapping. Game titles, full accessible own-date labels,
+years, partner/team statuses and date-jump behavior remain unchanged.
+Inspected populated lists at 375px and desktop, including desktop/mobile
+resizing; phone document width stays 375px and list markers compute to none.
+Both jump controls return to All members and the selected game's dance card.
+
+Browser checks also covered member/admin preview sign-in, Acting for and Return
+to myself with own mode retained, all wildcard choices, account and email
+dialogs without saving, member/admin Documents permissions, Home/About and
+matching version details. A fresh opaque-origin iframe of the redeployed
+hosted preview loaded current own/wildcard lists and their unwrapped time
+styles, opened an assignment, and loaded the member document library.
+No page exceptions were observed. No production data or real email delivery
+was involved; physical iPhone and production acceptance remain operator checks.
+
 ## My Own Dates schedule view
 
 Verified 2026-11-16. All 327 tests pass on Node 22.23.2 and 24.22.2,

@@ -1,5 +1,5 @@
 (() => {
-  const FRONTEND_VERSION = "1.0.1+896f0a336d75";
+  const FRONTEND_VERSION = "1.0.1+ab8c55eb7ba3";
   const EXPECTED_BACKEND_VERSION = "1.0.1+f5e892dfbc83";
   const app = document.querySelector("#app"), dialog = document.querySelector("#dialog");
   const state = { token: null, csrfToken: null, user: null, config: null, month: null, selected: null, calendar: null, generation: 0, loginNotice: null, showWildcard: null, actingMemberId: null, schedulingPending: false };
@@ -347,7 +347,7 @@
     }
     const items = [...grouped.values()];
     return `<div class="dance-date-header"><div><p class="eyebrow">Placeholder schedule</p><h2>${esc(wildcard.name)}</h2><p class="muted">Upcoming assignments · Pacific time</p></div></div>
-      ${items.length ? `<ol class="wildcard-schedule">${items.map(g => `<li><button type="button" data-action="wildcard-jump" data-jump="${g.date}"><span class="jump-date"><strong>${dateLabel(g.date, { month: "short", day: "numeric" })}</strong><span>${dateLabel(g.date, { weekday: "short" })} · ${timeLabel(g.time)}</span></span><span class="jump-copy"><strong>${esc(g.gameName || dateLabel(g.date, { weekday: "long" }))}</strong><span>${g.eventType === "teams" ? "Team event · " : ""}${g.members.length} assignment${g.members.length === 1 ? "" : "s"}</span><span class="jump-members">${g.members.map(esc).join(", ")}</span></span></button></li>`).join("")}</ol>` : '<p class="empty-copy">No upcoming assignments.</p>'}
+      ${items.length ? `<ol class="wildcard-schedule">${items.map(g => `<li><button type="button" data-action="wildcard-jump" data-jump="${g.date}"><span class="jump-date"><strong>${dateLabel(g.date, { month: "short", day: "numeric" })}</strong><span>${timeLabel(g.time)}</span></span><span class="jump-copy"><strong>${esc(g.gameName || dateLabel(g.date, { weekday: "long" }))}</strong><span>${g.eventType === "teams" ? "Team event · " : ""}${g.members.length} assignment${g.members.length === 1 ? "" : "s"}</span><span class="jump-members">${g.members.map(esc).join(", ")}</span></span></button></li>`).join("")}</ol>` : '<p class="empty-copy">No upcoming assignments.</p>'}
       <p class="small-note">Read-only view. Set Show to All members to return to your dance card.</p>`;
   }
   function ownDatesPanel() {
@@ -365,7 +365,7 @@
     };
     return `${heading}${items.length ? `<ol class="wildcard-schedule" aria-label="My own assignments">${items.map(g =>
       `<li><button type="button" data-action="own-date-jump" data-jump="${g.date}" aria-label="${esc(g.gameName || "Playing date")}, ${esc(dateLabel(g.date, { weekday: "long", month: "long", day: "numeric", year: "numeric" }))}, ${timeLabel(g.time)}">
-        <span class="jump-date"><strong>${dateLabel(g.date, { month: "short", day: "numeric", year: "numeric" })}</strong><span>${dateLabel(g.date, { weekday: "short" })} · ${timeLabel(g.time)}</span></span>
+        <span class="jump-date"><strong>${dateLabel(g.date, { month: "short", day: "numeric", year: "numeric" })}</strong><span>${timeLabel(g.time)}</span></span>
         <span class="jump-copy"><strong>${esc(g.gameName || dateLabel(g.date, { weekday: "long" }))}</strong><span>${g.eventType === "teams" ? `Team event · ${g.teamId ? "Team formed" : "Not yet in a team"}` : "Pairs"}</span><span class="jump-members">${esc(status(g))}</span></span></button></li>`).join("")}</ol>` : '<p class="empty-copy">No assignments for today or later.</p>'}
       <p class="small-note">Select an assignment to open its dance card, or set Show to All members.</p>`;
   }
