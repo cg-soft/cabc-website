@@ -146,6 +146,30 @@ test("Show assignment lists omit weekday prefixes and numbered gutters and keep 
   assert.doesNotMatch(css, /counter-(?:reset|increment):jumps|counter\(jumps/);
   assert.match(css, /\.wildcard-schedule button\{[^}]*padding:var\(--space-3\);/);
   assert.match(css, /\.jump-date span\{[^}]*white-space:nowrap/);
+  assert.match(css, /\.jump-date strong\{[^}]*white-space:nowrap/);
+  assert.match(css, /\.jump-date\{[^}]*flex-shrink:0/);
+});
+
+test("Show panels use single concise headings and omit wildcard assignment counts", () => {
+  const model = browserModel();
+  const own = model.ownDatesPanel();
+  assert.match(own, /<h2>Your schedule<\/h2>/);
+  assert.doesNotMatch(own, /<h2>My Own Dates|class="eyebrow"/);
+  model.state.showWildcard = 3;
+  for (const [type, title] of Object.entries({
+    standby: "Standby Schedule", unavailable: "Dates marked Unavailable", guest: "Guest Schedule"
+  })) {
+    model.state.calendar.wildcards[0].type = type;
+    model.state.calendar.wildcards[0].schedule = [{
+      gameId: 1, date: "2026-10-24", time: "11:30", gameName: "Game",
+      eventType: "teams", memberName: "Alice"
+    }];
+    const html = model.wildcardPanel();
+    assert.match(html, new RegExp(`<h2>${title}</h2>`));
+    assert.doesNotMatch(html, /Placeholder schedule|Upcoming assignments|1 assignment/);
+    assert.match(html, /Team event/);
+    assert.match(html, /Alice/);
+  }
 });
 
 test("Show handles own selection without wildcards and preserves it when Acting for changes", () => {

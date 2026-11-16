@@ -1,5 +1,5 @@
 (() => {
-  const FRONTEND_VERSION = "1.0.1+ab8c55eb7ba3";
+  const FRONTEND_VERSION = "1.0.1+2c77e9475198";
   const EXPECTED_BACKEND_VERSION = "1.0.1+f5e892dfbc83";
   const app = document.querySelector("#app"), dialog = document.querySelector("#dialog");
   const state = { token: null, csrfToken: null, user: null, config: null, month: null, selected: null, calendar: null, generation: 0, loginNotice: null, showWildcard: null, actingMemberId: null, schedulingPending: false };
@@ -346,13 +346,14 @@
       grouped.get(row.gameId).members.push(row.memberName);
     }
     const items = [...grouped.values()];
-    return `<div class="dance-date-header"><div><p class="eyebrow">Placeholder schedule</p><h2>${esc(wildcard.name)}</h2><p class="muted">Upcoming assignments · Pacific time</p></div></div>
-      ${items.length ? `<ol class="wildcard-schedule">${items.map(g => `<li><button type="button" data-action="wildcard-jump" data-jump="${g.date}"><span class="jump-date"><strong>${dateLabel(g.date, { month: "short", day: "numeric" })}</strong><span>${timeLabel(g.time)}</span></span><span class="jump-copy"><strong>${esc(g.gameName || dateLabel(g.date, { weekday: "long" }))}</strong><span>${g.eventType === "teams" ? "Team event · " : ""}${g.members.length} assignment${g.members.length === 1 ? "" : "s"}</span><span class="jump-members">${g.members.map(esc).join(", ")}</span></span></button></li>`).join("")}</ol>` : '<p class="empty-copy">No upcoming assignments.</p>'}
+    const title = { standby: "Standby Schedule", unavailable: "Dates marked Unavailable", guest: "Guest Schedule" }[wildcard.type] || wildcard.name;
+    return `<div class="dance-date-header"><div><h2>${esc(title)}</h2><p class="muted">Pacific time</p></div></div>
+      ${items.length ? `<ol class="wildcard-schedule">${items.map(g => `<li><button type="button" data-action="wildcard-jump" data-jump="${g.date}"><span class="jump-date"><strong>${dateLabel(g.date, { month: "short", day: "numeric" })}</strong><span>${timeLabel(g.time)}</span></span><span class="jump-copy"><strong>${esc(g.gameName || dateLabel(g.date, { weekday: "long" }))}</strong>${g.eventType === "teams" ? "<span>Team event</span>" : ""}<span class="jump-members">${g.members.map(esc).join(", ")}</span></span></button></li>`).join("")}</ol>` : '<p class="empty-copy">No upcoming assignments.</p>'}
       <p class="small-note">Read-only view. Set Show to All members to return to your dance card.</p>`;
   }
   function ownDatesPanel() {
     const member = schedulingMember();
-    const heading = `<div class="dance-date-header"><div><p class="eyebrow">Your schedule</p><h2>My Own Dates</h2><p class="muted">${esc(member.name)} · Today and upcoming · Pacific time</p></div></div>`;
+    const heading = `<div class="dance-date-header"><div><h2>Your schedule</h2><p class="muted">${esc(member.name)} · Today and upcoming · Pacific time</p></div></div>`;
     // Never mistake an older backend's month-only data for a complete schedule.
     if (!Array.isArray(state.calendar.memberAssignments))
       return `${heading}<p class="empty-copy" role="status">The complete schedule is unavailable until the updated server is running. Ask the administrator to finish the server upgrade and restart.</p>`;

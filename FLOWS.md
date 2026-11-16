@@ -1,6 +1,10 @@
 # Main flows and calendar layout checks
 
 ## Compact Show assignment lists
+- Use one heading: Your schedule, Standby Schedule, Dates marked Unavailable,
+  or Guest Schedule. Keep My Own Dates as the dropdown option, not a second title.
+- Keep the complete date including its year on one line. Remove assignment
+  counts from wildcard rows and Upcoming assignments from their header.
 - My Own Dates and every wildcard list omit decorative row numbers and weekday
   prefixes beside the time. Keep game titles and accessible full dates unchanged.
 - Remove the number gutter and keep time labels on one line at 375px and desktop.

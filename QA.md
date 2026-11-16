@@ -1,5 +1,28 @@
 # New minimal website verification
 
+## Single-line dates and concise schedule headings
+
+Verified 2026-11-16. All 329 tests pass on Node 24.22.2. Frontend
+`1.0.1+2c77e9475198` expects the unchanged backend `1.0.1+f5e892dfbc83`.
+Upload public/app.js and public/style.css only; no backend restart or migration.
+
+My Own Dates keeps its dropdown label but uses one Your schedule heading.
+Wildcard headings are Standby Schedule, Dates marked Unavailable and Guest
+Schedule, without the Placeholder schedule eyebrow or Upcoming assignments
+subtitle. Pacific time remains visible. Wildcard rows retain names and team
+event information but no longer show assignment counts.
+
+Own-date month/day/year labels are nonwrapping, and their flex column sizes to
+its content instead of forcing the year into the old 64px column. Inspected
+populated own and wildcard lists at 375px and desktop. Sample complete own-date
+labels render at 22px high on one line, with times beneath and no overlap.
+Browser checks cover all requested headings, own-date jumps, wildcard date
+selection, member Documents, account/email dialogs without saving, both preview
+roles, and Acting for/Return to myself retaining own mode. No page exceptions.
+Fresh hosted opaque-iframe checks confirmed all four headings, a one-line
+full date at 22px high, count-free wildcard rows, and member document loading.
+No production changes or real emails were involved.
+
 ## Compact Show assignment lists
 
 Verified 2026-11-16. All 328 automated tests pass on Node 24.22.2,
@@ -14,7 +37,8 @@ time labels from wrapping. Game titles, full accessible own-date labels,
 years, partner/team statuses and date-jump behavior remain unchanged.
 Inspected populated lists at 375px and desktop, including desktop/mobile
 resizing; phone document width stays 375px and list markers compute to none.
-Both jump controls return to All members and the selected game's dance card.
+Own-date jumps return to All members and the selected game's dance card.
+Wildcard jumps select the date/month while preserving the wildcard Show choice.
 
 Browser checks also covered member/admin preview sign-in, Acting for and Return
 to myself with own mode retained, all wildcard choices, account and email
