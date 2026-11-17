@@ -1,5 +1,23 @@
 # Main flows and calendar layout checks
 
+## Manage administrator access
+- Only signed-in administrators see Manage administrator access. Open an
+  independent selector of active, real administrators; never default to Acting
+  for or silently select a target. Mark your own account and protect the last admin.
+- Require the signed-in administrator's password and explicit confirmation.
+  Remove access only; preserve passwords, active status, games, pairs, teams,
+  document records and notification settings. Revoke every target session.
+- Other-account removal keeps the actor signed in. Self-removal signs out and
+  explains how to sign back in as a regular member. Ordinary members cannot
+  invoke the endpoint or read the management list.
+- Check wrong password, absent confirmation, inactive/non-admin/placeholder
+  targets, stale selection, forged promotion payload, last-admin protection,
+  bearer/remembered session revocation, CSRF and rate limiting.
+- At desktop and 375px check dialog labels, keyboard focus, cancellation,
+  errors, pending controls, self-warning and no horizontal overflow.
+- Recheck public navigation/About versions/history, both roles, Acting for,
+  yearly schedules/jumps, pairs/teams, Documents, export and account/game dialogs.
+
 ## About recent changes
 - Beneath the Website version disclosure, show an independent Recent changes
   disclosure. Both start collapsed on every About visit and toggle separately

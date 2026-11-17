@@ -354,6 +354,30 @@ node manage.mjs reset-password
 The operator enters the account email. A new password is generated and existing
 sessions for that account are revoked. The command does not send the password.
 
+### Remove administrator access
+
+Signed-in administrators can select **Manage administrator access** above the
+calendar. Choose an administrator explicitly, enter your own administrator
+password, check the confirmation and select **Remove administrator access**.
+This selector is independent of **Acting for** and only removes access.
+
+The account remains active with the same password, scheduled games, pairs and
+teams. All of the selected account's sessions, including remembered devices,
+are revoked. Removing your own access signs you out; sign back in with your
+existing password as a regular member. The last active real administrator
+cannot be removed, even with concurrent requests. Inactive and placeholder
+accounts cannot serve as the remaining administrator.
+
+To install this change on an already-current Dathorn installation, upload
+`server.mjs` and generated `release.mjs` to `~/src/cabc-minimal/`, and stamped
+`public/app.js` to `~/public_html/app.js`. Preserve the live database, private
+configuration, `config.js`, `.htaccess`, symlinks and dependencies. Restart the
+Node application once and reload the website. No database migration or
+dependency installation is needed. Unlike a website-only styling change, this
+feature requires the matching updated backend and one restart.
+
+### Grant administrator access
+
 To grant an existing member administrator access, use an interactive terminal
 with the live application's `DB_PATH`:
 

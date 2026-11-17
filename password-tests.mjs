@@ -4,8 +4,147 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { once } from "node:events";
+import { randomBytes } from "node:crypto";
 import { openDatabase, addMember, passwordMatches, hashToken } from "./db.mjs";
 import { createApp } from "./server.mjs";
+
+test("safe administrator access removal", async t => {
+  const directory = mkdtempSync(path.join(tmpdir(), "cabc-admin-access-"));
+  const db = openDatabase(path.join(directory, "club.sqlite"), true);
+  const password = "Administrator-access-test-12345";
+  const ids = {};
+  for (const [name, role] of [["Actor", "admin"], ["Target", "admin"], ["Member", "member"],
+    ["Inactive", "admin"], ["-Guest-", "admin"], ["Third Admin", "admin"]])
+    ids[name] = addMember(db, { name, email: `${Object.keys(ids).length}@example.test`, password }, role);
+  db.prepare("UPDATE members SET active=0 WHERE id=?").run(ids.Inactive);
+  db.prepare("INSERT INTO games(id,date,time,event_type) VALUES(1,'2099-12-01','11:30','teams')").run();
+  for (const [id, partner] of [[ids.Actor, ids.Target], [ids.Target, ids.Actor],
+    [ids.Member, ids["Third Admin"]], [ids["Third Admin"], ids.Member]]) {
+    db.prepare("INSERT INTO entries VALUES(1,?,?)").run(id, partner);
+    db.prepare("INSERT INTO team_members VALUES(1,?,'access-test-team')").run(id);
+  }
+  const pdf = Buffer.from("%PDF-1.4\n%%EOF\n");
+  db.prepare("INSERT INTO documents(title,filename,content,size,uploaded_by,created_at,updated_at) VALUES('Private','private.pdf',?,?,?,'2026-01-01','2026-01-01')")
+    .run(pdf, pdf.length, ids.Target);
+  const tokens = {};
+  const session = id => {
+    const token = randomBytes(32).toString("hex");
+    db.prepare("INSERT INTO sessions VALUES(?,?,?)").run(hashToken(token), id, Date.now() + 30 * 86400000);
+    return token;
+  };
+  for (const [name, id] of Object.entries(ids)) if (name !== "Inactive") tokens[name] = session(id);
+  const targetSecond = session(ids.Target);
+  const server = createApp({ db });
+  server.listen(0, "127.0.0.1"); await once(server, "listening");
+  t.after(async () => {
+    server.closeAllConnections(); await new Promise(resolve => server.close(resolve));
+    db.close(); rmSync(directory, { recursive: true, force: true });
+  });
+  const base = `http://127.0.0.1:${server.address().port}/api`;
+  const route = id => `/members/${id}/administrator-access`;
+  const payload = { action: "remove", currentPassword: password, confirm: true };
+  async function req(pathname, token, body, extra = {}) {
+    const response = await fetch(base + pathname, { method: body === undefined ? "GET" : "POST",
+      headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(body === undefined ? {} : { "Content-Type": "application/json" }), ...extra },
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
+    return { status: response.status, headers: response.headers, body: await response.json() };
+  }
+  const snapshot = () => Object.fromEntries(["members", "entries", "team_members", "games", "documents",
+    "document_audit", "notification_preferences", "notification_outbox"].map(table =>
+    [table, db.prepare(`SELECT * FROM ${table} ORDER BY rowid`).all()]));
+  await t.test("only administrators may list or remove access; cookie writes require CSRF", async () => {
+    assert.equal((await req(route(ids.Target), null, payload)).status, 401);
+    assert.equal((await req(route(ids.Target), tokens.Member, payload)).status, 403);
+    assert.equal((await req("/members/manage", tokens.Member)).status, 403);
+    assert.equal((await req(route(ids.Target), null, payload, {
+      Cookie: `__Host-cabc_session=${tokens.Actor}`
+    })).status, 403);
+  });
+  await t.test("invalid credentials, confirmation and targets leave all data unchanged", async () => {
+    const before = snapshot(), sessions = db.prepare("SELECT * FROM sessions ORDER BY hash").all();
+    for (const data of [{}, { ...payload, confirm: false }, { ...payload, confirm: "true" },
+      { ...payload, action: "promote" }, { ...payload, currentPassword: "" },
+      { ...payload, currentPassword: [] }, { ...payload, currentPassword: "x".repeat(129) },
+      { ...payload, currentPassword: "wrong-password" }])
+      assert.equal((await req(route(ids.Target), tokens.Actor, data)).status, 400);
+    // Validation of well-formed targets consumes the shared credential-attempt budget.
+    for (const [id, status] of [[0, 400], ["9007199254740992", 400], [99999, 404],
+      [ids.Member, 409], [ids.Inactive, 409], [ids["-Guest-"], 409]])
+      assert.equal((await req(route(id), tokens["Third Admin"], payload)).status, status);
+    assert.deepEqual(snapshot(), before);
+    assert.deepEqual(db.prepare("SELECT * FROM sessions ORDER BY hash").all(), sessions);
+  });
+  await t.test("failed session revocation rolls back the role update", async () => {
+    db.exec(`CREATE TRIGGER access_session_failure BEFORE DELETE ON sessions
+      WHEN OLD.member_id=${ids.Target} BEGIN SELECT RAISE(ABORT,'fixture failure'); END`);
+    try {
+      assert.equal((await req(route(ids.Target), tokens.Actor, payload)).status, 500);
+      assert.equal(db.prepare("SELECT role FROM members WHERE id=?").get(ids.Target).role, "admin");
+      assert.equal((await req("/calendar", tokens.Target)).status, 200);
+    } finally { db.exec("DROP TRIGGER access_session_failure"); }
+  });
+  await t.test("demotion preserves all other records and revokes every target session only", async () => {
+    const before = snapshot();
+    const result = await req(route(ids.Target), tokens.Actor, { ...payload, role: "admin", memberId: ids.Actor });
+    assert.equal(result.status, 200); assert.deepEqual(result.body, { ok: true, self: false });
+    assert.equal(result.headers.get("cache-control"), "no-store");
+    assert.equal(result.headers.get("set-cookie"), null);
+    const after = snapshot();
+    before.members.find(member => member.id === ids.Target).role = "member";
+    assert.deepEqual(after, before);
+    assert.equal(db.prepare("SELECT count(*) AS n FROM sessions WHERE member_id=?").get(ids.Target).n, 0);
+    for (const token of [tokens.Target, targetSecond])
+      assert.equal((await req("/calendar", token)).status, 401);
+    assert.equal((await req("/session", null, undefined, {
+      Cookie: `__Host-cabc_session=${tokens.Target}`
+    })).status, 401);
+    assert.equal((await req("/members/manage", tokens.Actor)).status, 200);
+    const login = await req("/login", null, { email: "1@example.test", password });
+    assert.equal(login.status, 200); assert.equal(login.body.member.role, "member");
+    assert.equal((await req("/members/manage", login.body.token)).status, 403);
+    assert.equal((await req("/documents", login.body.token)).body.documents.length, 0);
+    assert.equal((await req("/documents/1/file", login.body.token)).status, 404);
+    assert.equal((await req(route(ids.Target), tokens.Actor, payload)).status, 409);
+  });
+  await t.test("five wrong-password attempts are throttled and expire", async () => {
+    // Advance beyond earlier credential attempts to isolate this rate-limit check.
+    const realNow = Date.now;
+    try {
+      Date.now = () => realNow() + 16 * 60000;
+      for (let i = 0; i < 5; i++)
+        assert.equal((await req(route(ids.Actor), tokens["Third Admin"], { ...payload, currentPassword: "wrong" })).status, 400);
+      assert.equal((await req(route(ids.Actor), tokens["Third Admin"], payload)).status, 429);
+      Date.now = () => realNow() + 32 * 60000;
+      const self = await req(route(ids["Third Admin"]), null, payload, {
+        Cookie: `__Host-cabc_session=${tokens["Third Admin"]}`,
+        "X-CSRF-Token": hashToken(`cabc-csrf:${tokens["Third Admin"]}`)
+      });
+      assert.equal(self.status, 200); assert.deepEqual(self.body, { ok: true, self: true });
+      assert.match(self.headers.get("set-cookie"), /Max-Age=0/);
+      assert.equal((await req("/calendar", tokens["Third Admin"])).status, 401);
+    } finally { Date.now = realNow; }
+  });
+  await t.test("last real active administrator is protected despite inactive and placeholder admins", async () => {
+    const before = snapshot();
+    const result = await req(route(ids.Actor), tokens.Actor, payload);
+    assert.equal(result.status, 409); assert.match(result.body.error, /last active administrator/);
+    assert.deepEqual(snapshot(), before);
+    assert.equal((await req("/members/manage", tokens.Actor)).status, 200);
+  });
+  await t.test("competing self-demotions cannot remove both remaining administrators", async () => {
+    db.prepare("UPDATE members SET role='admin' WHERE id=?").run(ids["Third Admin"]);
+    const third = session(ids["Third Admin"]);
+    const results = await Promise.all([
+      req(route(ids.Actor), tokens.Actor, payload),
+      req(route(ids["Third Admin"]), third, payload)
+    ]);
+    assert.equal(results.filter(result => result.status === 200).length, 1);
+    assert.equal(results.filter(result => result.status === 409).length, 1);
+    const remaining = db.prepare("SELECT name FROM members WHERE active=1 AND role='admin' AND name<>'-Guest-'").all();
+    assert.equal(remaining.length, 1);
+  });
+});
 
 test("administrator-only member password resets", async t => {
   const directory = mkdtempSync(path.join(tmpdir(), "cabc-admin-password-"));

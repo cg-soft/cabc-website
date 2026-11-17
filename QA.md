@@ -1288,3 +1288,35 @@ The preview uses a separate copy of public assets with a preview-only API base.
 The production source remains same-origin and requires no build step.
 Native built-in SQLite is experimental in the tested Node 22 version; Dathorn
 compatibility and production routing are not verified by these local tests.
+## Administrator access removal: November 17, 2026
+
+- All 340 automated tests pass on Node 24.22.2 after final UI edits. The
+  dedicated access-removal suite checks authorization, input validation,
+  administrator reauthentication, cookie CSRF, throttling, transactional
+  rollback, target-only bearer/remembered-session revocation, unchanged
+  passwords/account state/schedules/teams/documents/preferences/outbox, member
+  sign-in after demotion, self-removal, and competing last-admin requests.
+- Browser QA used only fictional data in a separate SQLite backup of the
+  existing preview database. Original preview database and Dathorn were not
+  changed; no email worker or real email delivery was used. The QA copy began
+  with 19 members and gained two fictional access-test members (21 total);
+  removing administrator access did not delete member rows.
+- Desktop (1280px) and phone (375px) dialog screenshots were inspected.
+  The phone dialog is 343px wide with no page overflow. Target starts blank,
+  remains independent of Acting for, and receives keyboard focus. Wrong
+  password displays an inline error and restores controls. Pending requests
+  disable selection/cancellation and prevent Escape from closing the dialog.
+- Browser checks removed another fictional administrator while that account
+  was signed in in another context; its next protected action required login.
+  Self-removal displayed the regular-member sign-in notice, and the existing
+  password still worked without the administrator control. The remaining
+  administrator's selector and removal button were disabled with an explanation.
+- Regression checks covered public Home/About/Login, independent closed About
+  disclosures, matching backend version and latest history entry, both roles,
+  Acting for/Return, own/guest schedule views and date jump, pair/team cards,
+  Documents and a rendered inline PDF, account/member/game dialogs, member
+  registration/cancellation with a guest, and an actual calendar download.
+  No page exceptions were observed.
+- Production installation requires `server.mjs`, generated `release.mjs`,
+  stamped `public/app.js` and one backend restart. No migration, dependency
+  installation or stylesheet update is needed on an already-current install.
