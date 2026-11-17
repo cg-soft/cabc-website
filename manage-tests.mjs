@@ -2,14 +2,14 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { once } from "node:events";
-import { mkdtempSync, rmSync, existsSync } from "node:fs";
+import { mkdtempSync, rmSync, existsSync, readFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { ROOT, openDatabase, addMember, passwordMatches } from "./db.mjs";
+import { ROOT, openDatabase, addMember, passwordMatches, hashToken } from "./db.mjs";
 import { createApp } from "./server.mjs";
 
 // Simulate TTY capability only in the child test process; feed answers after prompts.
-function run(filename, command, answers = [], interactive = true) {
+function run(filename, command, answers = [], interactive = true, onPrompt = () => {}) {
   return new Promise((resolve, reject) => {
     const args = interactive
       ? ["--import", "data:text/javascript,Object.defineProperty(process.stdin,'isTTY',{value:true})"]
@@ -23,14 +23,151 @@ function run(filename, command, answers = [], interactive = true) {
     child.on("error", error => { clearTimeout(timer); reject(error); });
     child.stdout.on("data", data => {
       output += data;
-      if (/(Email|Name): /.test(String(data)) && next < answers.length)
+      if (/(Email|Name): |Type DEMOTE.*: /.test(String(data)) && next < answers.length) {
+        onPrompt(String(data));
         child.stdin.write(answers[next++] + "\n");
+      }
     });
     child.stderr.on("data", data => { output += data; });
     child.on("close", code => { clearTimeout(timer); resolve({ code, output }); });
     if (!interactive) child.stdin.end();
   });
 }
+
+test("operator-only demotion command", async t => {
+  const directory = mkdtempSync(path.join(os.tmpdir(), "cabc-demote-"));
+  const filename = path.join(directory, "club.sqlite");
+  const password = "Fictional-demotion-test-12345";
+  await t.test("missing database is never initialized", async () => {
+    const result = await run(filename, "demote");
+    assert.equal(result.code, 1); assert.match(result.output, /not initialized/);
+    assert.equal(existsSync(filename), false);
+  });
+  let db = openDatabase(filename, true);
+  const ids = {};
+  for (const [name, role] of [["Owner", "admin"], ["Target", "admin"], ["Member", "member"],
+    ["Partner", "member"], ["Inactive", "admin"], ["-Guest-", "admin"]])
+    ids[name] = addMember(db, { name, email: `${name === "-Guest-" ? "guest" : name.toLowerCase()}@example.test`, password }, role);
+  db.prepare("UPDATE members SET active=0 WHERE id=?").run(ids.Inactive);
+  db.prepare("INSERT INTO games(id,date,time,event_type) VALUES(1,'2099-12-01','11:30','teams')").run();
+  for (const [id, partner] of [[ids.Owner, ids.Target], [ids.Target, ids.Owner],
+    [ids.Member, ids.Partner], [ids.Partner, ids.Member]]) {
+    db.prepare("INSERT INTO entries VALUES(1,?,?)").run(id, partner);
+    db.prepare("INSERT INTO team_members VALUES(1,?,'demotion-team')").run(id);
+  }
+  const pdf = Buffer.from("%PDF-1.4\n%%EOF\n");
+  db.prepare("INSERT INTO documents(title,filename,content,size,uploaded_by,created_at,updated_at) VALUES('Private','private.pdf',?,?,?,'2026-01-01','2026-01-01')")
+    .run(pdf, pdf.length, ids.Target);
+  db.prepare("INSERT INTO notification_preferences VALUES(?,0,'demotion-token','2026-01-01')").run(ids.Target);
+  for (const [token, id] of [["a", ids.Owner], ["b", ids.Target], ["c", ids.Target], ["d", ids.Member]])
+    db.prepare("INSERT INTO sessions VALUES(?,?,?)").run(hashToken(token.repeat(64)), id, Date.now() + 30 * 86400000);
+  const snapshot = () => Object.fromEntries(["members", "games", "entries", "team_members", "documents",
+    "document_audit", "notification_preferences", "notification_outbox", "sessions"].map(table =>
+    [table, db.prepare(`SELECT * FROM ${table} ORDER BY rowid`).all()]));
+  const server = createApp({ db });
+  server.listen(0, "127.0.0.1"); await once(server, "listening");
+  const base = `http://127.0.0.1:${server.address().port}/api`;
+  const request = (route, token, body, extra = {}) => fetch(base + route, {
+    method: body === undefined ? "GET" : "POST",
+    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(body === undefined ? {} : { "Content-Type": "application/json" }), ...extra },
+    ...(body === undefined ? {} : { body: JSON.stringify(body) })
+  });
+  t.after(async () => {
+    server.closeAllConnections(); await new Promise(resolve => server.close(resolve));
+    db.close(); rmSync(directory, { recursive: true, force: true });
+  });
+  await t.test("noninteractive, missing, blank, placeholder and injected targets are unchanged", async () => {
+    const before = snapshot();
+    assert.equal((await run(filename, "demote", [], false)).code, 1);
+    for (const email of ["absent@example.test", "", "' OR 1=1 --", "guest@example.test"])
+      assert.equal((await run(filename, "demote", [email])).code, 1);
+    assert.deepEqual(snapshot(), before);
+  });
+  await t.test("regular members are idempotent and explicit confirmation is required", async () => {
+    const before = snapshot();
+    const regular = await run(filename, "demote", ["member@example.test"]);
+    assert.equal(regular.code, 0); assert.match(regular.output, /already a regular member/);
+    for (const answer of ["", "no", "demote"])
+      assert.equal((await run(filename, "demote", ["target@example.test", answer])).code, 1);
+    assert.deepEqual(snapshot(), before);
+  });
+  await t.test("stale account review is rejected under the write lock", async () => {
+    const result = await run(filename, "demote", ["target@example.test", "DEMOTE"], true, prompt => {
+      if (prompt.startsWith("Type DEMOTE")) db.prepare("UPDATE members SET name='Renamed Target' WHERE id=?").run(ids.Target);
+    });
+    assert.equal(result.code, 1); assert.match(result.output, /account changed/);
+    assert.equal(db.prepare("SELECT role FROM members WHERE id=?").get(ids.Target).role, "admin");
+    db.prepare("UPDATE members SET name='Target' WHERE id=?").run(ids.Target);
+  });
+  await t.test("session-revocation failure rolls back the demotion", async () => {
+    const before = snapshot();
+    db.exec(`CREATE TRIGGER fail_demote_sessions BEFORE DELETE ON sessions
+      WHEN OLD.member_id=${ids.Target} BEGIN SELECT RAISE(ABORT,'fixture failure'); END`);
+    try {
+      assert.equal((await run(filename, "demote", ["target@example.test", "DEMOTE"])).code, 1);
+      assert.deepEqual(snapshot(), before);
+    } finally { db.exec("DROP TRIGGER fail_demote_sessions"); }
+  });
+  await t.test("neither browser role has a demotion endpoint or UI", async () => {
+    const before = snapshot();
+    const app = readFileSync(path.join(ROOT, "public/app.js"), "utf8");
+    assert.doesNotMatch(app, /Manage administrator access|administrator-access-form|manage-administrator-access/);
+    for (const token of ["a", "d"]) {
+      const response = await request(`/members/${ids.Target}/administrator-access`, token.repeat(64),
+        { action: "remove", confirm: true, currentPassword: password, role: "member" });
+      assert.equal(response.status, 404);
+    }
+    assert.deepEqual(snapshot(), before);
+  });
+  await t.test("confirmed demotion changes only the role and target sessions", async () => {
+    const before = snapshot();
+    const result = await run(filename, "demote", [" TARGET@EXAMPLE.TEST ", "DEMOTE"]);
+    assert.equal(result.code, 0); assert.match(result.output, /Selected administrator: Target/);
+    assert.match(result.output, /Administrator access removed from Target/);
+    assert.doesNotMatch(result.output, /Generated password|Fictional-demotion/);
+    before.members.find(member => member.id === ids.Target).role = "member";
+    before.sessions = before.sessions.filter(session => session.member_id !== ids.Target);
+    assert.deepEqual(snapshot(), before);
+    assert.equal((await request("/calendar", "b".repeat(64))).status, 401);
+    assert.equal((await request("/session", null, undefined, { Cookie: `__Host-cabc_session=${"c".repeat(64)}` })).status, 401);
+    assert.equal((await request("/members/manage", "a".repeat(64))).status, 200);
+    const login = await request("/login", null, { email: "target@example.test", password });
+    assert.equal(login.status, 200);
+    const session = await login.json();
+    assert.equal(session.member.role, "member");
+    assert.equal((await request("/members/manage", session.token)).status, 403);
+    const reopened = openDatabase(filename);
+    try { assert.equal(reopened.prepare("SELECT role FROM members WHERE id=?").get(ids.Target).role, "member"); }
+    finally { reopened.close(); }
+  });
+  await t.test("last active real admin is protected even with inactive and placeholder admins", async () => {
+    const before = snapshot();
+    const result = await run(filename, "demote", ["owner@example.test", "DEMOTE"]);
+    assert.equal(result.code, 1); assert.match(result.output, /last active administrator/);
+    assert.deepEqual(snapshot(), before);
+  });
+  await t.test("inactive admin can lose role without being reactivated", async () => {
+    const result = await run(filename, "demote", ["inactive@example.test", "DEMOTE"]);
+    assert.equal(result.code, 0);
+    const member = db.prepare("SELECT role,active FROM members WHERE id=?").get(ids.Inactive);
+    assert.equal(member.role, "member"); assert.equal(member.active, 0);
+  });
+  await t.test("concurrent commands cannot demote both remaining real admins", async () => {
+    db.prepare("UPDATE members SET role='admin' WHERE id=?").run(ids.Target);
+    const results = await Promise.all([
+      run(filename, "demote", ["owner@example.test", "DEMOTE"]),
+      run(filename, "demote", ["target@example.test", "DEMOTE"])
+    ]);
+    assert.equal(results.filter(result => result.code === 0).length, 1);
+    assert.equal(results.filter(result => /last active administrator/.test(result.output)).length, 1);
+    assert.equal(db.prepare("SELECT count(*) AS n FROM members WHERE active=1 AND role='admin' AND id IN (?,?)")
+      .get(ids.Owner, ids.Target).n, 1);
+  });
+  await t.test("usage lists both operator-only role commands", async () => {
+    assert.match((await run(filename, "unknown")).output, /Usage:.*promote.*demote/);
+  });
+});
 
 test("operator promotion command", async t => {
   const directory = mkdtempSync(path.join(os.tmpdir(), "cabc-manage-"));

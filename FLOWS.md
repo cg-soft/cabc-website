@@ -1,22 +1,22 @@
 # Main flows and calendar layout checks
 
-## Manage administrator access
-- Only signed-in administrators see Manage administrator access. Open an
-  independent selector of active, real administrators; never default to Acting
-  for or silently select a target. Mark your own account and protect the last admin.
-- Require the signed-in administrator's password and explicit confirmation.
-  Remove access only; preserve passwords, active status, games, pairs, teams,
-  document records and notification settings. Revoke every target session.
-- Other-account removal keeps the actor signed in. Self-removal signs out and
-  explains how to sign back in as a regular member. Ordinary members cannot
-  invoke the endpoint or read the management list.
-- Check wrong password, absent confirmation, inactive/non-admin/placeholder
-  targets, stale selection, forged promotion payload, last-admin protection,
-  bearer/remembered session revocation, CSRF and rate limiting.
-- At desktop and 375px check dialog labels, keyboard focus, cancellation,
-  errors, pending controls, self-warning and no horizontal overflow.
-- Recheck public navigation/About versions/history, both roles, Acting for,
-  yearly schedules/jumps, pairs/teams, Documents, export and account/game dialogs.
+## Command-line-only administrator demotion
+- Administrator and member calendars have no Manage administrator access
+  control. No browser demotion handler or API endpoint remains; direct calls
+  to the old endpoint cannot change roles, even with an administrator session.
+- `node manage.mjs demote` uses the configured DB_PATH and an interactive
+  terminal. Enter the email, review name/email and type DEMOTE to confirm.
+- Preserve accounts/passwords/active status/schedules/teams/documents and
+  notification records. Revoke only the demoted account's sessions, including
+  remembered devices. Already-regular accounts are unchanged successes.
+- Protect the last active real administrator, including simultaneous commands;
+  inactive/placeholder admins do not count as a remaining sign-in account.
+- Test cancelled, missing, blank, injected and stale targets, noninteractive
+  use, inactive accounts, transactional failure and persistent regular-member
+  sign-in. Promotion/reset/init keep working.
+- Recheck the existing public pages, both calendar roles, Acting for, schedule
+  tables/jumps, pair/team cards, Documents/export and account/game dialogs at
+  desktop and 375px. About history describes command-line-only demotion.
 
 ## About recent changes
 - Beneath the Website version disclosure, show an independent Recent changes

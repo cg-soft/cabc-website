@@ -1288,7 +1288,43 @@ The preview uses a separate copy of public assets with a preview-only API base.
 The production source remains same-origin and requires no build step.
 Native built-in SQLite is experimental in the tested Node 22 version; Dathorn
 compatibility and production routing are not verified by these local tests.
-## Administrator access removal: November 17, 2026
+## Command-line-only administrator demotion: November 17, 2026
+
+- This supersedes the browser-demotion implementation. The UI, submit handler
+  and HTTP endpoint were removed; promotion remains command-line only too.
+- All 344 automated tests pass on Node 24.22.2. Focused management, password
+  and version tests pass (63 tests).
+- Tests execute the actual management command in child processes with a
+  test-only simulated TTY. Coverage includes missing database, noninteractive
+  rejection, normalized/unknown/blank/injected/placeholder email, already-regular
+  member, explicit DEMOTE confirmation, cancellation, stale account review,
+  rollback on session-delete failure, inactive-account preservation and
+  concurrent last-admin protection.
+- Snapshots verify only the selected role and sessions change. Passwords,
+  active state, accounts, games, pairs, teams, PDFs, document audit, email
+  preferences and outbox remain unchanged. Old bearer/remembered sessions
+  fail; the unchanged password signs an active demoted account in as a member.
+- Administrator and member requests to the removed demotion endpoint return
+  404 without changing records. Static checks also prevent reintroducing the
+  browser control or submit handler.
+- Browser checks confirm both roles lack the control and existing account
+  dialogs still open/cancel. Rechecked Acting for/Return, own and guest
+  schedules/date jump, team card, Documents/inline PDF, Home/About/Login,
+  matching backend diagnostics and corrected change-history text.
+- Desktop (1280px) and phone (375px) calendar screenshots were inspected;
+  phone page width equals viewport width. No page exceptions were observed.
+  QA used only fictional preview data and temporary test databases, with no
+  Dathorn changes or real email delivery.
+- Installing only `manage.mjs` enables the operator command without restart.
+  The complete release additionally updates `server.mjs`, `release.mjs` and
+  public `app.js`, with one restart, to remove any installed browser endpoint
+  and align version diagnostics. No migration or dependencies are needed.
+
+## Historical browser demotion QA: superseded
+
+The following results describe the earlier preview only. Its browser control,
+endpoint and installation directions are superseded by the command-line-only
+release described above.
 
 - All 340 automated tests pass on Node 24.22.2 after final UI edits. The
   dedicated access-removal suite checks authorization, input validation,

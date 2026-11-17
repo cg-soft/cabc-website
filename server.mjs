@@ -315,40 +315,6 @@ export function createApp({ db = openDatabase(), preview = false, previewToday,
         admin(user);
         return reply(200, { members: db.prepare("SELECT id,name,email,role,active FROM members ORDER BY active DESC,name,email").all() });
       }
-      const administratorAccessRoute = /^\/api\/members\/(\d+)\/administrator-access$/.exec(route);
-      if (administratorAccessRoute && req.method === "POST") {
-        admin(user);
-        const id = Number(administratorAccessRoute[1]);
-        if (!Number.isSafeInteger(id) || id <= 0) throw new HttpError(400, "Choose a valid administrator.");
-        if (body.confirm !== true || body.action !== "remove")
-          throw new HttpError(400, "Confirm removal of administrator access.");
-        const { currentPassword } = body;
-        if (typeof currentPassword !== "string" || currentPassword.length < 1 || currentPassword.length > 128)
-          throw new HttpError(400, "Enter your administrator password.");
-        passwordLimit(user.id);
-        const actorPassword = db.prepare("SELECT password FROM members WHERE id=?").get(user.id)?.password;
-        if (!actorPassword || !passwordMatches(currentPassword, actorPassword))
-          throw new HttpError(400, "Your administrator password is incorrect.");
-        const result = transaction(db, () => {
-          // Recheck both accounts under the write lock, including the last-admin count.
-          const actor = auth(req); admin(actor);
-          if (db.prepare("SELECT password FROM members WHERE id=?").get(actor.id)?.password !== actorPassword)
-            throw new HttpError(409, "Your account changed. Please sign in again before retrying.");
-          const target = db.prepare("SELECT id,name,active,role FROM members WHERE id=?").get(id);
-          if (!target) throw new HttpError(404, "Member not found.");
-          if (target.active !== 1 || target.role !== "admin" || wildcardType(target.name))
-            throw new HttpError(409, "Choose an active administrator. Close the form and select again.");
-          if (db.prepare("SELECT name FROM members WHERE active=1 AND role='admin'").all()
-            .filter(member => !wildcardType(member.name)).length <= 1)
-            throw new HttpError(409, "You cannot remove the last active administrator.");
-          db.prepare("UPDATE members SET role='member' WHERE id=?").run(id);
-          db.prepare("DELETE FROM sessions WHERE member_id=?").run(id);
-          return { ok: true, self: id === actor.id };
-        });
-        passwordAttempts.delete(user.id);
-        if (result.self) res.setHeader("Set-Cookie", cookieHeader());
-        return reply(200, result);
-      }
       const resetPasswordRoute = /^\/api\/members\/(\d+)\/password$/.exec(route);
       if (resetPasswordRoute && req.method === "POST") {
         admin(user);

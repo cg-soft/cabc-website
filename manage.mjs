@@ -1,17 +1,18 @@
 import { randomBytes } from "node:crypto";
 import { createInterface } from "node:readline/promises";
 import { stdin, stdout } from "node:process";
-import { openDatabase, addMember, transaction, passwordHash, clubToday } from "./db.mjs";
+import { openDatabase, addMember, transaction, passwordHash, clubToday, requireMemberStatus, wildcardType } from "./db.mjs";
 
 process.umask(0o077);
 const command = process.argv[2];
-if (!["init", "preview", "reset-password", "promote"].includes(command)) {
-  console.error("Usage: node manage.mjs init | preview | reset-password | promote");
+if (!["init", "preview", "reset-password", "promote", "demote"].includes(command)) {
+  console.error("Usage: node manage.mjs init | preview | reset-password | promote | demote");
   process.exit(1);
 }
 let db;
 try {
   db = openDatabase(undefined, ["init", "preview"].includes(command));
+  if (command === "demote") requireMemberStatus(db);
   if (command === "preview") {
     if (db.prepare("SELECT count(*) AS n FROM members").get().n) throw new Error("Preview seeding requires an empty database. No records were changed.");
     transaction(db, () => {
@@ -42,7 +43,31 @@ try {
     const readline = createInterface({ input: stdin, output: stdout });
     try {
       const email = (await readline.question("Email: ")).trim().toLowerCase();
-      if (command === "promote") {
+      if (command === "demote") {
+        const selected = db.prepare("SELECT id,name,email,role,active FROM members WHERE email=?").get(email);
+        if (!selected) throw new Error("Account not found. No accounts were changed.");
+        if (wildcardType(selected.name)) throw new Error("Choose a real member, not a placeholder account.");
+        if (selected.role !== "admin") {
+          console.log(`${selected.name} (${selected.email}) is already a regular member. No changes made.`);
+        } else {
+          console.log(`Selected administrator: ${selected.name} (${selected.email})${selected.active === 0 ? " [inactive]" : ""}`);
+          const confirmation = await readline.question("Type DEMOTE to remove administrator access and sign out this account on all devices: ");
+          if (confirmation.trim() !== "DEMOTE") throw new Error("Demotion cancelled. No accounts were changed.");
+          const message = transaction(db, () => {
+            const current = db.prepare("SELECT id,name,email,role,active FROM members WHERE id=?").get(selected.id);
+            if (!current || Object.keys(selected).some(key => current[key] !== selected[key]))
+              throw new Error("This account changed. Run demote again and review the account. No accounts were changed.");
+            const remainingAdmins = db.prepare("SELECT name FROM members WHERE active=1 AND role='admin' AND id<>?")
+              .all(current.id).filter(member => !wildcardType(member.name));
+            if (current.active === 1 && remainingAdmins.length === 0)
+              throw new Error("You cannot remove the last active administrator. No accounts were changed.");
+            db.prepare("UPDATE members SET role='member' WHERE id=?").run(current.id);
+            db.prepare("DELETE FROM sessions WHERE member_id=?").run(current.id);
+            return `Administrator access removed from ${current.name} (${current.email}). Account, password and scheduled games unchanged. Signed out on all devices.`;
+          });
+          console.log(message);
+        }
+      } else if (command === "promote") {
         const message = transaction(db, () => {
           const member = db.prepare("SELECT * FROM members WHERE email=?").get(email);
           if (!member) throw new Error("Account not found. No accounts were changed.");

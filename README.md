@@ -243,7 +243,7 @@ member-status-schema.sql  Inactive-account and last-active-admin protection trig
 deactivation-tests.mjs    Migration, review, access, history, concurrency and backup checks
 team-tests.mjs      Migration, formation, ownership, race, dissolution and backup checks
 migrate.mjs         Explicit additive migrations for the minimal site
-manage.mjs          Initialize, create fictional preview, reset a password, promote a member
+manage.mjs          Initialize, create fictional preview, reset a password, promote/demote
 manage-tests.mjs    Operator promotion, preservation and management regression tests
 import-members.mjs  Validate/import private CSVs without replacing existing accounts
 import-members-tests.mjs CSV validation, rollback, credential and persistence checks
@@ -356,25 +356,36 @@ sessions for that account are revoked. The command does not send the password.
 
 ### Remove administrator access
 
-Signed-in administrators can select **Manage administrator access** above the
-calendar. Choose an administrator explicitly, enter your own administrator
-password, check the confirmation and select **Remove administrator access**.
-This selector is independent of **Acting for** and only removes access.
+Demotion is command-line only, like promotion. In an interactive SSH terminal,
+run this from `~/src/cabc-minimal` using the live database:
 
-The account remains active with the same password, scheduled games, pairs and
-teams. All of the selected account's sessions, including remembered devices,
-are revoked. Removing your own access signs you out; sign back in with your
-existing password as a regular member. The last active real administrator
-cannot be removed, even with concurrent requests. Inactive and placeholder
-accounts cannot serve as the remaining administrator.
+```sh
+DB_PATH=/home/cabc/src/cabc-minimal/private/cabc-minimal \
+  /opt/alt/alt-nodejs24/root/usr/bin/node manage.mjs demote
+```
 
-To install this change on an already-current Dathorn installation, upload
-`server.mjs` and generated `release.mjs` to `~/src/cabc-minimal/`, and stamped
-`public/app.js` to `~/public_html/app.js`. Preserve the live database, private
-configuration, `config.js`, `.htaccess`, symlinks and dependencies. Restart the
-Node application once and reload the website. No database migration or
-dependency installation is needed. Unlike a website-only styling change, this
-feature requires the matching updated backend and one restart.
+Enter the member's email, review the displayed name and email, and type `DEMOTE`
+to confirm. Any other response cancels without changes. The account remains
+active (or inactive, if already inactive), with the same password, scheduled
+games, partnerships, teams and document records. All of that member's sessions,
+including remembered devices, are revoked. They can sign back in as a regular
+member with their existing password if the account is active.
+
+The last active real administrator cannot be demoted. Inactive administrators
+and placeholder accounts do not count as another usable administrator.
+Already-regular accounts are reported without changes. There is no website
+control or HTTP endpoint for changing administrator roles.
+
+For an already-current installation that never received the browser-demotion
+release, upload `manage.mjs` to `~/src/cabc-minimal/`. No backend restart,
+migration or dependency installation is required to use the new command.
+To install this complete release, including the updated About history and
+removal of the browser feature, also upload `server.mjs` and generated
+`release.mjs` to the application directory and stamped `public/app.js` to
+`~/public_html/app.js`, then restart Node once. This is required if you
+installed the earlier browser-demotion release, to remove its endpoint.
+Preserve private configuration, the live database,
+`config.js`, `.htaccess`, symlinks and dependencies.
 
 ### Grant administrator access
 

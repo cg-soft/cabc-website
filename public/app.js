@@ -1,10 +1,10 @@
 (() => {
-  const FRONTEND_VERSION = "1.0.1+c8b42381b00d";
-  const EXPECTED_BACKEND_VERSION = "1.0.1+5c7fab8a2c94";
+  const FRONTEND_VERSION = "1.0.1+64cfc89a33e7";
+  const EXPECTED_BACKEND_VERSION = "1.0.1+168f7a3d7f2e";
   // Newest first; dates describe source updates, not an installation's upload date.
   // Add a concise entry here when releasing a user-visible website change.
   const WEBSITE_CHANGES = [
-    ["2026-11-17", "Added safe removal of administrator access."],
+    ["2026-11-17", "Added command-line-only administrator demotion."],
     ["2026-11-16", "Added dated change history to About."],
     ["2026-11-16", "Grouped schedules by year; compacted pair/team rows."],
     ["2026-11-16", "Added My Own Dates for current and future games."],
@@ -277,7 +277,7 @@
   function calendarShell() {
     return header(`${state.user.role === "admin" ? `<div id="acting-controls"><span class="identity">${esc(state.user.name)}</span></div>` : `<span class="identity">${esc(state.user.name)}</span>`}${button("Home", "home", "quiet")}${button("Log out", "logout", "quiet")}`, false, "calendar-header") +
       `<main class="calendar-page"><div class="calendar-heading"><div><p class="eyebrow">Members’ calendar</p><h1>Playing dates</h1></div>
-      <div class="admin-actions">${button("Documents", "documents", "quiet")}${button("Export my games", "export-games", "quiet")}${button("Change password", "change-password", "quiet")}<span id="email-settings"></span>${state.user.role === "admin" ? `${button("Add member", "add-member", "quiet")}${button("Reset member password", "reset-member-password", "quiet")}${button("Manage administrator access", "manage-administrator-access", "quiet")}${button("Deactivate member", "deactivate-member", "quiet")}${button("+ Add date", "add-date", "primary")}` : ""}</div></div>
+      <div class="admin-actions">${button("Documents", "documents", "quiet")}${button("Export my games", "export-games", "quiet")}${button("Change password", "change-password", "quiet")}<span id="email-settings"></span>${state.user.role === "admin" ? `${button("Add member", "add-member", "quiet")}${button("Reset member password", "reset-member-password", "quiet")}${button("Deactivate member", "deactivate-member", "quiet")}${button("+ Add date", "add-date", "primary")}` : ""}</div></div>
       ${state.config?.preview ? '<p class="preview-line">Private preview · fictional members and sample dates</p>' : ""}
       ${state.user.role === "admin" ? '<div id="acting-status"></div>' : ""}
       <div id="calendar-content" aria-busy="true"><div class="loading-surface">Loading the calendar…</div></div>${installHelp()}</main>`;
@@ -654,29 +654,6 @@
       }
       if (action === "add-member") openDialog("Add a member", `<form id="member-form"><label>Full name<input name="name" required minlength="2" maxlength="80" autocomplete="off"></label><label>Email<input name="email" type="email" required maxlength="180" autocomplete="off"></label><label>Initial password<input name="password" type="password" required minlength="12" maxlength="128" autocomplete="new-password"></label><p class="small-note">Use at least 12 characters. Share the credentials privately with the member.</p><p class="form-error" role="alert"></p><button type="submit" class="primary wide">Create member</button></form>`);
       if (action === "deactivate-member") { control.disabled = true; await chooseDeactivation(); }
-      if (action === "manage-administrator-access") {
-        if (state.user?.role !== "admin") return;
-        const identity = sessionIdentity();
-        control.disabled = true;
-        try {
-          const result = await api("/members/manage");
-          if (sessionIdentity() !== identity || state.user?.role !== "admin") return;
-          const administrators = result.members.filter(member => member.active === 1 && member.role === "admin");
-          const eligible = administrators.filter(member => !["-Guest-", "-Standby-", "-Unavailable-"].includes(member.name.trim()));
-          const last = eligible.length <= 1;
-          openDialog("Manage administrator access", `<form id="administrator-access-form">
-            <p>Remove administrator access from the account you select here. This does not follow Acting for and cannot grant access.</p>
-            ${last ? '<p class="small-note">The last active administrator cannot be removed. Another active administrator must exist first.</p>' : ""}
-            <label>Administrator<select name="memberId" aria-label="Administrator" required ${last ? "disabled" : ""}><option value="">Choose an administrator…</option>${eligible.map(member => `<option value="${member.id}" ${last ? "disabled" : ""}>${esc(member.name)} (${esc(member.email)})${member.id === state.user.id ? " · yourself" : ""}${last ? " · last active administrator" : ""}</option>`).join("")}</select></label>
-            <label>Your administrator password<input name="currentPassword" type="password" autocomplete="current-password" required maxlength="128" ${last ? "disabled" : ""}></label>
-            <p class="small-note">The selected account stays active, with the same password and scheduled games, but is signed out on every device. If you select yourself, you will be signed out too.</p>
-            <label class="remember-device"><input name="confirm" type="checkbox" value="true" required ${last ? "disabled" : ""}><span>Remove administrator access from the selected account and sign it out on all devices.</span></label>
-            <p class="form-error" role="alert"></p><button type="submit" class="danger-primary wide" ${last ? "disabled" : ""}>Remove administrator access</button>${button("Cancel", "close-dialog", "quiet wide")}
-          </form>`);
-          dialog.querySelector(last ? '[data-action="close-dialog"]' : '[name="memberId"]').focus();
-        } finally { if (control.isConnected) control.disabled = false; }
-        return;
-      }
       if (action === "reset-member-password") {
         if (state.user?.role !== "admin") return;
         const identity = sessionIdentity();
@@ -814,26 +791,6 @@
         location.hash = "#login";
         return;
       }
-      if (form.id === "administrator-access-form") {
-        const targetLabel = form.querySelector('[name="memberId"]').selectedOptions[0].textContent;
-        dialog.dataset.passwordPending = "true";
-        dialog.querySelectorAll('input, select, [data-action="close-dialog"]').forEach(control => { control.disabled = true; });
-        submit.textContent = "Removing…";
-        const result = await api(`/members/${Number(fields.memberId)}/administrator-access`, "POST", {
-          action: "remove", currentPassword: fields.currentPassword, confirm: fields.confirm === "true"
-        });
-        form.reset();
-        dialog.close();
-        if (result.self) {
-          clearIdentity();
-          document.querySelector("#toast").textContent = "";
-          state.loginNotice = "Your administrator access was removed. Sign in again as a regular member with your existing password.";
-          location.hash = "#login";
-        } else {
-          toast(`Administrator access removed from ${targetLabel}. The member is signed out on all devices; their scheduled games are unchanged.`);
-        }
-        return;
-      }
       if (form.id === "reset-member-password-form") {
         if (fields.newPassword !== fields.confirmPassword) throw new Error("The new passwords do not match.");
         const member = form.querySelector('[name="memberId"]');
@@ -943,12 +900,12 @@
         dialog.querySelectorAll('[data-action="close-dialog"]').forEach(button => { button.disabled = false; });
         if (submit.isConnected) submit.textContent = form.id === "email-preferences-form" ? "Save email preferences" : "Deactivate member";
       }
-      if (["password-form", "reset-member-password-form", "administrator-access-form"].includes(form.id)) {
+      if (form.id === "password-form" || form.id === "reset-member-password-form") {
         delete dialog.dataset.passwordPending;
-        if (form.id !== "password-form")
+        if (form.id === "reset-member-password-form")
           form.querySelectorAll("input, select").forEach(control => { control.disabled = false; });
         dialog.querySelectorAll('[data-action="close-dialog"]').forEach(button => { button.disabled = false; });
-        if (submit.isConnected) submit.textContent = form.id === "password-form" ? "Update password" : form.id === "administrator-access-form" ? "Remove administrator access" : "Reset member password";
+        if (submit.isConnected) submit.textContent = form.id === "password-form" ? "Update password" : "Reset member password";
       }
       if (submit.isConnected) submit.disabled = false;
     }
