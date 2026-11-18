@@ -1,5 +1,15 @@
 # Main flows and calendar layout checks
 
+## Help: sign in and register a partner
+- Open Help from Home, Login, or the calendar. The public Help page offers six
+  ordered instructions, with the first two under Sign in and the rest under
+  Register with a partner. Signed-in visitors can return to their calendar.
+- All six screenshots start collapsed and can be expanded or collapsed
+  independently by mouse, touch, Enter, or Space. Check inline image loads,
+  alt text, 375px fit, and scrolling without horizontal overflow.
+- Keep supplied member names as approved, but strip the browser chrome and
+  example login field values. Never serve the source PDF or unedited images.
+
 ## Command-line-only administrator demotion
 - Administrator and member calendars have no Manage administrator access
   control. No browser demotion handler or API endpoint remains; direct calls

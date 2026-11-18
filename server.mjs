@@ -10,6 +10,7 @@ import { registeredGamesCalendar } from "./icalendar.mjs";
 import { notificationsAvailable, preference, setPreference, entrySnapshot, queueChanges } from "./notifications.mjs";
 import { ROOT, openDatabase, passwordHash, passwordMatches, hashToken, transaction, addMember, clubToday, HttpError, requireMemberStatus, wildcardType, WILDCARD_TYPES } from "./db.mjs";
 
+const HELP_ASSETS = new Set(Array.from({ length: 6 }, (_, i) => `/help/step-${i + 1}.webp`));
 const SERVER_STARTED_AT = new Date().toISOString();
 const SESSION_COOKIE = "__Host-cabc_session";
 const REMEMBER_SECONDS = 30 * 24 * 3600;
@@ -216,7 +217,7 @@ export function createApp({ db = openDatabase(), preview = false, previewToday,
           "/web-app.js": "web-app.js", "/manifest.webmanifest": "manifest.webmanifest",
           "/apple-touch-icon.png": "apple-touch-icon.png", "/app-icon-192.png": "app-icon-192.png", "/app-icon-512.png": "app-icon-512.png",
           "/slides/table.webp": "slides/table.webp", "/slides/room.webp": "slides/room.webp", "/favicon.png": "favicon.png", "/club-logo.png": "club-logo.png" };
-        const file = Object.hasOwn(files, route) ? files[route] : PDF_ASSETS.has(route) ? route.slice(1) : null;
+        const file = Object.hasOwn(files, route) ? files[route] : (PDF_ASSETS.has(route) || HELP_ASSETS.has(route)) ? route.slice(1) : null;
         if (!file) throw new HttpError(404, "Not found.");
         let content;
         try { content = await readFile(path.join(publicRoot, file)); }

@@ -13,7 +13,7 @@ import { releaseFingerprint, stampRelease } from "./release-version.mjs";
 const frontend = readFileSync(new URL("./public/app.js", import.meta.url), "utf8");
 const frontendVersion = /const FRONTEND_VERSION = "([^"]+)";/.exec(frontend)[1];
 
-function aboutMarkup() {
+function pageMarkup(renderer = "renderAbout", user = null) {
   const root = { innerHTML: "", querySelector: () => ({ isConnected: false }) };
   const sandbox = {
     window: { addEventListener() {}, CABC_API: "" },
@@ -21,10 +21,25 @@ function aboutMarkup() {
     AbortController, setTimeout, clearTimeout,
     fetch: async () => ({ ok: true, json: async () => ({ version: VERSION }) })
   };
-  vm.runInNewContext(frontend.replace("  route();\n})();", "  window.renderAbout = renderAbout;\n})();"), sandbox);
-  sandbox.window.renderAbout();
+  vm.runInNewContext(frontend.replace("  route();\n})();", `  state.user = ${JSON.stringify(user)};\n  ${renderer}();\n})();`), sandbox);
   return root.innerHTML;
 }
+const aboutMarkup = () => pageMarkup();
+
+test("Help has two ordered sections, six independent collapsed screenshots and account-aware navigation", () => {
+  const html = pageMarkup("renderHelp");
+  assert.match(html, /id="help-sign-in">Sign in<\/h2><ol class="help-steps" start="1"/);
+  assert.match(html, /id="help-register">Register with a partner<\/h2><ol class="help-steps" start="3"/);
+  const panels = [...html.matchAll(/<details([^>]*)>([\s\S]*?)<\/details>/g)];
+  assert.equal(panels.length, 6);
+  for (const [index, [, attributes, details]] of panels.entries()) {
+    assert.doesNotMatch(attributes, /\bopen\b/);
+    assert.ok(details.includes(`./help/step-${index + 1}.webp`));
+    assert.match(details, /<img[^>]+alt="[^"]+"/);
+  }
+  assert.match(html, /Go to login/);
+  assert.match(pageMarkup("renderHelp", { role: "member" }), /Back to calendar/);
+});
 
 test("About preserves the supplied club description and contact details", () => {
   const html = aboutMarkup();
@@ -179,6 +194,15 @@ test("version API is public, stable, uncached and exposes only version/start tim
   assert.equal((await fetch(`${base}/api/calendar`)).status, 401);
   for (const file of ["release.mjs", "release-version.mjs", "version-tests.mjs"])
     assert.equal((await fetch(`${base}/${file}`)).status, 404);
+  for (let step = 1; step <= 6; step++) {
+    const filename = `/help/step-${step}.webp`;
+    const asset = await fetch(base + filename);
+    assert.equal(asset.status, 200);
+    assert.equal(asset.headers.get("content-type"), "image/webp");
+    assert.deepEqual(Buffer.from(await asset.arrayBuffer()), readFileSync(new URL(`./public${filename}`, import.meta.url)));
+  }
+  for (const filename of ["/help/step-7.webp", "/help/cabc.club.pdf", "/cabc.club.pdf"])
+    assert.equal((await fetch(base + filename)).status, 404);
   assert.equal(db.prepare("SELECT count(*) AS n FROM sessions").get().n, 0);
   assert.equal(db.prepare("SELECT count(*) AS n FROM members").get().n, 0);
 });

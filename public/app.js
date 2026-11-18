@@ -1,9 +1,10 @@
 (() => {
-  const FRONTEND_VERSION = "1.0.1+64cfc89a33e7";
-  const EXPECTED_BACKEND_VERSION = "1.0.1+168f7a3d7f2e";
+  const FRONTEND_VERSION = "1.0.1+4f01cd330ed6";
+  const EXPECTED_BACKEND_VERSION = "1.0.1+cb72a2814261";
   // Newest first; dates describe source updates, not an installation's upload date.
   // Add a concise entry here when releasing a user-visible website change.
   const WEBSITE_CHANGES = [
+    ["2026-11-17", "Added a six-step Help guide with expandable screenshots."],
     ["2026-11-17", "Added command-line-only administrator demotion."],
     ["2026-11-16", "Added dated change history to About."],
     ["2026-11-16", "Grouped schedules by year; compacted pair/team rows."],
@@ -157,6 +158,7 @@
     else if (screen === "login" && state.user) { location.hash = "#calendar"; return; }
     else if (screen === "home") renderHome();
     else if (screen === "about") renderAbout();
+    else if (screen === "help") renderHelp();
     else if (screen === "calendar" && state.user) renderCalendar();
     else if (screen === "documents" && state.user) renderDocuments();
     else renderLogin();
@@ -171,7 +173,7 @@
           <img class="slide ${slide === 1 ? "active" : ""}" src="./slides/room.webp" alt="A sunlit room with a card table and four chairs." ${slide === 0 ? 'loading="lazy"' : ""}>
           <figcaption><span class="slide-counter">${String(slide + 1).padStart(2, "0")} <span>/ 02</span></span><span class="slide-note">Illustrative photography<span class="pause-hint"> · Space to pause</span></span></figcaption>
         </figure>
-        ${header(button("About", "about", "photo-outline") + button("Login", "login", "photo-solid"), true)}
+        ${header(button("About", "about", "photo-outline") + button("Help", "help", "photo-outline") + button("Login", "login", "photo-solid"), true, "home-with-help")}
       </main>`;
     const figure = app.querySelector("figure");
     paused = false;
@@ -183,6 +185,33 @@
       app.querySelectorAll(".slide").forEach((img, i) => img.classList.toggle("active", i === slide));
       app.querySelector(".slide-counter").innerHTML = `${String(slide + 1).padStart(2, "0")} <span>/ 02</span>`;
     }, 6500);
+  }
+  function renderHelp() {
+    document.title = "Help | Chinese American Bridge Club";
+    const next = state.user ? button("Back to calendar", "calendar", "primary") : button("Go to login", "login", "primary");
+    const steps = [
+      ["Open the club website", "Go to cabc.club and select Login at the top of the home page.", "The club home page with an arrow pointing to Login.", 303, 237],
+      ["Enter your email and password", "Use the email address and password for your club account, then select Login. If you need a password or a reset, contact your club administrator.", "The sign-in form with the Email and Password fields and the Login button marked.", 300, 233],
+      ["Find the right month", "On Playing dates, use the left or right arrow beside Upcoming to move through the calendar.", "The playing calendar with an arrow pointing to the month navigation.", 303, 233],
+      ["Select a playing date", "Select the date you want to play. The dance card shows the game details and the pairs already registered.", "A playing date selected in the calendar, with its dance card to the right.", 300, 234],
+      ["Choose your partner", "Under Join this game, open the partner dropdown and select the person you want to play with.", "The partner dropdown open on the dance card.", 303, 235],
+      ["Register the pair", "Select Register to sign up both players. Your partner will get an email if their notifications are enabled. Either player can cancel the registration later.", "The dance card with a partner selected and an arrow pointing to Register.", 300, 235]
+    ];
+    const list = (start, end) => `<ol class="help-steps" start="${start + 1}">${steps.slice(start, end).map(([title, copy, alt, width, height], index) => {
+      const step = start + index + 1;
+      return `<li class="help-step"><div class="help-step-number" aria-hidden="true">${step}</div>
+      <div class="help-step-copy"><h3>${title}</h3><p>${copy}</p></div>
+      <details class="help-shot"><summary aria-label="Screenshot for step ${step}: ${title}"><span class="help-shot-closed">Show screenshot</span><span class="help-shot-open">Hide screenshot</span></summary>
+      <img loading="lazy" decoding="async" src="./help/step-${step}.webp" alt="${alt}" width="${width}" height="${height}"></details></li>`;
+    }).join("")}</ol>`;
+    app.innerHTML = header(button("Home", "home", "quiet") + (state.user ? button("Calendar", "calendar", "primary") : button("Login", "login", "primary"))) + `
+      <main class="help-page">
+        <div class="help-intro"><p class="eyebrow">Member guide · Six steps</p><h1>Help with the club website</h1>
+        <p>Learn how to sign in, choose a playing date, and register with a partner. Select <strong>Show screenshot</strong> on any step to see the desktop example. The layout may look different on a phone.</p></div>
+        <section class="help-section" aria-labelledby="help-sign-in"><h2 id="help-sign-in">Sign in</h2>${list(0, 2)}</section>
+        <section class="help-section" aria-labelledby="help-register"><h2 id="help-register">Register with a partner</h2>${list(2, 6)}</section>
+        <aside class="help-footer"><p><strong>Not ready to pick a partner?</strong> Use the same dropdown to choose Standby or mark yourself Unavailable.</p>${next}</aside>
+      </main>`;
   }
   function renderAbout() {
     document.title = "About | Chinese American Bridge Club";
@@ -246,7 +275,7 @@
   }
   function renderLogin() {
     document.title = "Login | Chinese American Bridge Club";
-    app.innerHTML = header(button("Home", "home", "quiet")) + `
+    app.innerHTML = header(button("Home", "home", "quiet") + button("Help", "help", "quiet")) + `
       <main class="login-layout"><div class="login-photo" role="img" aria-label="Illustrative green felt card table"></div>
       <section class="login-panel"><p class="eyebrow">Members & administrators</p><h1>Welcome back.</h1><p class="muted">Sign in to find your next game and partner.</p>
       ${state.loginNotice ? `<p class="login-notice" role="status">${esc(state.loginNotice)}</p>` : ""}
@@ -277,7 +306,7 @@
   function calendarShell() {
     return header(`${state.user.role === "admin" ? `<div id="acting-controls"><span class="identity">${esc(state.user.name)}</span></div>` : `<span class="identity">${esc(state.user.name)}</span>`}${button("Home", "home", "quiet")}${button("Log out", "logout", "quiet")}`, false, "calendar-header") +
       `<main class="calendar-page"><div class="calendar-heading"><div><p class="eyebrow">Members’ calendar</p><h1>Playing dates</h1></div>
-      <div class="admin-actions">${button("Documents", "documents", "quiet")}${button("Export my games", "export-games", "quiet")}${button("Change password", "change-password", "quiet")}<span id="email-settings"></span>${state.user.role === "admin" ? `${button("Add member", "add-member", "quiet")}${button("Reset member password", "reset-member-password", "quiet")}${button("Deactivate member", "deactivate-member", "quiet")}${button("+ Add date", "add-date", "primary")}` : ""}</div></div>
+      <div class="admin-actions">${button("Documents", "documents", "quiet")}${button("Help", "help", "quiet")}${button("Export my games", "export-games", "quiet")}${button("Change password", "change-password", "quiet")}<span id="email-settings"></span>${state.user.role === "admin" ? `${button("Add member", "add-member", "quiet")}${button("Reset member password", "reset-member-password", "quiet")}${button("Deactivate member", "deactivate-member", "quiet")}${button("+ Add date", "add-date", "primary")}` : ""}</div></div>
       ${state.config?.preview ? '<p class="preview-line">Private preview · fictional members and sample dates</p>' : ""}
       ${state.user.role === "admin" ? '<div id="acting-status"></div>' : ""}
       <div id="calendar-content" aria-busy="true"><div class="loading-surface">Loading the calendar…</div></div>${installHelp()}</main>`;
@@ -557,7 +586,7 @@
     if (!control || control.disabled) return;
     const action = control.dataset.action;
     try {
-      if (["home", "about", "login", "documents", "calendar"].includes(action)) { location.hash = `#${action}`; return; }
+      if (["home", "about", "help", "login", "documents", "calendar"].includes(action)) { location.hash = `#${action}`; return; }
       if (action === "documents-back") { route(); return; }
       if (action === "documents-retry") { await loadDocuments(); return; }
       if (["upload-document", "edit-document", "delete-document"].includes(action)) {
@@ -930,7 +959,7 @@
       const result = await api("/session", "GET", undefined, "json", true);
       if (revision !== authRevision || state.user || !result.remembered) return;
       acceptIdentity(result);
-      if (["#calendar", "#documents"].includes(location.hash)) route();
+      if (["#calendar", "#documents", "#help"].includes(location.hash)) route();
       else if (!location.hash || location.hash === "#login") location.hash = "#calendar";
     } catch {
       // Missing/expired cookies and offline startup leave normal sign-in available.

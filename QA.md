@@ -1356,3 +1356,19 @@ release described above.
 - Production installation requires `server.mjs`, generated `release.mjs`,
   stamped `public/app.js` and one backend restart. No migration, dependency
   installation or stylesheet update is needed on an already-current install.
+## Six-step Help page
+
+- Help is reachable from Home, Login and the signed-in calendar. The six
+  details panels start closed, expand independently and use meaningful image
+  descriptions. Checked mouse, touch, Enter and Space at desktop and 375px.
+- The approved member names remain. Browser chrome and the example email and
+  password field values were removed from the derived images. The original PDF
+  and untouched screenshots are not deployed.
+- In the hosted preview, all six images decoded and the calendar loaded
+  through the backend proxy. Local regressions covered About/version/history,
+  login and both preview roles, the calendar, a My Own Dates jump and the
+  Documents list. No page exceptions or horizontal overflow were observed.
+- Production was not changed. A complete installation requires the updated
+  `server.mjs`, generated `release.mjs`, public `app.js` and `style.css`, and
+  the six `public/help/step-*.webp` files in the public `help/` directory,
+  with one Node restart and no database migration.
