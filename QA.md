@@ -1370,5 +1370,8 @@ release described above.
   Documents list. No page exceptions or horizontal overflow were observed.
 - Production was not changed. A complete installation requires the updated
   `server.mjs`, generated `release.mjs`, public `app.js` and `style.css`, and
-  the six `public/help/step-*.webp` files in the public `help/` directory,
+  the six `public/help/step-*` images in the public `help/` directory,
   with one Node restart and no database migration.
+- All six steps use original-resolution PNGs (2,048–2,063 pixels wide) with
+  browser chrome and metadata removed. The sign-in field values were replaced
+  with solid pixels before encoding its PNG.

@@ -1,6 +1,6 @@
 (() => {
-  const FRONTEND_VERSION = "1.0.1+4f01cd330ed6";
-  const EXPECTED_BACKEND_VERSION = "1.0.1+cb72a2814261";
+  const FRONTEND_VERSION = "1.0.1+47075bae70f8";
+  const EXPECTED_BACKEND_VERSION = "1.0.1+d0aef2cb18ba";
   // Newest first; dates describe source updates, not an installation's upload date.
   // Add a concise entry here when releasing a user-visible website change.
   const WEBSITE_CHANGES = [
@@ -190,19 +190,19 @@
     document.title = "Help | Chinese American Bridge Club";
     const next = state.user ? button("Back to calendar", "calendar", "primary") : button("Go to login", "login", "primary");
     const steps = [
-      ["Open the club website", "Go to cabc.club and select Login at the top of the home page.", "The club home page with an arrow pointing to Login.", 303, 237],
-      ["Enter your email and password", "Use the email address and password for your club account, then select Login. If you need a password or a reset, contact your club administrator.", "The sign-in form with the Email and Password fields and the Login button marked.", 300, 233],
-      ["Find the right month", "On Playing dates, use the left or right arrow beside Upcoming to move through the calendar.", "The playing calendar with an arrow pointing to the month navigation.", 303, 233],
-      ["Select a playing date", "Select the date you want to play. The dance card shows the game details and the pairs already registered.", "A playing date selected in the calendar, with its dance card to the right.", 300, 234],
-      ["Choose your partner", "Under Join this game, open the partner dropdown and select the person you want to play with.", "The partner dropdown open on the dance card.", 303, 235],
-      ["Register the pair", "Select Register to sign up both players. Your partner will get an email if their notifications are enabled. Either player can cancel the registration later.", "The dance card with a partner selected and an arrow pointing to Register.", 300, 235]
+      ["Open the club website", "Go to cabc.club and select Login at the top of the home page.", "The club home page with an arrow pointing to Login.", 2055, 1598],
+      ["Enter your email and password", "Use the email address and password for your club account, then select Login. If you need a password or a reset, contact your club administrator.", "The sign-in form with the Email and Password fields and the Login button marked.", 2056, 1593],
+      ["Find the right month", "On Playing dates, use the left or right arrow beside Upcoming to move through the calendar.", "The playing calendar with an arrow pointing to the month navigation.", 2063, 1587],
+      ["Select a playing date", "Select the date you want to play. The dance card shows the game details and the pairs already registered.", "A playing date selected in the calendar, with its dance card to the right.", 2053, 1599],
+      ["Choose your partner", "Under Join this game, open the partner dropdown and select the person you want to play with.", "The partner dropdown open on the dance card.", 2061, 1591],
+      ["Register the pair", "Select Register to sign up both players. Your partner will get an email if their notifications are enabled. Either player can cancel the registration later.", "The dance card with a partner selected and an arrow pointing to Register.", 2048, 1598]
     ];
     const list = (start, end) => `<ol class="help-steps" start="${start + 1}">${steps.slice(start, end).map(([title, copy, alt, width, height], index) => {
       const step = start + index + 1;
       return `<li class="help-step"><div class="help-step-number" aria-hidden="true">${step}</div>
       <div class="help-step-copy"><h3>${title}</h3><p>${copy}</p></div>
       <details class="help-shot"><summary aria-label="Screenshot for step ${step}: ${title}"><span class="help-shot-closed">Show screenshot</span><span class="help-shot-open">Hide screenshot</span></summary>
-      <img loading="lazy" decoding="async" src="./help/step-${step}.webp" alt="${alt}" width="${width}" height="${height}"></details></li>`;
+      <img loading="lazy" decoding="async" src="./help/step-${step}.png" alt="${alt}" width="${width}" height="${height}"></details></li>`;
     }).join("")}</ol>`;
     app.innerHTML = header(button("Home", "home", "quiet") + (state.user ? button("Calendar", "calendar", "primary") : button("Login", "login", "primary"))) + `
       <main class="help-page">

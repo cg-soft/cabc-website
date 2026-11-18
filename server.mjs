@@ -10,7 +10,7 @@ import { registeredGamesCalendar } from "./icalendar.mjs";
 import { notificationsAvailable, preference, setPreference, entrySnapshot, queueChanges } from "./notifications.mjs";
 import { ROOT, openDatabase, passwordHash, passwordMatches, hashToken, transaction, addMember, clubToday, HttpError, requireMemberStatus, wildcardType, WILDCARD_TYPES } from "./db.mjs";
 
-const HELP_ASSETS = new Set(Array.from({ length: 6 }, (_, i) => `/help/step-${i + 1}.webp`));
+const HELP_ASSETS = new Set(Array.from({ length: 6 }, (_, i) => `/help/step-${i + 1}.png`));
 const SERVER_STARTED_AT = new Date().toISOString();
 const SESSION_COOKIE = "__Host-cabc_session";
 const REMEMBER_SECONDS = 30 * 24 * 3600;

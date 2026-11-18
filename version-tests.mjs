@@ -34,7 +34,7 @@ test("Help has two ordered sections, six independent collapsed screenshots and a
   assert.equal(panels.length, 6);
   for (const [index, [, attributes, details]] of panels.entries()) {
     assert.doesNotMatch(attributes, /\bopen\b/);
-    assert.ok(details.includes(`./help/step-${index + 1}.webp`));
+    assert.ok(details.includes(`./help/step-${index + 1}.png`));
     assert.match(details, /<img[^>]+alt="[^"]+"/);
   }
   assert.match(html, /Go to login/);
@@ -195,13 +195,13 @@ test("version API is public, stable, uncached and exposes only version/start tim
   for (const file of ["release.mjs", "release-version.mjs", "version-tests.mjs"])
     assert.equal((await fetch(`${base}/${file}`)).status, 404);
   for (let step = 1; step <= 6; step++) {
-    const filename = `/help/step-${step}.webp`;
+    const filename = `/help/step-${step}.png`;
     const asset = await fetch(base + filename);
     assert.equal(asset.status, 200);
-    assert.equal(asset.headers.get("content-type"), "image/webp");
+    assert.equal(asset.headers.get("content-type"), "image/png");
     assert.deepEqual(Buffer.from(await asset.arrayBuffer()), readFileSync(new URL(`./public${filename}`, import.meta.url)));
   }
-  for (const filename of ["/help/step-7.webp", "/help/cabc.club.pdf", "/cabc.club.pdf"])
+  for (const filename of ["/help/step-1.webp", "/help/step-2.webp", "/help/step-3.webp", "/help/step-7.png", "/help/cabc.club.pdf", "/cabc.club.pdf"])
     assert.equal((await fetch(base + filename)).status, 404);
   assert.equal(db.prepare("SELECT count(*) AS n FROM sessions").get().n, 0);
   assert.equal(db.prepare("SELECT count(*) AS n FROM members").get().n, 0);
