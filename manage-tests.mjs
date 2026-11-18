@@ -5,16 +5,17 @@ import { once } from "node:events";
 import { mkdtempSync, rmSync, existsSync, readFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { backup } from "node:sqlite";
 import { ROOT, openDatabase, addMember, passwordMatches, hashToken } from "./db.mjs";
 import { createApp } from "./server.mjs";
 
 // Simulate TTY capability only in the child test process; feed answers after prompts.
-function run(filename, command, answers = [], interactive = true, onPrompt = () => {}) {
+function run(filename, command, answers = [], interactive = true, onPrompt = () => {}, commandArgs = []) {
   return new Promise((resolve, reject) => {
     const args = interactive
       ? ["--import", "data:text/javascript,Object.defineProperty(process.stdin,'isTTY',{value:true})"]
       : [];
-    const child = spawn(process.execPath, [...args, "manage.mjs", command], {
+    const child = spawn(process.execPath, [...args, "manage.mjs", command, ...commandArgs], {
       cwd: ROOT, env: { ...process.env, DB_PATH: filename },
       stdio: ["pipe", "pipe", "pipe"]
     });
@@ -23,7 +24,7 @@ function run(filename, command, answers = [], interactive = true, onPrompt = () 
     child.on("error", error => { clearTimeout(timer); reject(error); });
     child.stdout.on("data", data => {
       output += data;
-      if (/(Email|Name): |Type DEMOTE.*: /.test(String(data)) && next < answers.length) {
+      if (/(Email|Name|Email to keep|Duplicate email to retire): |Type (DEMOTE|MERGE).*: /.test(String(data)) && next < answers.length) {
         onPrompt(String(data));
         child.stdin.write(answers[next++] + "\n");
       }
@@ -33,6 +34,117 @@ function run(filename, command, answers = [], interactive = true, onPrompt = () 
     if (!interactive) child.stdin.end();
   });
 }
+
+test("operator-only member merge on a SQLite copy", async t => {
+  const directory = mkdtempSync(path.join(os.tmpdir(), "cabc-merge-"));
+  const source = path.join(directory, "source.sqlite"), copy = path.join(directory, "copy.sqlite");
+  const password = "Fictional-merge-test-12345";
+  const original = openDatabase(source, true);
+  let db;
+  t.after(() => { db?.close(); original.close(); rmSync(directory, { recursive: true, force: true }); });
+  const member = (name, email, role) => addMember(original, { name, email: `${email}@example.test`, password }, role);
+  const keep = member("Duplicate Person", "keep"), retire = member("Duplicate Person", "retire", "admin");
+  const otherAdmin = member("Another Admin", "admin", "admin");
+  const a = member("Partner", "partner"), b = member("Team Player One", "one"), c = member("Team Player Two", "two");
+  const guest = member("-Guest-", "guest"), standby = member("-Standby-", "standby");
+  const game = original.prepare("INSERT INTO games(id,date,event_type) VALUES(?,?,?)");
+  game.run(1, "2024-01-01", "teams"); game.run(2, "2099-01-02", "pairs");
+  game.run(3, "2099-01-03", "pairs"); game.run(4, "2099-01-04", "pairs");
+  const entry = original.prepare("INSERT INTO entries VALUES(?,?,?)");
+  for (const [id, partner] of [[retire,a],[a,retire],[b,c],[c,b]]) {
+    entry.run(1,id,partner);
+    original.prepare("INSERT INTO team_members VALUES(1,?,'intact-team')").run(id);
+  }
+  entry.run(2,retire,guest); entry.run(3,retire,standby); entry.run(3,keep,standby); entry.run(4,retire,null);
+  const session = original.prepare("INSERT INTO sessions VALUES(?,?,?)");
+  session.run("retire-session",retire,4000000000000); session.run("keep-session",keep,4000000000000);
+  original.prepare("INSERT INTO notification_preferences VALUES(?,0,'keep-optout','2026-01-01')").run(keep);
+  const notification = original.prepare("INSERT INTO notification_outbox(id,event_id,member_id,email,payload_json,state,created_at,next_attempt) VALUES(?,?,?,?, '{}',?,1,1)");
+  notification.run("retired-pending","e1",retire,"retire@example.test","pending");
+  notification.run("retired-sent","e2",retire,"retire@example.test","sent");
+  notification.run("kept-pending","e1",keep,"keep@example.test","pending");
+  original.prepare(`INSERT INTO registration_audit VALUES
+    (1,'2024-01-01',?,'Historical actor',?,'Historical target',1,'2024-01-01','register','{}','{}')`).run(retire,retire);
+  const bytes = Buffer.from("%PDF-1.4\n%%EOF\n");
+  original.prepare(`INSERT INTO documents(title,filename,content,size,uploaded_by,created_at,updated_at)
+    VALUES('Historical upload','test.pdf',?,?,?,'2024-01-01','2024-01-01')`).run(bytes,bytes.length,retire);
+  const snapshot = connection => Object.fromEntries(["members","games","entries","team_members","sessions","registration_audit",
+    "documents","document_audit","notification_preferences","notification_outbox"].map(table =>
+    [table,connection.prepare(`SELECT * FROM ${table} ORDER BY rowid`).all()]));
+  const unchanged = snapshot(original);
+  await backup(original, copy);
+  db = openDatabase(copy);
+  const answers = [" KEEP@EXAMPLE.TEST ", "retire@example.test"];
+  const invoke = (more = [], args = [], onPrompt) => run(copy, "merge-member", [...answers,...more], true, onPrompt, args);
+  const checkUnchanged = async (promise, pattern, code = 1) => {
+    const before = snapshot(db);
+    const result = await promise();
+    assert.equal(result.code,code,result.output);
+    assert.match(result.output,pattern);
+    assert.deepEqual(snapshot(db),before);
+  };
+  await t.test("dry-run and cancellation write nothing", async () => {
+    await checkUnchanged(() => invoke([],["--dry-run"]), /2024-01-01:.*keep intact team[\s\S]*2099-01-03: combine identical registrations[\s\S]*Dry run/, 0);
+    await checkUnchanged(() => invoke(["merge"]), /Merge cancelled/);
+    await checkUnchanged(() => run(copy,"merge-member",[],false), /interactive terminal/);
+    await checkUnchanged(() => run(copy,"merge-member",["keep@example.test","keep@example.test"]), /two different accounts/);
+    await checkUnchanged(() => run(copy,"merge-member",["keep@example.test","guest@example.test"]), /Placeholder accounts/);
+  });
+  await t.test("same-day conflict reports the date and never moves even earlier games", async () => {
+    db.prepare("INSERT INTO entries VALUES(?,?,NULL)").run(2,keep);
+    try { await checkUnchanged(() => invoke(["MERGE"]), /2099-01-02: both accounts/); }
+    finally { db.prepare("DELETE FROM entries WHERE game_id=2 AND member_id=?").run(keep); }
+  });
+  await t.test("self-pair, last administrator and in-flight mail are blocked", async () => {
+    db.prepare("UPDATE entries SET partner_id=? WHERE game_id=4 AND member_id=?").run(keep,retire);
+    db.prepare("INSERT INTO entries VALUES(4,?,?)").run(keep,retire);
+    await checkUnchanged(() => invoke(), /2099-01-04: the two accounts are paired/);
+    db.prepare("DELETE FROM entries WHERE game_id=4 AND member_id=?").run(keep);
+    db.prepare("UPDATE entries SET partner_id=NULL WHERE game_id=4 AND member_id=?").run(retire);
+    db.prepare("UPDATE members SET role='member' WHERE id=?").run(otherAdmin);
+    await checkUnchanged(() => invoke(), /last active administrator/);
+    db.prepare("UPDATE members SET role='admin' WHERE id=?").run(otherAdmin);
+    db.exec("UPDATE notification_outbox SET state='sending' WHERE id='retired-pending'");
+    await checkUnchanged(() => invoke(), /in flight/);
+    db.exec("UPDATE notification_outbox SET state='pending' WHERE id='retired-pending'");
+  });
+  await t.test("changed review and a late write failure cannot partially merge", async () => {
+    const review = await invoke(["MERGE"],[],prompt => {
+      if (prompt.startsWith("Type MERGE")) db.exec("UPDATE games SET name='Changed during review' WHERE id=1");
+    });
+    assert.equal(review.code,1,review.output);
+    assert.match(review.output,/changed.*review the new plan/);
+    db.exec("UPDATE games SET name='' WHERE id=1");
+    db.exec(`CREATE TRIGGER fail_merge BEFORE UPDATE ON notification_outbox
+      WHEN NEW.state='skipped' BEGIN SELECT RAISE(ABORT,'fixture merge failure'); END`);
+    try { await checkUnchanged(() => invoke(["MERGE"]), /fixture merge failure/); }
+    finally { db.exec("DROP TRIGGER fail_merge"); }
+  });
+  await t.test("confirmed merge preserves pairs, team, kept login, and audit history", async () => {
+    const before = snapshot(db);
+    const result = await invoke(["MERGE"]);
+    assert.equal(result.code,0,result.output);
+    assert.match(result.output,/Merge complete/);
+    const after = snapshot(db);
+    assert.deepEqual(after.members.find(row => row.id === keep),before.members.find(row => row.id === keep));
+    assert.equal(after.members.find(row => row.id === retire).active,0);
+    assert.deepEqual(after.sessions.map(row => row.hash),["keep-session"]);
+    assert.deepEqual(after.entries.filter(row => row.member_id === keep).sort((x,y) => x.game_id-y.game_id)
+      .map(row => row.partner_id),[a,guest,standby,null]);
+    assert.ok(after.entries.some(row => row.game_id === 1 && row.member_id === a && row.partner_id === keep));
+    assert.ok(after.entries.every(row => row.member_id !== retire && row.partner_id !== retire));
+    assert.deepEqual(after.team_members.map(row => row.member_id).sort((x,y) => x-y),[keep,a,b,c]);
+    assert.ok(after.team_members.every(row => row.team_id === "intact-team"));
+    assert.deepEqual(after.notification_outbox.map(row => [row.id,row.state]),
+      [["retired-pending","skipped"],["retired-sent","sent"],["kept-pending","pending"]]);
+    for (const table of ["registration_audit","document_audit","documents","notification_preferences","games"])
+      assert.deepEqual(after[table],before[table]);
+    assert.deepEqual(db.prepare("PRAGMA foreign_key_check").all(),[]);
+    assert.equal(db.prepare("PRAGMA integrity_check").get().integrity_check,"ok");
+    assert.deepEqual(snapshot(original),unchanged);
+    await checkUnchanged(() => invoke(["MERGE"]), /Inactive accounts require manual review/);
+  });
+});
 
 test("operator-only demotion command", async t => {
   const directory = mkdtempSync(path.join(os.tmpdir(), "cabc-demote-"));

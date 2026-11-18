@@ -1,16 +1,25 @@
 import { randomBytes } from "node:crypto";
 import { createInterface } from "node:readline/promises";
 import { stdin, stdout } from "node:process";
+import path from "node:path";
 import { openDatabase, addMember, transaction, passwordHash, clubToday, requireMemberStatus, wildcardType } from "./db.mjs";
+import { reviewMemberMerge, applyMemberMerge, describeMemberMerge } from "./merge-member.mjs";
 
 process.umask(0o077);
 const command = process.argv[2];
-if (!["init", "preview", "reset-password", "promote", "demote"].includes(command)) {
-  console.error("Usage: node manage.mjs init | preview | reset-password | promote | demote");
+const dryRun = command === "merge-member" && process.argv[3] === "--dry-run";
+if (!["init", "preview", "reset-password", "promote", "demote", "merge-member"].includes(command) ||
+    (command === "merge-member" && process.argv.length !== (dryRun ? 4 : 3))) {
+  console.error("Usage: node manage.mjs init | preview | reset-password | promote | demote | merge-member [--dry-run]");
   process.exit(1);
 }
 let db;
 try {
+  if (command === "merge-member") {
+    if (!stdin.isTTY) throw new Error("Use an interactive terminal to merge member accounts.");
+    if (!process.env.DB_PATH || !path.isAbsolute(process.env.DB_PATH))
+      throw new Error("Set DB_PATH to the absolute path of the existing database or a test copy.");
+  }
   db = openDatabase(undefined, ["init", "preview"].includes(command));
   if (command === "demote") requireMemberStatus(db);
   if (command === "preview") {
@@ -42,8 +51,19 @@ try {
     if (!stdin.isTTY) throw new Error("Use an interactive terminal to manage accounts.");
     const readline = createInterface({ input: stdin, output: stdout });
     try {
-      const email = (await readline.question("Email: ")).trim().toLowerCase();
-      if (command === "demote") {
+      const email = (await readline.question(command === "merge-member" ? "Email to keep: " : "Email: ")).trim().toLowerCase();
+      if (command === "merge-member") {
+        const duplicate = (await readline.question("Duplicate email to retire: ")).trim().toLowerCase();
+        const plan = reviewMemberMerge(db, email, duplicate);
+        console.log(describeMemberMerge(plan));
+        if (dryRun) console.log("Dry run. No member records were changed.");
+        else {
+          const confirmation = await readline.question("Type MERGE to apply these changes: ");
+          if (confirmation.trim() !== "MERGE") throw new Error("Merge cancelled. No member records were changed.");
+          applyMemberMerge(db, plan);
+          console.log("Merge complete. The duplicate was deactivated and signed out; no notifications were generated.");
+        }
+      } else if (command === "demote") {
         const selected = db.prepare("SELECT id,name,email,role,active FROM members WHERE email=?").get(email);
         if (!selected) throw new Error("Account not found. No accounts were changed.");
         if (wildcardType(selected.name)) throw new Error("Choose a real member, not a placeholder account.");
