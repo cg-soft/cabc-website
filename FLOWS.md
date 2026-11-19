@@ -351,7 +351,7 @@
 - Member logs out and back in to refresh the administrator controls.
 
 ## Existing flows to preserve
-- Home: exactly About and Login buttons; slideshow advances and respects reduced motion.
+- Home: About, Help and Login work; the slideshow advances through two illustrative photos and the CABC 65 collage, wraps to the first slide, and respects keyboard pause and reduced motion. The collage stays fully in frame at 375px and on desktop and has an anniversary caption rather than the stock-photo label.
 - About: approved club copy and address, collapsed version details; Home and Login return correctly.
 - Login: invalid credentials show an error; member/admin preview login opens the calendar.
 - Calendar: previous/next skip to months with upcoming games; Upcoming returns to the earliest such month. No empty month is rendered; past dates within a displayed current month remain readable.

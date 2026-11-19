@@ -1,6 +1,6 @@
 (() => {
-  const FRONTEND_VERSION = "1.0.1+47075bae70f8";
-  const EXPECTED_BACKEND_VERSION = "1.0.1+c7959363c03e";
+  const FRONTEND_VERSION = "1.0.1+986fee57b81e";
+  const EXPECTED_BACKEND_VERSION = "1.0.1+ff90d73c6d82";
   // Newest first; dates describe source updates, not an installation's upload date.
   // Add a concise entry here when releasing a user-visible website change.
   const WEBSITE_CHANGES = [
@@ -166,12 +166,17 @@
   }
   function renderHome() {
     document.title = "Chinese American Bridge Club";
+    const slides = [
+      { file: "table.webp", alt: "Playing cards on a green felt table in warm sunlight.", note: "Illustrative photography" },
+      { file: "room.webp", alt: "A sunlit room with a card table and four chairs.", note: "Illustrative photography" },
+      { file: "cabc-65.webp", alt: "Six club anniversary photos on green felt, centered on the group holding the CABC 65 sign.", note: "CABC 65th anniversary", collage: true }
+    ];
+    const counter = () => `${String(slide + 1).padStart(2, "0")} <span>/ ${String(slides.length).padStart(2, "0")}</span>`;
     app.innerHTML = `
       <main class="home-scene">
-        <figure class="slideshow" tabindex="0" aria-label="Illustrative bridge photographs. Press Space to pause or resume the slideshow.">
-          <img class="slide ${slide === 0 ? "active" : ""}" src="./slides/table.webp" alt="Playing cards on a green felt table in warm sunlight.">
-          <img class="slide ${slide === 1 ? "active" : ""}" src="./slides/room.webp" alt="A sunlit room with a card table and four chairs." ${slide === 0 ? 'loading="lazy"' : ""}>
-          <figcaption><span class="slide-counter">${String(slide + 1).padStart(2, "0")} <span>/ 02</span></span><span class="slide-note">Illustrative photography<span class="pause-hint"> · Space to pause</span></span></figcaption>
+        <figure class="slideshow" tabindex="0" aria-label="Bridge club slideshow. Press Space to pause or resume.">
+          ${slides.map(({ file, alt, collage }, i) => `<img class="slide${collage ? " slide-collage" : ""}${i === slide ? " active" : ""}" src="./slides/${file}" alt="${alt}" aria-hidden="${i !== slide}"${i !== slide ? ' fetchpriority="low" decoding="async"' : ""}>`).join("")}
+          <figcaption><span class="slide-counter">${counter()}</span><span class="slide-note"><span class="slide-credit">${slides[slide].note}</span><span class="pause-hint"> · Space to pause</span></span></figcaption>
         </figure>
         ${header(button("About", "about", "photo-outline") + button("Help", "help", "photo-outline") + button("Login", "login", "photo-solid"), true, "home-with-help")}
       </main>`;
@@ -181,9 +186,13 @@
     figure.addEventListener("keydown", (event) => { if (event.code === "Space") { event.preventDefault(); paused = !paused; toast(paused ? "Slideshow paused." : "Slideshow resumed."); } });
     slideTimer = setInterval(() => {
       if (paused || document.hidden || figure.matches(":hover") || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-      slide = 1 - slide;
-      app.querySelectorAll(".slide").forEach((img, i) => img.classList.toggle("active", i === slide));
-      app.querySelector(".slide-counter").innerHTML = `${String(slide + 1).padStart(2, "0")} <span>/ 02</span>`;
+      slide = (slide + 1) % slides.length;
+      figure.querySelectorAll(".slide").forEach((img, i) => {
+        img.classList.toggle("active", i === slide);
+        img.setAttribute("aria-hidden", String(i !== slide));
+      });
+      figure.querySelector(".slide-counter").innerHTML = counter();
+      figure.querySelector(".slide-credit").textContent = slides[slide].note;
     }, 6500);
   }
   function renderHelp() {
