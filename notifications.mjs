@@ -67,6 +67,7 @@ export function renderMail(payload, token, site = "https://cabc.club") {
   const marker = partner && wildcardType(partner);
   const status = marker === "unavailable" ? "Your status is Unavailable; you are not registered to play."
     : marker === "standby" ? "Your status is Standby."
+    : marker === "director" ? "You are assigned to direct this game."
     : marker === "guest" ? "You are registered with a guest."
     : partner ? `You are registered with ${partner}.` : "You are registered and looking for a partner.";
   const summary = kind === "game-cancelled" ? "The entire game has been cancelled. Your registration for this game has been removed."
@@ -74,7 +75,7 @@ export function renderMail(payload, token, site = "https://cabc.club") {
     : kind === "partner-cancelled" ? "Your partner's registration has been cancelled. You remain registered and are now looking for a partner."
     : status;
   const heading = kind === "game-cancelled" ? "Game cancelled" : kind === "cancelled" ? "Registration cancelled"
-    : kind === "partner-cancelled" ? "Partner cancellation" : marker === "unavailable" || marker === "standby" ? "Availability updated" : "Registration confirmed";
+    : kind === "partner-cancelled" ? "Partner cancellation" : marker === "director" ? "Director assignment" : marker === "unavailable" || marker === "standby" ? "Availability updated" : "Registration confirmed";
   return {
     from: MAIL_FROM,
     subject: `${heading}: ${title} (${game.date})`.replace(/[\r\n]/g, " ").slice(0, 240),

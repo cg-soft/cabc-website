@@ -6,6 +6,8 @@ import path from "node:path";
 import { tmpdir } from "node:os";
 import { openDatabase, addMember, hashToken } from "./db.mjs";
 import { createApp } from "./server.mjs";
+import { migrateNotifications, migrateRegistrationAudit } from "./migrate.mjs";
+import { renderMail } from "./notifications.mjs";
 
 test("wildcard placeholder members", async t => {
   const dir = mkdtempSync(path.join(tmpdir(), "cabc-wildcard-"));
@@ -62,6 +64,41 @@ test("wildcard placeholder members", async t => {
 
     const rows = sql => db.prepare(sql).all().map(r => ({ ...r }));
 
+    await t.test("everyone can view directors but only an administrator can assign them", async () => {
+      migrateRegistrationAudit(file);
+      migrateNotifications(file);
+      const director = addMember(db, { name: "-Director-", email: "director@example.test", password });
+      assert.throws(() => addMember(db, { name: "-Director-", email: "duplicate@example.test", password }), /already exists/);
+      assert.equal(await login("director@example.test"), undefined);
+      assert.equal((await register(g2, director, tokens[2])).status, 403);
+      assert.equal((await req(`/games/${g2}/entry`, "POST", { partnerId: director, memberId: ids[2], confirm: true }, tokens[2])).status, 403);
+      assert.deepEqual(rows(`SELECT member_id FROM entries WHERE game_id=${g2}`), []);
+      assert.equal((await register(g2, director, adminToken)).status, 200);
+      const adminCal = (await req(`/calendar?month=${g2Date.slice(0, 7)}`, "GET", undefined, adminToken)).body;
+      const delegated = await req(`/games/${g2}/entry`, "POST", {
+        partnerId: director, memberId: ids[2], confirm: true, revision: adminCal.registrationRevisions[g2]
+      }, adminToken);
+      assert.equal(delegated.status, 200);
+      const listed = await calendar(g2Date.slice(0, 7));
+      assert.deepEqual(listed.wildcards.find(w => w.id === director).schedule.map(r => r.memberName), ["Admin One", "Person 2"]);
+      assert.ok(!listed.entries.some(e => e.member_id === director));
+      assert.deepEqual(rows(`SELECT actor_id,target_id FROM registration_audit WHERE game_id=${g2}`), [{ actor_id: ids[0], target_id: ids[2] }]);
+      const notices = rows("SELECT member_id,payload_json FROM notification_outbox");
+      assert.deepEqual(notices.map(n => n.member_id), [ids[2]]);
+      assert.match(renderMail(JSON.parse(notices[0].payload_json), "test").text, /assigned to direct this game/);
+      const exportResult = await req("/calendar/export.ics", "GET", undefined, tokens[2]);
+      assert.equal(exportResult.status, 200);
+      assert.match(exportResult.body, /assigned to direct this game/);
+      assert.equal((await register(g2, ids[2], tokens[3])).status, 409);
+      const team = await req(`/games/${g2}/team`, "POST",
+        { pairMemberId: ids[2], pairPartnerId: director, ownPartnerId: director }, adminToken);
+      assert.equal(team.status, 409);
+      assert.match(team.body.error, /Directors do not count as players/);
+      assert.equal((await cancel(g2, tokens[2])).status, 200);
+      assert.equal((await cancel(g2, adminToken)).status, 200);
+      assert.deepEqual((await calendar()).wildcards.find(w => w.id === director).schedule, []);
+    });
+
     await t.test("several members can overbook one placeholder while real members stay exclusive", async () => {
       assert.equal((await register(g1, guest)).status, 200);
       assert.equal((await register(g1, guest, tokens[2])).status, 200);
@@ -87,7 +124,7 @@ test("wildcard placeholder members", async t => {
       assert.ok(!listed.has(`${guest}:${ids[1]}`));
       assert.ok(!listed.has(`${guest}:null`));
       const wildcards = result.wildcards.map(w => w.name).sort();
-      assert.deepEqual(wildcards, ["-Guest-", "-Standby-", "-Unavailable-"]);
+      assert.deepEqual(wildcards, ["-Director-", "-Guest-", "-Standby-", "-Unavailable-"]);
       const guestSchedule = result.wildcards.find(w => w.id === guest).schedule;
       assert.equal(guestSchedule.length, 2);
       assert.deepEqual(guestSchedule.map(r => r.memberId).sort(), [ids[1], ids[2]]);

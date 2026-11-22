@@ -42,7 +42,7 @@ export function registeredGamesCalendar(games, now = new Date()) {
       `DTSTAMP:${stamp}`,
       `DTSTART;TZID=America/Los_Angeles:${game.date.replace(/-/g, "")}T${game.time.replace(":", "")}00`,
       `SUMMARY:${text(game.name || "Chinese American Bridge Club")}`,
-      `DESCRIPTION:${text("Duplicate bridge at Chinese American Bridge Club.\nA snapshot of your registration. Check the club website for changes.")}`,
+      `DESCRIPTION:${text((game.directing ? "You are assigned to direct this game at Chinese American Bridge Club." : "Duplicate bridge at Chinese American Bridge Club.") + "\nA snapshot of your registration. Check the club website for changes.")}`,
       "URL:https://cabc.club/#calendar",
       "CLASS:PRIVATE", "END:VEVENT"
     );

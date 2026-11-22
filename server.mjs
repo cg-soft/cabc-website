@@ -168,7 +168,8 @@ export function createApp({ db = openDatabase(), preview = false, previewToday,
     const type = partner ? wildcardType(partner.name) : null;
     if (type) {
       // A guest placeholder completes a playing pair without a reciprocal row;
-      // standby and unavailable are member states, not complete pairs.
+      // all other placeholders are member states, not complete pairs.
+      if (type === "director") throw new HttpError(409, "Directors do not count as players on a team.");
       if (type !== "guest") throw new HttpError(409, "Unavailable and standby members cannot form teams.");
       if (partner.active !== 1) throw new HttpError(409, "A member is no longer active. Refresh the calendar and choose another pair.");
       return [memberId, row.partner_id];
@@ -384,10 +385,10 @@ export function createApp({ db = openDatabase(), preview = false, previewToday,
         return reply(200, result);
       }
       if (route === "/api/calendar/export.ics" && req.method === "GET") {
-        const games = db.prepare("SELECT g.id,g.date,g.time,g.name FROM games g JOIN entries e ON e.game_id=g.id WHERE e.member_id=? AND g.date>=? ORDER BY g.date,g.time,g.id")
+        const games = db.prepare("SELECT g.id,g.date,g.time,g.name,p.name AS partnerName FROM games g JOIN entries e ON e.game_id=g.id LEFT JOIN members p ON p.id=e.partner_id WHERE e.member_id=? AND g.date>=? ORDER BY g.date,g.time,g.id")
           .all(user.id, today());
         if (!games.length) throw new HttpError(404, "You have no registered games for today or later to export.");
-        const content = registeredGamesCalendar(games);
+        const content = registeredGamesCalendar(games.map(({ partnerName, ...game }) => ({ ...game, directing: wildcardType(partnerName) === "director" })));
         res.writeHead(200, {
           "Content-Type": "text/calendar; charset=utf-8",
           "Content-Disposition": 'attachment; filename="cabc-my-games.ics"',
@@ -576,7 +577,9 @@ export function createApp({ db = openDatabase(), preview = false, previewToday,
           if (partner !== null) {
             const partnerMember = db.prepare("SELECT id,name,active FROM members WHERE id=?").get(partner);
             if (!partnerMember || partnerMember.active !== 1) throw new HttpError(409, "That member is no longer available. Choose another partner.");
-            partnerIsPlaceholder = !!wildcardType(partnerMember.name);
+            const type = wildcardType(partnerMember.name);
+            if (type === "director") admin(context.actor);
+            partnerIsPlaceholder = !!type;
             if (partnerIsPlaceholder) {
               // Overbookable placeholder: the assignment is stored once, from the
               // real member to the placeholder. Remove any legacy reciprocal row

@@ -108,12 +108,13 @@ export function requireMemberStatus(db) {
       names.some(name => !db.prepare("SELECT name FROM sqlite_master WHERE type='trigger' AND name=?").get(name)))
     throw new Error("Member-status migration required. Run node migrate.mjs member-status with the same DB_PATH. Startup never migrates databases.");
 }
-export const WILDCARD_TYPES = { "-Unavailable-": "unavailable", "-Standby-": "standby", "-Guest-": "guest" };
+export const WILDCARD_TYPES = Object.freeze({ "-Unavailable-": "unavailable", "-Standby-": "standby", "-Guest-": "guest", "-Director-": "director" });
 // Only these exact account names receive placeholder behavior; any other member
 // name is an ordinary account. The type decides how assignments are treated:
-// guest completes a playing pair, standby/unavailable are member states.
+// guest completes a playing pair; the other wildcards are member states.
 export function wildcardType(name) {
-  return WILDCARD_TYPES[String(name ?? "").trim()] || null;
+  const key = String(name ?? "").trim();
+  return Object.hasOwn(WILDCARD_TYPES, key) ? WILDCARD_TYPES[key] : null;
 }
 export function validateMember(body) {
   const name = String(body.name || "").trim();
@@ -126,6 +127,8 @@ export function validateMember(body) {
 }
 export function addMember(db, input, role = "member") {
   const { name, email, password } = validateMember(input);
+  if (wildcardType(name) === "director" && db.prepare("SELECT id FROM members WHERE name=?").get(name))
+    throw new HttpError(409, "The -Director- placeholder already exists.");
   if (db.prepare("SELECT id FROM members WHERE email=?").get(email)) throw new HttpError(409, "That email address already has an account.");
   const result = db.prepare("INSERT INTO members(name,email,password,role) VALUES(?,?,?,?)")
     .run(name, email, passwordHash(password), role);

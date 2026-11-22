@@ -6,6 +6,20 @@ game without reserving a real partner, and they can be overbooked: several
 members may use the same placeholder in the same game. Placeholder accounts
 cannot sign in and are never emailed.
 
+## Director assignment
+
+On a site running the Director update, an administrator creates the shared
+placeholder once via **Add member**, using the exact name `-Director-`, an
+unused placeholder email such as `director@placeholder.invalid`, and a strong
+random password. The placeholder cannot sign in or receive notifications.
+There is no new database schema migration.
+
+Administrators choose `-Director-` in the registration form for themselves
+or for another active member using **Acting for**. The assigned member
+appears separately on the dance card and does not take a pair or team slot.
+All signed-in members can use **Show → -Director-** to see upcoming
+assignments. An assigned member can cancel their own registration as usual.
+
 ## What each placeholder means
 
 - **`-Guest-` completes a playing pair.** The member is playing with an

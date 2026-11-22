@@ -30,7 +30,8 @@ try {
         ["Alex Chen", "member@preview.invalid", "member"], ["Morgan Lee", "admin@preview.invalid", "admin"],
         ["Jamie Wu", "jamie@preview.invalid", "member"], ["Robin Lin", "robin@preview.invalid", "member"],
         ["Casey Wong", "casey@preview.invalid", "member"], ["Taylor Park", "taylor@preview.invalid", "member"],
-        ["Sam Liu", "sam@preview.invalid", "member"], ["Jordan Chan", "jordan@preview.invalid", "member"]
+        ["Sam Liu", "sam@preview.invalid", "member"], ["Jordan Chan", "jordan@preview.invalid", "member"],
+        ["-Director-", "director@preview.invalid", "member"]
       ];
       for (const [name, email, role] of users) addMember(db, { name, email, password: randomBytes(24).toString("hex") }, role);
       const today = process.env.PREVIEW_TODAY || clubToday();
