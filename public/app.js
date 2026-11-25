@@ -1,6 +1,6 @@
 (() => {
-  const FRONTEND_VERSION = "1.0.1+ba0f5491dec1";
-  const EXPECTED_BACKEND_VERSION = "1.0.1+3fcd59eb673a";
+  const FRONTEND_VERSION = "1.0.1+6ea4c52138b0";
+  const EXPECTED_BACKEND_VERSION = "1.0.1+da439257586e";
   // Newest first; dates describe source updates, not an installation's upload date.
   // Add a concise entry here when releasing a user-visible website change.
   const WEBSITE_CHANGES = [
@@ -169,15 +169,17 @@
   function renderHome() {
     document.title = "Chinese American Bridge Club";
     const slides = [
-      { file: "table.webp", alt: "Playing cards on a green felt table in warm sunlight.", note: "Illustrative photography" },
-      { file: "room.webp", alt: "A sunlit room with a card table and four chairs.", note: "Illustrative photography" },
-      { file: "cabc-65.webp", alt: "Six club anniversary photos on green felt, centered on the group holding the CABC 65 sign.", note: "CABC 65th anniversary", collage: true }
+      { file: "cabc-65.webp", alt: "Six club anniversary photos on green felt, centered on the group holding the CABC 65 sign.", note: "CABC 65th anniversary", collage: true },
+      { file: "cabc-collage-2.webp", alt: "Club photos on green felt, centered on a group of members laughing together, with a bridge game, two members and the Harriet Kwong Memorial Trophy around it.", note: "Club members and trophy", collage: true, portrait: "cabc-collage-2-portrait.webp" }
     ];
     const counter = () => `${String(slide + 1).padStart(2, "0")} <span>/ ${String(slides.length).padStart(2, "0")}</span>`;
     app.innerHTML = `
       <main class="home-scene">
         <figure class="slideshow" tabindex="0" aria-label="Bridge club slideshow. Press Space to pause or resume.">
-          ${slides.map(({ file, alt, collage }, i) => `<img class="slide${collage ? " slide-collage" : ""}${i === slide ? " active" : ""}" src="./slides/${file}" alt="${alt}" aria-hidden="${i !== slide}"${i !== slide ? ' fetchpriority="low" decoding="async"' : ""}>`).join("")}
+          ${slides.map(({ file, alt, collage, portrait }, i) => {
+            const img = `<img class="slide${collage ? " slide-collage" : ""}${portrait ? " slide-has-portrait" : ""}${i === slide ? " active" : ""}" src="./slides/${file}" alt="${alt}" aria-hidden="${i !== slide}"${i !== slide ? ' fetchpriority="low" decoding="async"' : ""}>`;
+            return portrait ? `<picture><source media="(max-aspect-ratio: 3/5)" srcset="./slides/${portrait}">${img}</picture>` : img;
+          }).join("")}
           <figcaption><span class="slide-counter">${counter()}</span><span class="slide-note"><span class="slide-credit">${slides[slide].note}</span><span class="pause-hint"> · Space to pause</span></span></figcaption>
         </figure>
         ${header(button("About", "about", "photo-outline") + button("Help", "help", "photo-outline") + button("Login", "login", "photo-solid"), true, "home-with-help")}

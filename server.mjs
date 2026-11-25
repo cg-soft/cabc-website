@@ -218,7 +218,7 @@ export function createApp({ db = openDatabase(), preview = false, previewToday,
           "/web-app.js": "web-app.js", "/manifest.webmanifest": "manifest.webmanifest",
           "/apple-touch-icon.png": "apple-touch-icon.png", "/app-icon-192.png": "app-icon-192.png", "/app-icon-512.png": "app-icon-512.png",
           "/slides/table.webp": "slides/table.webp", "/slides/room.webp": "slides/room.webp",
-          "/slides/cabc-65.webp": "slides/cabc-65.webp", "/favicon.png": "favicon.png", "/club-logo.png": "club-logo.png" };
+          "/slides/cabc-65.webp": "slides/cabc-65.webp", "/slides/cabc-collage-2.webp": "slides/cabc-collage-2.webp", "/slides/cabc-collage-2-portrait.webp": "slides/cabc-collage-2-portrait.webp", "/favicon.png": "favicon.png", "/club-logo.png": "club-logo.png" };
         const file = Object.hasOwn(files, route) ? files[route] : (PDF_ASSETS.has(route) || HELP_ASSETS.has(route)) ? route.slice(1) : null;
         if (!file) throw new HttpError(404, "Not found.");
         let content;

@@ -196,6 +196,14 @@ test("version API is public, stable, uncached and exposes only version/start tim
   assert.equal(collage.status, 200);
   assert.equal(collage.headers.get("content-type"), "image/webp");
   assert.deepEqual(Buffer.from(await collage.arrayBuffer()), readFileSync(new URL("./public/slides/cabc-65.webp", import.meta.url)));
+  const second = await fetch(`${base}/slides/cabc-collage-2.webp`);
+  assert.equal(second.status, 200);
+  assert.equal(second.headers.get("content-type"), "image/webp");
+  assert.deepEqual(Buffer.from(await second.arrayBuffer()), readFileSync(new URL("./public/slides/cabc-collage-2.webp", import.meta.url)));
+  const portrait = await fetch(`${base}/slides/cabc-collage-2-portrait.webp`);
+  assert.equal(portrait.status, 200);
+  assert.equal(portrait.headers.get("content-type"), "image/webp");
+  assert.deepEqual(Buffer.from(await portrait.arrayBuffer()), readFileSync(new URL("./public/slides/cabc-collage-2-portrait.webp", import.meta.url)));
   for (const file of ["release.mjs", "release-version.mjs", "version-tests.mjs"])
     assert.equal((await fetch(`${base}/${file}`)).status, 404);
   for (let step = 1; step <= 6; step++) {
