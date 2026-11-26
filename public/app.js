@@ -1,6 +1,6 @@
 (() => {
   const FRONTEND_VERSION = "1.0.1+f7050faddd5c";
-  const EXPECTED_BACKEND_VERSION = "1.0.1+7ce911821a10";
+  const EXPECTED_BACKEND_VERSION = "1.0.1+32f846037c22";
   // Newest first; dates describe source updates, not an installation's upload date.
   // Add a concise entry here when releasing a user-visible website change.
   const WEBSITE_CHANGES = [

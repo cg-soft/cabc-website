@@ -43,7 +43,7 @@ export function queueChanges(db, { game, before, after, actor, cancelledGame = f
   }
 }
 export function mailConfiguration(env = process.env) {
-  if (env.EMAIL_ENABLED !== "1") throw new Error("Email delivery is disabled. Set EMAIL_ENABLED=1 only after reviewing EMAIL-NOTIFICATIONS.md.");
+  if (env.EMAIL_ENABLED !== "1") throw new Error("Email delivery is disabled. Set EMAIL_ENABLED=1 only after reviewing the Email notifications section of OPERATIONS.md.");
   if (!env.DB_PATH || !path.isAbsolute(env.DB_PATH)) throw new Error("Set the existing private database's absolute DB_PATH for the mail worker.");
   const host = env.SMTP_HOST || "mail.cabc.club", port = Number(env.SMTP_PORT || 465);
   const user = env.SMTP_USER || MAIL_FROM.address, pass = env.SMTP_PASSWORD;

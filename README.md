@@ -1,445 +1,71 @@
-# Chinese American Bridge Club: minimal new website
-
-About includes frontend/backend release diagnostics. See [VERSIONING.md](VERSIONING.md)
-for independent component stamps, no-restart website-only updates and the
-mandatory development version-stamping step after application changes.
-
-For the Show dropdown's cross-month **My Own Dates** assignment list and the
-four-file Dathorn upgrade, see [MY-OWN-DATES.md](MY-OWN-DATES.md). The list follows
-Acting for for administrators and includes solo, partner, wildcard and team
-statuses. This feature needs one backend restart but no database migration.
-
-For private PDF uploads, administrator-only/all-member visibility, the in-page
-PDF reader, and complete or viewer-only upgrade instructions, see
-[CABC members-only documents](DOCUMENTS.md). Document contents and permissions are
-stored together in the private SQLite database and in encrypted backups that
-target that same live database.
-
-The reader needs three public files, the locally vendored PDF.js resources,
-the updated server/asset allowlist and a one-time restart. It adds no database
-migration to an already-installed Documents area; see the precise file lists
-in that guide rather than applying the older nine-file upload.
-
-For optional 30-day remembered sign-in, secure-cookie behavior and the current
-four-file Dathorn upgrade, see [REMEMBER-DEVICE.md](REMEMBER-DEVICE.md).
-
-For opt-out registration/cancellation emails and the separately enabled SMTP
-worker, see [EMAIL-NOTIFICATIONS.md](EMAIL-NOTIFICATIONS.md).
-
-## Administrator password resets
-
-Administrators can use **Reset member password** in the calendar's member-management
-controls. Explicitly select the member by name and email, enter your own current
-administrator password, enter and confirm the member's new password (12–128
-characters), and confirm the reset. Share the new password privately; the site
-does not email it or display it again after saving.
-
-The target is never inherited from **Acting for**. Only active, non-placeholder
-accounts other than your own can be selected. Other administrators may be reset
-too, without changing their roles. **Change password** still changes only your own
-signed-in account. A reset immediately revokes all of the target's sessions,
-including remembered devices, but leaves the administrator signed in and keeps
-registrations and email preferences unchanged. The member can use Change password
-after signing in; a change on next login is not forced.
-
-This update needs `server.mjs` and `release.mjs` in the application directory,
-`public/app.js` at `~/public_html/app.js`, and a backend restart. No database
-migration, dependency install, environment-variable or mail-cron changes are needed.
-
-## Hosting and operation
-
-For application code in `~/src/cabc-minimal` and public files in `~/public_html`,
-follow [the split-directory correction](SPLIT-PUBLIC-DIRECTORY.md). Set the
-managed Node application's `PUBLIC_DIR` to the absolute public directory path.
-
-For iPhone home-screen installation, online-only behavior and the nine-file
-upgrade, see [CABC Calendar on the iPhone Home Screen](HOME-SCREEN.md).
-
-An independent replacement concept, not an update to the old application.
-
-For the downloadable hosting package, start with [HOSTING.md](HOSTING.md).
-It covers Dathorn-style settings, fresh administrator setup, minimal uploads,
-UI-only updates, explicit schema handling and backups. No database or private
-credentials are included, and no live hosting changes have been made.
-
-Weekly encrypted backups are available through `backup.mjs`; follow
-[BACKUPS.md](BACKUPS.md) to activate Sunday 03:00 cron runs on Dathorn, retaining
-12 successful copies. The code does not install or activate a scheduler itself.
-
-For existing installations upgrading to named games, follow
-[UPGRADE-GAME-NAMES.md](UPGRADE-GAME-NAMES.md). Run the explicit
-`node migrate.mjs game-names` migration against the existing private database
-before starting the new server; do not rerun initialization.
-
-To load members from a private CSV containing `name,email,initial-password`,
-follow [IMPORT-MEMBERS.md](IMPORT-MEMBERS.md). The importer defaults to a dry run,
-adds member accounts only, and never overwrites existing credentials.
-
-## Act on behalf of members
-
-Administrators can use Acting for to manage an active member's registrations,
-partner or wildcard status, and teams without signing in as that member.
-A named banner identifies the target; account controls and Export my games
-remain the administrator's own. Normal scheduling rules and confirmations
-apply, stale game revisions are rejected, and delegated writes are atomically
-recorded in a private audit table. See
-[ACTING-FOR-MEMBERS.md](ACTING-FOR-MEMBERS.md) for usage and the explicit
-additive registration-audit migration required during the seven-file upgrade.
-
-## Edit and delete games
-
-Administrators select a current/future playing date, then choose Edit game
-or Delete game on its dance card. Edit changes name, date and Pacific start
-time while retaining every registration, partnership and team; event type
-stays fixed. Delete reviews registered-member/team counts and requires an
-explicit confirmation before removing that game and its registrations/teams.
-Members cannot manage games, and past games remain read-only. Stale reviews
-are rejected. See [GAME-MANAGEMENT.md](GAME-MANAGEMENT.md) for usage, limits,
-calendar-snapshot warnings and the three-file, no-migration Dathorn upgrade.
-
-## Deactivate members
-
-Administrators can choose Deactivate member, select an account, review the
-affected registrations/teams and explicitly confirm. Deactivation revokes
-sessions, blocks login and partner selection, and cancels registrations for
-today or later. Past records and names remain intact. The last active
-administrator is protected; password resets, promotion and imports do not
-reactivate inactive accounts.
-
-Current installations upgrading to this release must first follow
-[Deactivate members: usage and Dathorn upgrade](DEACTIVATE-MEMBERS.md), including
-the explicit member-status migration, and then
-[Wildcard placeholder members: usage and Dathorn upgrade](WILDCARDS.md) for
-this release's four-file update. The older feature-specific upload
-instructions below describe earlier releases, not a substitute for those upgrades.
-
-## Wildcard placeholder members
-
-The shared placeholder accounts `-Unavailable-`, `-Standby-` and `-Guest-` can be
-overbooked: several members may use the same placeholder in one game.
-`-Guest-` completes a playing pair and can form teams; `-Standby-` and
-`-Unavailable-` are member states that cannot form teams or be chosen as a
-partner. Placeholder accounts cannot sign in. A Show selector above the
-calendar displays each placeholder's upcoming schedule across all months, with
-jump buttons to the assigned games. This release changes `server.mjs`, `db.mjs`,
-`public/app.js` and `public/style.css` only; no migration is required.
-
-## Club logo
-
-The shared page shell also displays the approved transparent club logo, fixed
-at the upper left on every route. Its original PNG colors and alpha channel are
-preserved. Headers reserve space for it while scrolling; mobile uses the logo
-instead of duplicating the text wordmark. The logo adds no navigation button,
-and the existing favicon and two-button slideshow home remain unchanged.
-
-For just the logo update on a current team-events installation, upload
-`public/club-logo.png`, `public/index.html`, `public/style.css` and `server.mjs`,
-then restart and refresh. The server change permits serving the new PNG.
-No new migration, dependencies or build is required for this visual update.
-
-## Team events
-
-Administrators can create either Pairs or Teams dates. In a team event, members
-first register as pairs; either member of either pair can immediately combine
-with one other complete, available pair to form a team of four. No acceptance
-step is required.
-
-The calendar identifies team dates and counts complete teams. The dance card
-lists all teams, pairs seeking teammates, and individuals seeking partners.
-Leaving a team preserves both pair registrations. Cancelling an individual
-registration dissolves the team, leaving the other pair intact.
-
-Existing installations must follow [TEAM-EVENTS.md](TEAM-EVENTS.md), including
-the explicit `node migrate.mjs team-events` migration before starting the new
-server. Existing dates remain Pairs. Startup never applies migrations; no build
-or new dependency is required. Event type is fixed when a date is created.
-
-## Export registered games
-
-Signed-in members and administrators can select **Export my games** above the
-calendar to download `cabc-my-games.ics`. The export includes their own
-registrations for today or later across every month, including games where they
-are still looking for a partner. Past and cancelled registrations are excluded.
-If nothing qualifies, the site displays a message instead of downloading an
-empty calendar.
-
-Events include the game name (or club name when unnamed), Pacific start time,
-and a link to the club website. No member names, emails, passwords or session
-tokens are included. No duration is invented because games store start times
-only. Stable event IDs identify the same games in repeated exports, but duplicate
-handling depends on the calendar application.
-
-Event website links now point to `https://cabc.club/#calendar`. Event IDs
-intentionally retain their original `@bridge.cabc.club` suffix: this is a stable
-identifier, not a navigation link. To install only this domain-link correction
-on a site that already has export, upload `icalendar.mjs` and restart the app.
-Existing downloaded/imported files are not edited by this change.
-
-The file is a snapshot: later changes and cancellations are not automatically
-synchronized. Apple documents importing .ics attachments from Mail in its
-[iPhone calendar instructions](https://support.apple.com/guide/iphone/set-up-mail-contacts-and-calendar-accounts-ipha0d932e96/ios).
-Google Calendar supports importing .ics files through Settings > Import & export
-on a computer, as described in
-[Google's import instructions](https://support.google.com/calendar/answer/37118?hl=en&co=genie.platform=desktop).
-The serializer uses the timezone, escaping and line-folding rules in
-[RFC 5545](https://www.rfc-editor.org/rfc/rfc5545).
-
-For the original export-only release, upgrade an otherwise current installation by uploading **icalendar.mjs** (new),
-**server.mjs** and **public/app.js**, then restart the Node application and refresh
-the browser. Upload the new module before the server file. No build, dependency
-installation, database initialization or schema migration is needed. See
-[HOSTING.md](HOSTING.md) for the Dathorn paths.
-
-For this newer team-events release, use [TEAM-EVENTS.md](TEAM-EVENTS.md) instead:
-it also requires migration and additional files. The old export-only procedure
-is not sufficient to install the current server over an unmigrated database.
-
-## Scope
-
-- A photographic slideshow homepage with exactly two buttons: About and Login.
-- An intentional About placeholder.
-- A real member/admin login.
-- Export my games: an authenticated .ics download of personal registrations for today and later, across all months.
-- One monthly calendar with playing dates and dance-card partnership registration.
-- Optional game names on the calendar and dance cards, editable by administrators.
-- Opens at the first month with a game today or later; month navigation skips gaps.
-- A mobile playing-date list and a separate, clearly labeled dance-card panel.
-- Members can register alone, choose an available partner, see all pairs for a date,
-  and cancel their own registration.
-- Administrators use the same calendar, with small dialogs to add a date or member.
-- Team events combine two complete pairs immediately, with available-pair selection and safe team dissolution.
-
-No announcements, document library, directory page, analytics, recurring-event
-engine, invitation-email service, payments, or separate admin dashboard.
-
-## Implementation
-
-Plain HTML/CSS/browser JavaScript; a Node HTTP server; SQLite using Node's built-in
-`node:sqlite`. No third-party runtime dependencies, ORM, transpiler, frontend
-framework, bundler, or build step.
-
-Tested with Node 22.23.2. Node 22 identifies its built-in SQLite module as
-experimental; the tested version works without a native npm addon. Verify this
-runtime on the eventual host before launch rather than assuming compatibility.
-This repository now replaces the previous CABC application with a fresh-start
-minimal implementation. The Dathorn installation and its database have not been
-changed by this source replacement. Do not deploy over the old application or
-reuse its database without following `HOSTING.md`.
-
-The repository's `main` history was deliberately reset with the owner's approval.
-If you have an old clone, preserve any local work outside it and make a fresh
-clone rather than pulling or merging the old history into this implementation.
-
-```text
-public/             Only public HTML, CSS, JS and slideshow images
-app.cjs             Production hosting entry point (direct or Passenger-loaded)
-server.mjs          HTTP, authentication and calendar/registration endpoints
-icalendar.mjs       Pacific-time iCalendar formatting for registered-game exports
-export-tests.mjs    Export privacy, formatting, registration and session tests
-db.mjs              Private storage and password helpers
-schema.sql          Baseline database schema (new initialization also installs team schema)
-team-schema.sql     Additive team membership table, index and protection triggers
-member-status-schema.sql  Inactive-account and last-active-admin protection triggers
-deactivation-tests.mjs    Migration, review, access, history, concurrency and backup checks
-team-tests.mjs      Migration, formation, ownership, race, dissolution and backup checks
-migrate.mjs         Explicit additive migrations for the minimal site
-manage.mjs          Initialize, create fictional preview, reset a password, promote/demote
-manage-tests.mjs    Operator promotion, preservation and management regression tests
-import-members.mjs  Validate/import private CSVs without replacing existing accounts
-import-members-tests.mjs CSV validation, rollback, credential and persistence checks
-tests.mjs           Isolated API and persistence tests
-hosting-tests.mjs   Production launcher and simulated Passenger-loader checks
-calendar-tests.mjs  Game names, migration safety and upcoming-month navigation
-password-tests.mjs  Self-service password changes and session-revocation checks
-backup.mjs          Encrypted SQLite backups and verified recovery copies
-backup-tests.mjs    Backup encryption, retention, recovery and cron checks
-data/               Private SQLite database; excluded from version control
-```
-
-The slideshow photographs are AI-generated illustrations of fictional spaces.
-They do not depict the actual club venue or members. Replace
-`public/slides/table.webp` and `room.webp` with authorized club photographs when
-available.
-
-## Fresh installation
-
-Use Node 22.23.2. There is nothing to install or compile.
-
-```bash
-node manage.mjs init
-node app.cjs
-```
-
-Initialization asks for the administrator's name and email in an interactive
-terminal, creates a random password, and prints it once. Store it securely.
-Do not run the application from a public web directory.
-
-The default port is 5005. `PORT` and `DB_PATH` may be supplied through the hosting
-environment; `.env` files are deliberately not loaded because there are no
-dependencies. Keep `DB_PATH` outside all public/build directories.
-
-The initial calendar is empty. The administrator adds actual playing dates and
-members. New members receive their credentials through a private channel chosen
-by the administrator; this app does not send email.
-
-Normal startup checks the database schema and does not initialize or migrate it.
-This is a new database model and does not import or upgrade the previous website.
-There is no browser-based administrator-setup page. The production `app.cjs`
-launcher refuses preview mode and fictional preview databases.
-
-## Isolated preview
-
-Use a separate, empty database:
-
-```bash
-DB_PATH=/private/path/preview.sqlite PREVIEW_TODAY=2026-10-20 node manage.mjs preview
-DB_PATH=/private/path/preview.sqlite PREVIEW_MODE=1 PREVIEW_TODAY=2026-10-20 node server.mjs
-```
-
-Preview seeding creates fictional members and sample Monday games. The login
-screen then offers member/admin preview access. These shortcuts intentionally
-do not require a password, but only work when both the environment and database
-explicitly mark the installation as a preview. They are disabled by default.
-
-Never put real member data into this preview database or enable preview access
-on a production account. The sandbox preview persists across server restarts,
-but is not guaranteed durable hosting or a backup.
-
-## Partnership rules
-
-- A member may appear in only one partnership per date.
-- Selecting a partner registers both members immediately. There is no separate
-  invitation/acceptance workflow.
-- The available-member dropdown excludes self and members already paired on
-  the selected date. Unpaired or not-yet-registered members remain available.
-- Selecting “I’m looking for a partner” registers only the signed-in member.
-- Either partner may cancel their own registration; the other remains
-  registered and becomes available for a new partnership.
-- Past playing dates remain visible but cannot be changed through registration.
-- Dates and daily cutoffs use America/Los_Angeles. Game times are Pacific time.
-
-## Accounts and sessions
-
-Passwords use salted scrypt; only password hashes and hashed session tokens are
-stored. Private endpoints enforce server-side roles. Ordinary sign-in keeps a
-12-hour bearer session in memory and requires sign-in after a full reload.
-On the HTTPS club site, the optional unchecked Remember this device for 30 days
-checkbox instead uses a Secure HttpOnly host-only cookie and CSRF-protected
-writes. Reloading restores that session without extending its absolute expiry.
-Logout revokes it; password changes/resets and deactivation revoke all account
-sessions. Shared preview accounts remain temporary. See [REMEMBER-DEVICE.md](REMEMBER-DEVICE.md).
-
-Signed-in members and administrators can select **Change password** beside the
-calendar controls. The form requires the current password, a different new
-password of 12–128 characters, and matching confirmation. A successful change
-stores a salted hash and revokes all sessions for that account, including the
-current one, in a single transaction. The member returns to Login with a
-confirmation and signs in using the new password; registrations are unchanged.
-Wrong current passwords do not immediately sign the user out. Password-change
-attempts are limited to five per account per 15 minutes; successful changes
-clear that counter. This limiter is process-local, separate from login limits.
-
-To deploy just this feature on an already-current installation, upload
-`server.mjs`, `public/app.js` and `public/style.css`, then restart the Node app.
-No additional database migration or dependency installation is required.
-Fresh clones and older deployments must still follow any earlier game-name
-migration requirements in `UPGRADE-GAME-NAMES.md`.
-
-For a forgotten password, an operator can still reset a member or administrator:
-
-```bash
-node manage.mjs reset-password
-```
-
-The operator enters the account email. A new password is generated and existing
-sessions for that account are revoked. The command does not send the password.
-
-### Remove administrator access
-
-Demotion is command-line only, like promotion. In an interactive SSH terminal,
-run this from `~/src/cabc-minimal` using the live database:
-
-```sh
-DB_PATH=/home/cabc/src/cabc-minimal/private/cabc-minimal \
-  /opt/alt/alt-nodejs24/root/usr/bin/node manage.mjs demote
-```
-
-Enter the member's email, review the displayed name and email, and type `DEMOTE`
-to confirm. Any other response cancels without changes. The account remains
-active (or inactive, if already inactive), with the same password, scheduled
-games, partnerships, teams and document records. All of that member's sessions,
-including remembered devices, are revoked. They can sign back in as a regular
-member with their existing password if the account is active.
-
-The last active real administrator cannot be demoted. Inactive administrators
-and placeholder accounts do not count as another usable administrator.
-Already-regular accounts are reported without changes. There is no website
-control or HTTP endpoint for changing administrator roles.
-
-For an already-current installation that never received the browser-demotion
-release, upload `manage.mjs` to `~/src/cabc-minimal/`. No backend restart,
-migration or dependency installation is required to use the new command.
-To install this complete release, including the updated About history and
-removal of the browser feature, also upload `server.mjs` and generated
-`release.mjs` to the application directory and stamped `public/app.js` to
-`~/public_html/app.js`, then restart Node once. This is required if you
-installed the earlier browser-demotion release, to remove its endpoint.
-Preserve private configuration, the live database,
-`config.js`, `.htaccess`, symlinks and dependencies.
-
-### Grant administrator access
-
-To grant an existing member administrator access, use an interactive terminal
-with the live application's `DB_PATH`:
-
-```bash
-node manage.mjs promote
-```
-
-Enter the member's email at the prompt. Only their role changes; their password,
-registrations and sessions remain intact. An unknown email is an error and does
-not create an account. An existing administrator is reported without changes.
-Ask the member to log out and log back in to show the administrator controls.
-This is an operator command, not a member-facing API. It requires an existing
-database and does not initialize or migrate one.
-
-To deploy this command on an otherwise current installation, upload only
-`manage.mjs`. No application restart, build or new dependency is required.
-
-Login throttling is process-local and per connection IP; proxy users may share
-an IP. This is suitable for review but should be checked with the hosting setup
-before launch. No MFA, password-reset email, audit history, account-deletion UI,
-or automatic session revocation on browser refresh is implemented.
-
-## Deployment and updates
-
-For a normal self-hosted installation, `public/config.js` uses the same-origin
-API. Serve public files and `/api/` through the Node application, or have the
-host route `/api/` to Node while serving only `public/` statically. Do not expose
-the project root, database, schema, or management scripts.
-
-Copy changed public files for a UI update. Copy changed server files and restart
-Node for a server update. There is no build command or npm dependency install.
-Never overwrite `data/`, local credentials, or host-generated routing files.
-The existing Dathorn routing configuration has not been changed or verified.
-
-Use HTTPS in production, restrict private file permissions, schedule consistent
-encrypted SQLite backups, and test restoration. Stop writers and account for
-SQLite WAL sidecars when making file-based backups.
-
-The delivered preview uses a separate generated frontend folder whose API
-placeholder is replaced by the preview hosting service. That folder is not the
-production source and is excluded from Git.
-
-## Checks
-
-```bash
-node --test tests.mjs
-node --test hosting-tests.mjs
-```
-
-Tests use disposable databases and cover real login, role restrictions, privacy,
-pair registration, cancellation, conflicting bookings, past dates, throttling,
-session invalidation and reopening persisted data. See `ACCEPTANCE.md` for browser
-checks. No real member accounts, production databases or external services are
-used in testing.
+# Chinese American Bridge Club: calendar website
+
+A small members-only calendar for the club's Monday duplicate games. Members register alone or with a partner; administrators manage dates, members and documents. Plain HTML/CSS/JavaScript, a Node server and SQLite (`node:sqlite`). No build step and no runtime dependencies other than optional email.
+
+Installing, upgrading and operating it: [OPERATIONS.md](OPERATIONS.md). Behaviour specification: [FLOWS.md](FLOWS.md). Test and QA record: [QA.md](QA.md), [ACCEPTANCE.md](ACCEPTANCE.md).
+
+## Who can do what
+
+| | Members | Administrators (in the browser) | Command line only (operator) |
+|---|---|---|---|
+| Account | Sign in, optionally remember this device; change own password; email opt-out; Help; About | Everything members can do | Create first administrator, reset a forgotten password, promote, demote |
+| Calendar | Register alone or with a partner, cancel own registration, see all pairs and teams for a date | Add, edit and delete games (Pairs or Teams) | |
+| Show selector | All members, My Own Dates, `-Guest-`, `-Standby-`, `-Unavailable-`, `-Director-` schedules | | |
+| Teams | Combine two complete pairs on a Teams date; leave a team | | |
+| Export | Download own upcoming games as `.ics` | | |
+| Documents | Open and download PDFs shared with all members | Upload, replace, delete, choose visibility | |
+| Members | | Add a member, deactivate a member, reset a member's password | Bulk-import from CSV, merge duplicate accounts |
+| On behalf of others | | Acting for: register, cancel and form teams for any active member; assign `-Director-` | |
+| Reports | | | Login history, pair frequency |
+| Maintenance | | | Database migrations, backups, email worker, release stamping |
+
+Administrator status is never changed from the website: promotion and demotion are command-line only.
+
+## Members
+
+- **Sign in.** Email and password. Ordinary sessions last 12 hours and end on a full reload. The optional "Remember this device for 30 days" box keeps a secure cookie that renews on each visit, so a regularly used device stays signed in; a device idle for 30 days signs out. Logging out, a password change or reset, or deactivation ends remembered sessions. Use it only on a personal device.
+- **Calendar.** Opens at the first month with a game today or later. Each game shows a pair count (team games count complete teams). Selecting a date shows its dance card with the registered pairs and anyone looking for a partner. Dates and cutoffs use Pacific time, and past games are read-only.
+- **Partners.** Register alone ("I'm looking for a partner") or pick an available partner, which registers both immediately with no acceptance step. A member can be in one partnership per game. Either partner can cancel; the other stays registered and becomes available again.
+- **Teams.** On a Teams date, register as a pair, then combine with one other complete pair to make a team of four. Leaving a team keeps both pair registrations; cancelling an individual dissolves the team and leaves the other pair intact.
+- **Placeholders.** Shared accounts that cannot sign in and can be used by several members in one game: `-Guest-` completes a pair with an unregistered guest (and can form teams); `-Standby-` and `-Unavailable-` are member states that are not pairs, cannot form teams and cannot be picked as a partner. `-Director-` marks directing duty; everyone can see it, only administrators can register it, and it takes no pair or team slot.
+- **Show.** Switches the calendar between all members, My Own Dates (every upcoming assignment across all months) and a placeholder's upcoming schedule.
+- **Export my games.** Downloads `cabc-my-games.ics` with the member's own registrations from today onward (no names, emails or tokens). It is a snapshot and does not update when games change.
+- **Email.** Registration and cancellation notices are on by default and each member can opt out, including from a link in the email. People are not notified of their own actions. Game cancellation is treated like a member cancellation. Mail comes from calendar@cabc.club.
+- **Documents.** PDFs that administrators share with all members open in the page or download.
+- **Help and About.** Help has an illustrated sign-in and partner guide. About has the club details, a collapsed Website version panel and a dated list of recent changes.
+- **iPhone.** Safari, Share, Add to Home Screen, Open as Web App. It opens the calendar, needs a connection, and has its own sign-in separate from Safari: tick Remember this device inside the app.
+
+## Administrators
+
+Controls appear above the calendar after signing in as an administrator.
+
+- **Add date / Edit game / Delete game.** Add a date with an optional name, Pacific start time (default 11:30) and Pairs or Teams type. Edit changes name, date and time and keeps every registration. Delete shows the affected registrations and needs confirmation. Past games cannot be changed. Event type is fixed at creation.
+- **Add member.** Creates an account with a password you pass on privately; the site does not email passwords. Placeholders (`-Guest-`, `-Standby-`, `-Unavailable-`, `-Director-`) are ordinary members with those exact names, created once through Add member. `-Director-` is needed before directors can be assigned.
+- **Deactivate member.** Review, then confirm. It signs the person out, blocks login and partner selection, and cancels registrations from today onward; past records and names stay. The last active administrator is protected, and password resets, promotion and imports never reactivate an account.
+- **Reset member password.** Pick the member explicitly, enter your own password, and enter and confirm a new one (12 to 128 characters). It ends all of that member's sessions and does not force a change at next login.
+- **Acting for.** Manage another active member's registration, partner or placeholder status and team without signing in as them. A banner names the target; your own account, password and document controls stay yours. Delegated changes are written to an audit table, and stale game reviews are rejected.
+- **Documents.** Upload a PDF (10 MB each, 250 MB in total) with a title, optional description and visibility: Administrators only (default) or All members, which needs an explicit checkbox. Edit or replace, or delete with confirmation. Permissions follow the signed-in account, never Acting for.
+
+## Command line
+
+Run on the server in an interactive terminal from the application directory, with `DB_PATH` set to the live database. Commands are listed with their Dathorn form in [OPERATIONS.md](OPERATIONS.md#command-reference).
+
+| Command | Purpose |
+|---|---|
+| `manage.mjs init` | Create the database and first administrator (one time) |
+| `manage.mjs reset-password` | Generate a new password for any account (never emailed) |
+| `manage.mjs promote` / `demote` | Grant or remove administrator access (demote needs typing `DEMOTE`; the last administrator is protected) |
+| `manage.mjs merge-member [--dry-run]` | Merge a duplicate account into the one to keep, without losing registrations; the duplicate is retired, not deleted |
+| `manage.mjs login-history [days]` | Successful sign-ins, newest first, Pacific time |
+| `manage.mjs pair-report [--played]` | Registered pairs for upcoming dates with a count per pair; `--played` adds past games |
+| `import-members.mjs FILE.csv --dry-run / --apply` | Bulk-add members from `name,email,initial-password` |
+| `migrate.mjs NAME` | Explicit, additive database upgrades |
+| `backup.mjs setup / run / cron / verify / restore` | Encrypted weekly backups |
+| `mail-worker.mjs status / review / retry` | Email delivery |
+
+## Limits to know
+
+- Cancelled registrations leave no record, except changes made through Acting for (audit log). Reports count only registrations still in the database.
+- Login history starts when its migration is installed.
+- Login throttling is per process and per IP. There is no multi-factor sign-in and no forced password change.
+- The slideshow shows two photo collages made from club photos.

@@ -233,8 +233,8 @@ current automated suite, rather than being claimed as freshly repeated here.
 
 No production data, hosting configuration or actual email delivery was changed.
 Real iPhone Safari and home-screen acceptance remain owner-side checks.
-For an installation already running Documents, this reader needs the files
-listed in DOCUMENTS.md and one backend restart, but no new database migration.
+For an installation already running Documents, this reader needs
+the upgrade steps in OPERATIONS.md (upgrading) and one backend restart, but no new database migration.
 
 ## Previous release: members-only PDF documents
 
@@ -290,8 +290,8 @@ fictional registration. Only disposable fixtures were created or removed.
 
 No production database, hosting settings, actual member accounts or SMTP delivery
 were changed. Real iPhone Safari/home-screen behavior and the scheduled backup's
-actual live DB_PATH remain owner acceptance checks. See DOCUMENTS.md for the
-nine-file deployment, explicit migration and required backend restart.
+actual live DB_PATH remain owner acceptance checks. See OPERATIONS.md for the
+deployment steps, explicit migration and required backend restart.
 
 ## Administrator-specified member password reset
 
@@ -609,7 +609,7 @@ need an iPhone check after Dathorn deployment. WebKit could not run because
 Playwright's WebKit install does not support this sandbox's Ubuntu 26.04.
 The app deliberately requires internet access and keeps the existing
 in-memory authentication; cold starts can require signing in again.
-Deployment and actual-device checks are documented in HOME-SCREEN.md.
+Deployment and actual-device checks are described in OPERATIONS.md.
 
 ## Header dropdown alignment
 
@@ -924,8 +924,8 @@ cross-month jump were exercised on the hosted application. The two hosted test
 registrations were cancelled afterwards, restoring the fictional preview
 database to its seeded state.
 
-Production hosting and accounts have not been modified. WILDCARDS.md documents
-the four-file upload, placeholder creation with manage.mjs and the lack of any
+Production hosting and accounts have not been modified. OPERATIONS.md describes
+the file upload, placeholder creation with manage.mjs and the lack of any
 migration.
 
 ## Administrator member deactivation
@@ -1039,8 +1039,8 @@ The deployed interface formed and dissolved a team through its hosted API,
 showed both registered teams, restricted the dropdown to the remaining eligible
 pair, downloaded the calendar file, and fit the mobile viewport. Demo state was
 left with one complete fictional team and two available pairs. No Dathorn files,
-live accounts or production database were changed; TEAM-EVENTS.md contains the
-explicit six-file upload, backup, migration, restart and rollback instructions.
+live accounts or production database were changed; OPERATIONS.md contains the
+explicit file upload, backup, migration, restart and rollback instructions.
 
 ## Export link domain correction
 
