@@ -3,15 +3,16 @@ import { createInterface } from "node:readline/promises";
 import { stdin, stdout } from "node:process";
 import path from "node:path";
 import { openDatabase, addMember, transaction, passwordHash, clubToday, requireMemberStatus, wildcardType } from "./db.mjs";
+import { upcomingPairs, describePairs, describePlayed } from "./pair-report.mjs";
 import { reviewMemberMerge, applyMemberMerge, describeMemberMerge } from "./merge-member.mjs";
 
 process.umask(0o077);
 const command = process.argv[2];
 const dryRun = command === "merge-member" && process.argv[3] === "--dry-run";
-if (!["init", "preview", "reset-password", "promote", "demote", "merge-member", "login-history"].includes(command) ||
+if (!["init", "preview", "reset-password", "promote", "demote", "merge-member", "login-history", "pair-report"].includes(command) ||
     (command === "merge-member" && process.argv.length !== (dryRun ? 4 : 3)) ||
     (command === "login-history" && (process.argv.length > 4 || (process.argv[3] !== undefined && !/^[1-9]\d{0,4}$/.test(process.argv[3]))))) {
-  console.error("Usage: node manage.mjs init | preview | reset-password | promote | demote | merge-member [--dry-run] | login-history [days]");
+  console.error("Usage: node manage.mjs init | preview | reset-password | promote | demote | merge-member [--dry-run] | login-history [days] | pair-report [--played]");
   process.exit(1);
 }
 let db;
@@ -23,7 +24,11 @@ try {
   }
   db = openDatabase(undefined, ["init", "preview"].includes(command));
   if (command === "demote") requireMemberStatus(db);
-  if (command === "login-history") {
+  if (command === "pair-report") {
+    if (process.argv.length > 4 || (process.argv[3] && process.argv[3] !== "--played")) throw new Error("Usage: node manage.mjs pair-report [--played]");
+    const today = process.env.PREVIEW_TODAY && db.prepare("SELECT 1 FROM metadata WHERE key='preview'").get() ? process.env.PREVIEW_TODAY : clubToday();
+    console.log(process.argv[3] ? describePlayed(upcomingPairs(db, today, true), today) : describePairs(upcomingPairs(db, today)));
+  } else if (command === "login-history") {
     if (!db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='login_history'").get())
       throw new Error("Login-history migration required. Run node migrate.mjs login-history with the same DB_PATH.");
     const days = Number(process.argv[3] || 30);
