@@ -8,9 +8,10 @@ import { reviewMemberMerge, applyMemberMerge, describeMemberMerge } from "./merg
 process.umask(0o077);
 const command = process.argv[2];
 const dryRun = command === "merge-member" && process.argv[3] === "--dry-run";
-if (!["init", "preview", "reset-password", "promote", "demote", "merge-member"].includes(command) ||
-    (command === "merge-member" && process.argv.length !== (dryRun ? 4 : 3))) {
-  console.error("Usage: node manage.mjs init | preview | reset-password | promote | demote | merge-member [--dry-run]");
+if (!["init", "preview", "reset-password", "promote", "demote", "merge-member", "login-history"].includes(command) ||
+    (command === "merge-member" && process.argv.length !== (dryRun ? 4 : 3)) ||
+    (command === "login-history" && (process.argv.length > 4 || (process.argv[3] !== undefined && !/^[1-9]\d{0,4}$/.test(process.argv[3]))))) {
+  console.error("Usage: node manage.mjs init | preview | reset-password | promote | demote | merge-member [--dry-run] | login-history [days]");
   process.exit(1);
 }
 let db;
@@ -22,7 +23,20 @@ try {
   }
   db = openDatabase(undefined, ["init", "preview"].includes(command));
   if (command === "demote") requireMemberStatus(db);
-  if (command === "preview") {
+  if (command === "login-history") {
+    if (!db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='login_history'").get())
+      throw new Error("Login-history migration required. Run node migrate.mjs login-history with the same DB_PATH.");
+    const days = Number(process.argv[3] || 30);
+    const since = new Date(Date.now() - days * 86400000).toISOString();
+    const fmt = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Los_Angeles", year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+    const rows = db.prepare("SELECT created_at,member_name,member_email,remembered FROM login_history WHERE created_at>=? ORDER BY id DESC").all(since);
+    console.log(`Successful sign-ins in the last ${days} day${days === 1 ? "" : "s"} (Pacific time, newest first): ${rows.length}`);
+    for (const row of rows) console.log(`${fmt.format(new Date(row.created_at)).replace(",", "")}  ${row.member_name} <${row.member_email}>${row.remembered ? "  [remembered device]" : ""}`);
+    const people = new Map();
+    for (const row of rows) people.set(row.member_email, (people.get(row.member_email) || 0) + 1);
+    console.log(`Distinct members: ${people.size}`);
+  } else if (command === "preview") {
     if (db.prepare("SELECT count(*) AS n FROM members").get().n) throw new Error("Preview seeding requires an empty database. No records were changed.");
     transaction(db, () => {
       db.prepare("INSERT INTO metadata VALUES('preview','1')").run();

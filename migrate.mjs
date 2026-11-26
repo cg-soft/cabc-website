@@ -179,11 +179,34 @@ export function migrateDocuments(filename = process.env.DB_PATH || path.join(ROO
   } catch (error) { if (pending) db.exec("ROLLBACK"); throw error; }
   finally { db.close(); }
 }
+export function migrateLoginHistory(filename = process.env.DB_PATH || path.join(ROOT, "data/club.sqlite")) {
+  const file = privateFile(filename);
+  if (!existsSync(file)) throw new Error("Database not found. Check DB_PATH; migration will not initialize a replacement.");
+  const db = new DatabaseSync(file);
+  let pending = false;
+  try {
+    db.exec("PRAGMA foreign_keys=ON; PRAGMA busy_timeout=10000;");
+    if (db.prepare("PRAGMA user_version").get().user_version !== 1) throw new Error("Unsupported database schema.");
+    db.exec("BEGIN IMMEDIATE"); pending = true;
+    const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name!='metadata'").all().map(row => row.name);
+    const counts = () => Object.fromEntries(tables.map(table => [table, db.prepare(`SELECT count(*) AS n FROM "${table.replace(/"/g, '""')}"`).get().n]));
+    const before = counts();
+    const existing = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='login_history'").get();
+    db.exec(readFileSync(path.join(ROOT, "login-history-schema.sql"), "utf8"));
+    db.prepare("SELECT id,created_at,member_id,member_name,member_email,remembered FROM login_history LIMIT 0").all();
+    const after = counts();
+    if (JSON.stringify(before) !== JSON.stringify(after)) throw new Error("Row counts changed; migration rolled back.");
+    db.prepare("INSERT INTO metadata(key,value) VALUES('migration:007-login-history',?) ON CONFLICT(key) DO NOTHING").run(new Date().toISOString());
+    db.exec("COMMIT"); pending = false;
+    return { applied: !existing, before, after };
+  } catch (error) { if (pending) db.exec("ROLLBACK"); throw error; }
+  finally { db.close(); }
+}
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try {
     const command = process.argv[2];
-    if (!["game-names", "team-events", "member-status", "registration-audit", "notifications", "documents"].includes(command)) throw new Error("Usage: node migrate.mjs game-names | team-events | member-status | registration-audit | notifications | documents");
-    const result = command === "documents" ? migrateDocuments() : command === "notifications" ? migrateNotifications() : command === "registration-audit" ? migrateRegistrationAudit() : command === "member-status" ? migrateMemberStatus() : command === "team-events" ? migrateTeamEvents() : migrateGameNames();
+    if (!["game-names", "team-events", "member-status", "registration-audit", "notifications", "documents", "login-history"].includes(command)) throw new Error("Usage: node migrate.mjs game-names | team-events | member-status | registration-audit | notifications | documents | login-history");
+    const result = command === "login-history" ? migrateLoginHistory() : command === "documents" ? migrateDocuments() : command === "notifications" ? migrateNotifications() : command === "registration-audit" ? migrateRegistrationAudit() : command === "member-status" ? migrateMemberStatus() : command === "team-events" ? migrateTeamEvents() : migrateGameNames();
     console.log(result.applied ? `${command} migration applied.` : `${command} schema already present; no duplicate changes.`);
     console.log("Before:", result.before);
     console.log("After: ", result.after);

@@ -272,7 +272,12 @@ export function createApp({ db = openDatabase(), preview = false, previewToday,
           if (!current || current.password !== member.password) throw new HttpError(401, "Email or password is incorrect.");
           const old = cookieToken(req);
           if (old) db.prepare("DELETE FROM sessions WHERE hash=?").run(hashToken(old));
-          return session(current, remembered);
+          const created = session(current, remembered);
+          // Optional feature: sign-in keeps working on databases not yet migrated.
+          if (db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='login_history'").get())
+            db.prepare("INSERT INTO login_history(created_at,member_id,member_name,member_email,remembered) VALUES(?,?,?,?,?)")
+              .run(new Date().toISOString(), current.id, current.name, current.email, remembered ? 1 : 0);
+          return created;
         });
         if (!preview) res.setHeader("Set-Cookie", cookieHeader(remembered ? result.token : ""));
         // Remembered credentials stay HttpOnly, never in JS or persistent storage.

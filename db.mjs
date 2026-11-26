@@ -59,6 +59,7 @@ export function openDatabase(filename = process.env.DB_PATH || path.join(ROOT, "
           db.exec(readFileSync(path.join(ROOT, "registration-audit-schema.sql"), "utf8"));
           db.exec(readFileSync(path.join(ROOT, "notification-schema.sql"), "utf8"));
           db.exec(readFileSync(path.join(ROOT, "documents-schema.sql"), "utf8"));
+          db.exec(readFileSync(path.join(ROOT, "login-history-schema.sql"), "utf8"));
         }
         db.exec("COMMIT");
       }
