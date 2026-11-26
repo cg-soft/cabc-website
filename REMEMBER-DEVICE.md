@@ -9,9 +9,12 @@ both lines aligned beside the checkbox on desktop and phone layouts.
 ## Member behavior
 
 - **Checked:** Signing in sets a secure remembered session for 30 days from
-  sign-in. Reloading or reopening the same browser/web app restores the member
-  without a password prompt while that session remains valid. It does not
-  extend the original expiry.
+  sign-in, renewed on each visit. Every request made with the remembered cookie
+  (at most once an hour) moves the expiry to 30 days from now and refreshes the
+  cookie, so a device in regular use stays signed in; one unused for 30 days
+  expires. Reloading or reopening the same browser/web app restores the member
+  without a password prompt while that session remains valid. An expired
+  session is never revived.
 - **Unchecked:** Ordinary sign-in keeps the existing 12-hour server session and
   memory-only bearer token. A full reload requires signing in again.
 - **Log out:** Revokes this browser's session and removes its remembered cookie.

@@ -85,7 +85,7 @@ test("remembered login sets a hardened 30-day cookie without exposing its creden
   assert.equal((await f.request("/calendar", { token: result.csrf })).status, 401);
 });
 
-test("restoration survives app restart, reflects current roles and never slides the expiry", async t => {
+test("restoration survives app restart, reflects current roles and leaves a fresh expiry untouched", async t => {
   const f = await fixture(t), login = await f.login();
   const before = f.db.prepare("SELECT * FROM sessions").all();
   await f.restart();
@@ -97,6 +97,28 @@ test("restoration survives app restart, reflects current roles and never slides 
   f.db.prepare("UPDATE members SET role='admin' WHERE id=?").run(f.ids.Member);
   assert.equal((await f.request("/session", { cookie: login.cookie })).body.member.role, "admin");
   assert.equal((await f.request("/calendar", { cookie: login.cookie })).status, 200);
+});
+
+test("remembered sessions slide: each visit renews 30 days, ordinary and expired sessions do not", async t => {
+  const f = await fixture(t), login = await f.login(), hash = hashToken(login.cookie.split("=")[1]);
+  const expires = () => f.db.prepare("SELECT expires FROM sessions WHERE hash=?").get(hash).expires;
+  f.db.prepare("UPDATE sessions SET expires=? WHERE hash=?").run(Date.now() + 10 * 86400000, hash);
+  const result = await f.request("/session", { cookie: login.cookie });
+  assert.equal(result.status, 200);
+  assert.ok(expires() >= Date.now() + rememberedMs - 60000 && expires() <= Date.now() + rememberedMs);
+  const header = result.headers.get("set-cookie");
+  assert.match(header, /^__Host-cabc_session=[a-f0-9]{64};/);
+  assert.ok(header.includes("Max-Age=2592000") && header.includes("HttpOnly") && header.includes("SameSite=Strict"));
+  const renewed = expires();
+  assert.equal((await f.request("/session", { cookie: login.cookie })).headers.get("set-cookie"), null);
+  assert.equal(expires(), renewed);
+  const ordinary = await f.login(2, false), ordinaryHash = hashToken(ordinary.body.token);
+  const soon = Date.now() + 3600000;
+  f.db.prepare("UPDATE sessions SET expires=? WHERE hash=?").run(soon, ordinaryHash);
+  assert.equal((await f.request("/calendar", { token: ordinary.body.token })).status, 200);
+  assert.equal(f.db.prepare("SELECT expires FROM sessions WHERE hash=?").get(ordinaryHash).expires, soon);
+  f.db.prepare("UPDATE sessions SET expires=? WHERE hash=?").run(Date.now() - 1, hash);
+  assert.equal((await f.request("/session", { cookie: login.cookie })).status, 401);
 });
 
 test("cookie writes require the matching CSRF token and reject cross-site requests", async t => {

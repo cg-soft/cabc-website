@@ -162,7 +162,7 @@
 - Remembered production login uses a host-only Secure HttpOnly SameSite=Strict
   cookie and CSRF protection. No password/token goes into persistent JS storage.
 - Reload, a new tab/context with the same cookie, and standalone-style launch
-  restore the correct member without extending the original 30-day expiry.
+  restore the correct member and renew the 30-day expiry (sliding, at most hourly); 12-hour sessions never slide.
 - Administrator restoration always starts at Myself, not the prior acting target.
 - Logout removes the cookie and revokes its session. Password change/reset and
   deactivation revoke remembered sessions; expired/malformed cookies fail closed.

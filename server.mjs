@@ -97,6 +97,13 @@ export function createApp({ db = openDatabase(), preview = false, previewToday,
           !timingSafeEqual(Buffer.from(supplied), Buffer.from(csrfToken(token))))
         throw new HttpError(403, "Your sign-in changed or this request could not be verified. Reload the page and try again.");
     }
+    // Sliding remembered sign-in: each cookie-authenticated visit renews the
+    // 30 days, at most hourly. Ordinary 12-hour bearer sessions never slide.
+    if (!preview && cookieAuth(req)) {
+      const now = Date.now(), renewed = now + REMEMBER_SECONDS * 1000;
+      const changed = db.prepare("UPDATE sessions SET expires=? WHERE hash=? AND expires<?").run(renewed, hashToken(token), renewed - 3600000);
+      if (changed.changes && req.cabcResponse && !req.cabcResponse.headersSent) req.cabcResponse.setHeader("Set-Cookie", cookieHeader(token));
+    }
     return user;
   }
   function admin(user) { if (user.role !== "admin") throw new HttpError(403, "Administrator access required."); }
@@ -201,6 +208,7 @@ export function createApp({ db = openDatabase(), preview = false, previewToday,
       revision: hashToken(JSON.stringify({ member, date, games, entries, teams })) };
   }
   const server = http.createServer(async (req, res) => {
+    req.cabcResponse = res;
     const reply = (status, data) => {
       res.writeHead(status, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" });
       res.end(JSON.stringify(data));
