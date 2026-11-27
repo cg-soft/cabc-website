@@ -1,14 +1,15 @@
 (() => {
-  const FRONTEND_VERSION = "1.0.1+f7050faddd5c";
+  const FRONTEND_VERSION = "1.0.1+9a7f9f973cae";
   const EXPECTED_BACKEND_VERSION = "1.0.1+12ddc87011ff";
   // Newest first; dates describe source updates, not an installation's upload date.
   // Add a concise entry here when releasing a user-visible website change.
   const WEBSITE_CHANGES = [
+    ["2026-11-26", "Email notices now use the email address of the member who triggered them as Reply-To."],
     ["2026-11-26", "Remembered sign-in now renews for 30 days on each visit."],
-    ["2026-11-26", "Added a login history for administrators, viewed from the command line."],
+    ["2026-11-25", "Replaced the homepage slides with a second club collage, with a taller version for phones."],
     ["2026-11-22", "Added administrator-only -Director- assignments."],
+    ["2026-11-19", "Added the CABC 65 collage to the homepage slideshow."],
     ["2026-11-17", "Added a six-step Help guide with expandable screenshots."],
-    ["2026-11-17", "Added command-line-only administrator demotion."],
     ["2026-11-16", "Added dated change history to About."],
     ["2026-11-16", "Grouped schedules by year; compacted pair/team rows."],
     ["2026-11-16", "Added My Own Dates for current and future games."],
