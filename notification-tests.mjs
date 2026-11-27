@@ -404,3 +404,11 @@ test("Nodemailer delivers only to an isolated authenticated TLS SMTP fixture", a
   assert.match(received[0], /To: 1@example.test/); assert.match(received[0], /Message-ID:/i);
   assert.equal(f.db.prepare("SELECT state FROM notification_outbox").get().state, "sent");
 });
+
+test("notices use the triggering member's address as Reply-To", () => {
+  const game = { id: 1, date: "2026-12-01", time: "13:00", name: "G" };
+  const base = { kind: "registered", memberName: "A", partner: "B", game, actorName: "B", delegated: true };
+  assert.equal(renderMail({ ...base, actorEmail: "b@example.com" }, "a".repeat(64)).replyTo, "b@example.com");
+  assert.equal(renderMail(base, "a".repeat(64)).replyTo, undefined);
+  assert.equal(renderMail({ ...base, actorEmail: "x@example.com\r\nBcc: v@example.com" }, "a".repeat(64)).replyTo, undefined);
+});

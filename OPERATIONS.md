@@ -98,6 +98,8 @@ Backups are encrypted copies of the live database (including documents and login
 
 ## Email notifications
 
+Notices are sent from `calendar@cabc.club`. The Reply-To is the email address of the member who triggered the notice (a partner, or an administrator acting for someone), so replies reach that person. Nothing reads replies on the site itself.
+
 Registration and cancellation mail is queued by the app and sent by a separate worker; SMTP never runs inside a calendar request, so mail outages do not block registration.
 
 1. Run `migrate.mjs notifications`, then `npm ci --omit=dev --ignore-scripts` to install `nodemailer` (upload `node_modules/nodemailer/` complete if you build elsewhere).

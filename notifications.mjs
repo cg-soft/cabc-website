@@ -25,6 +25,7 @@ export function queueChanges(db, { game, before, after, actor, cancelledGame = f
   const previous = new Map(before.map(e => [e.member_id, e]));
   const current = new Map(after.map(e => [e.member_id, e]));
   const event = randomBytes(16).toString("hex");
+  const actorEmail = db.prepare("SELECT email FROM members WHERE id=?").get(actor.id)?.email || null;
   for (const id of new Set([...previous.keys(), ...current.keys()])) {
     // Suppress only the actual actor, not a delegated member or their partner.
     if (id === actor.id) continue;
@@ -37,7 +38,7 @@ export function queueChanges(db, { game, before, after, actor, cancelledGame = f
       ? db.prepare("SELECT name FROM members WHERE id=?").get(next.partner_id)?.name || null : null;
     const kind = cancelledGame ? "game-cancelled" : !next ? "cancelled" : old?.partner_id && !next.partner_id ? "partner-cancelled" : "registered";
     const payload = { kind, memberName: member.name, game: { id: game.id, date: game.date, time: game.time, name: game.name },
-      partner, actorName: actor.name, delegated: actor.id !== id };
+      partner, actorName: actor.name, actorEmail, delegated: actor.id !== id };
     db.prepare("INSERT INTO notification_outbox(id,event_id,member_id,email,payload_json,created_at,next_attempt) VALUES(?,?,?,?,?,?,?)")
       .run(randomBytes(16).toString("hex"), event, id, member.email, JSON.stringify(payload), now, now);
   }
@@ -78,6 +79,8 @@ export function renderMail(payload, token, site = "https://cabc.club") {
     : kind === "partner-cancelled" ? "Partner cancellation" : marker === "director" ? "Director assignment" : marker === "unavailable" || marker === "standby" ? "Availability updated" : "Registration confirmed";
   return {
     from: MAIL_FROM,
+    // Replies go to whoever triggered the notice; older queued notices have no address and use From.
+    ...(/^[^\s@<>,;"]+@[^\s@<>,;"]+$/.test(payload.actorEmail || "") ? { replyTo: payload.actorEmail } : {}),
     subject: `${heading}: ${title} (${game.date})`.replace(/[\r\n]/g, " ").slice(0, 240),
     text: `Hello ${payload.memberName},\n\n${summary}\n\n${title}\n${date}\n${time}\n${payload.delegated ? `\nChanged by ${payload.actorName}.\n` : ""}\nOpen the calendar: ${site}/#calendar\n\nEmail notifications are on by default. To stop registration and cancellation emails, open this link and confirm:\n${site}/#email-opt-out/${token}\n\nYou can turn emails back on in Email notifications while signed in. This does not change your game registrations.\n\nChinese American Bridge Club\n`
   };
